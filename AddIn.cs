@@ -1,12 +1,20 @@
-﻿using System.Linq;
+﻿using System.Collections.Generic;
+using System.Linq;
 using Siemens.Engineering;
 using Siemens.Engineering.AddIn.Menu;
+using Siemens.Engineering.HW.Features;
+using Siemens.Engineering.MC.Drives;
 using Siemens.Engineering.SW;
+using ZC_ALM_TOOLS.Views;
 
 namespace ZC_ALM_TOOLS
 {
+
+
     public class AddIn : ContextMenuAddIn
     {
+
+
         private const string s_DisplayNameOfAddIn = "ZC ALM TOOLS";
         private readonly TiaPortal _tiaPortal;
                 
@@ -57,5 +65,8 @@ namespace ZC_ALM_TOOLS
 
             return null;
         }
+
+
+
     }
 }

@@ -1,18 +1,18 @@
 ﻿using System.Windows;
 using Siemens.Engineering;
-using Siemens.Engineering.SW; // Necesario para 'PlcSoftware'
+using Siemens.Engineering.SW; // <--- IMPRESCINDIBLE
 using ZC_ALM_TOOLS.ViewModels;
 
-namespace ZC_ALM_TOOLS.Views // O el namespace donde esté tu MainWindow
+namespace ZC_ALM_TOOLS.Views
 {
     public partial class MainWindow : Window
     {
-        // Actualizamos el constructor para recibir AMBOS objetos
+        // Este constructor DEBE coincidir con el 'new MainWindow(...)' de AddIn.cs
         public MainWindow(TiaPortal tiaPortal, PlcSoftware plcSoftware)
         {
             InitializeComponent();
 
-            // Se los pasamos al ViewModel
+            // Pasamos los objetos al ViewModel
             this.DataContext = new MainViewModel(tiaPortal, plcSoftware);
         }
     }

@@ -43,13 +43,16 @@
     <Reference Include="PresentationFramework" />
     <Reference Include="Siemens.Engineering.AddIn">
       <HintPath>C:\Program Files\Siemens\Automation\Portal V18\PublicAPI\V18.AddIn\Siemens.Engineering.AddIn.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="Siemens.Engineering.AddIn.Utilities, Version=18.0.0.0, Culture=neutral, PublicKeyToken=65b871d8372d6a8f, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>C:\Program Files\Siemens\Automation\Portal V18\PublicAPI\V18.AddIn\Siemens.Engineering.AddIn.Utilities.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="Siemens.Engineering.Hmi">
       <HintPath>C:\Program Files\Siemens\Automation\Portal V18\PublicAPI\V18.AddIn\Siemens.Engineering.Hmi.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -72,7 +75,7 @@
     <Compile Include="Core\INotifyPropertyChanged.cs" />
     <Compile Include="Core\RelayCommand.cs" />
     <Compile Include="Helpers\JsonParserHelper.cs" />
-    <Compile Include="Models\DispositivoModel.cs" />
+    <Compile Include="Models\Disp_V.cs" />
     <Compile Include="Models\ParameterConfig.cs" />
     <Compile Include="Models\ProjectDevice.cs" />
     <Compile Include="ViewModels\DispositivosViewModel.cs" />
