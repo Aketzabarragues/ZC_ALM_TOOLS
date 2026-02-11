@@ -1,42 +1,62 @@
 {
   "Version": 1,
-  "WorkspaceRootPath": "C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\",
+  "WorkspaceRootPath": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\views\\mainwindow.xaml.cs||{8B382828-6202-11D1-8870-0000F87579D2}|",
+      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|d:\\zeus control\\proyectos\\github\\zc_alm_tools\\viewmodels\\mainviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|solutionrelative:viewmodels\\mainviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|d:\\zeus control\\proyectos\\github\\zc_alm_tools\\views\\mainwindow.xaml.cs||{8B382828-6202-11D1-8870-0000F87579D2}|",
       "RelativeMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|solutionrelative:views\\mainwindow.xaml.cs||{8B382828-6202-11D1-8870-0000F87579D2}|"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|c:\\users\\abh\\source\\repos\\siemens_db_tool\\views\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
+      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|d:\\zeus control\\proyectos\\github\\zc_alm_tools\\views\\viewdispositivos.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|solutionrelative:views\\viewdispositivos.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\addin.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|solutionrelative:addin.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|d:\\zeus control\\proyectos\\github\\zc_alm_tools\\viewmodels\\dispositivosviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|solutionrelative:viewmodels\\dispositivosviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\views\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
       "RelativeMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|solutionrelative:views\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|c:\\users\\abh\\source\\repos\\siemens_db_tool\\models\\projectdevice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|d:\\zeus control\\proyectos\\github\\zc_alm_tools\\views\\viewdispositivos.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
+      "RelativeMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|solutionrelative:views\\viewdispositivos.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|d:\\zeus control\\proyectos\\github\\zc_alm_tools\\core\\relaycommand.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|solutionrelative:core\\relaycommand.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|d:\\zeus control\\proyectos\\github\\zc_alm_tools\\core\\inotifypropertychanged.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|solutionrelative:core\\inotifypropertychanged.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\models\\projectdevice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|solutionrelative:models\\projectdevice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\helpers\\jsonparserhelper.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|solutionrelative:helpers\\jsonparserhelper.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|c:\\users\\abh\\source\\repos\\siemens_db_tool\\models\\parameterconfig.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\models\\parameterconfig.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|solutionrelative:models\\parameterconfig.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\models\\processconfig.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\models\\processconfig.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|solutionrelative:models\\processconfig.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\properties\\assemblyinfo.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\properties\\assemblyinfo.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|solutionrelative:properties\\assemblyinfo.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\addinprovider.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\addinprovider.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|solutionrelative:addinprovider.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\addin.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|solutionrelative:addin.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -46,7 +66,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 10,
+          "SelectedChildIndex": 5,
           "Children": [
             {
               "$type": "Bookmark",
@@ -70,50 +90,112 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "ProjectDevice.cs",
-              "DocumentMoniker": "C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\Models\\ProjectDevice.cs",
-              "RelativeDocumentMoniker": "Models\\ProjectDevice.cs",
-              "ToolTip": "C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\Models\\ProjectDevice.cs",
-              "RelativeToolTip": "Models\\ProjectDevice.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAAFAAAAAAAAAA==",
+              "DocumentIndex": 0,
+              "Title": "MainViewModel.cs",
+              "DocumentMoniker": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\ViewModels\\MainViewModel.cs",
+              "RelativeDocumentMoniker": "ViewModels\\MainViewModel.cs",
+              "ToolTip": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\ViewModels\\MainViewModel.cs",
+              "RelativeToolTip": "ViewModels\\MainViewModel.cs",
+              "ViewState": "AgIAAEoAAAAAAAAAAAAYwIIAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-06T14:56:32.023Z",
+              "WhenOpened": "2026-02-11T07:30:15.745Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "ViewDispositivos.xaml.cs",
+              "DocumentMoniker": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\Views\\ViewDispositivos.xaml.cs",
+              "RelativeDocumentMoniker": "Views\\ViewDispositivos.xaml.cs",
+              "ToolTip": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\Views\\ViewDispositivos.xaml.cs",
+              "RelativeToolTip": "Views\\ViewDispositivos.xaml.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-11T07:20:01.572Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "ViewDispositivos.xaml",
+              "DocumentMoniker": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\Views\\ViewDispositivos.xaml",
+              "RelativeDocumentMoniker": "Views\\ViewDispositivos.xaml",
+              "ToolTip": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\Views\\ViewDispositivos.xaml",
+              "RelativeToolTip": "Views\\ViewDispositivos.xaml",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
+              "WhenOpened": "2026-02-11T07:18:08.518Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 4,
-              "Title": "ParameterConfig.cs",
-              "DocumentMoniker": "C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\Models\\ParameterConfig.cs",
-              "RelativeDocumentMoniker": "Models\\ParameterConfig.cs",
-              "ToolTip": "C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\Models\\ParameterConfig.cs",
-              "RelativeToolTip": "Models\\ParameterConfig.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAYAAAArAAAAAAAAAA==",
+              "Title": "DispositivosViewModel.cs",
+              "DocumentMoniker": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\ViewModels\\DispositivosViewModel.cs",
+              "RelativeDocumentMoniker": "ViewModels\\DispositivosViewModel.cs",
+              "ToolTip": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\ViewModels\\DispositivosViewModel.cs",
+              "RelativeToolTip": "ViewModels\\DispositivosViewModel.cs",
+              "ViewState": "AgIAAE0AAAAAAAAAAAAYwIUAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-06T14:21:35.232Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "JsonParserHelper.cs",
-              "DocumentMoniker": "C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\Helpers\\JsonParserHelper.cs",
-              "RelativeDocumentMoniker": "Helpers\\JsonParserHelper.cs",
-              "ToolTip": "C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\Helpers\\JsonParserHelper.cs",
-              "RelativeToolTip": "Helpers\\JsonParserHelper.cs",
-              "ViewState": "AgIAAEsAAAAAAAAAAAAqwEgAAAA6AAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-06T11:47:07.311Z",
+              "WhenOpened": "2026-02-11T07:17:14.631Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 7,
+              "Title": "RelayCommand.cs",
+              "DocumentMoniker": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\Core\\RelayCommand.cs",
+              "RelativeDocumentMoniker": "Core\\RelayCommand.cs",
+              "ToolTip": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\Core\\RelayCommand.cs",
+              "RelativeToolTip": "Core\\RelayCommand.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABgAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-11T07:16:56.329Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "INotifyPropertyChanged.cs",
+              "DocumentMoniker": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\Core\\INotifyPropertyChanged.cs",
+              "RelativeDocumentMoniker": "Core\\INotifyPropertyChanged.cs",
+              "ToolTip": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\Core\\INotifyPropertyChanged.cs",
+              "RelativeToolTip": "Core\\INotifyPropertyChanged.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-11T07:16:40.692Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "ProjectDevice.cs",
+              "DocumentMoniker": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\Models\\ProjectDevice.cs",
+              "RelativeDocumentMoniker": "Models\\ProjectDevice.cs",
+              "ToolTip": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\Models\\ProjectDevice.cs",
+              "RelativeToolTip": "Models\\ProjectDevice.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-06T14:56:32.023Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "ParameterConfig.cs",
+              "DocumentMoniker": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\Models\\ParameterConfig.cs",
+              "RelativeDocumentMoniker": "Models\\ParameterConfig.cs",
+              "ToolTip": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\Models\\ParameterConfig.cs",
+              "RelativeToolTip": "Models\\ParameterConfig.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAYAAAArAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-06T14:21:35.232Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 13,
               "Title": "AddInProvider.cs",
-              "DocumentMoniker": "C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\AddInProvider.cs",
+              "DocumentMoniker": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\AddInProvider.cs",
               "RelativeDocumentMoniker": "AddInProvider.cs",
-              "ToolTip": "C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\AddInProvider.cs",
+              "ToolTip": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\AddInProvider.cs",
               "RelativeToolTip": "AddInProvider.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -121,11 +203,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 12,
               "Title": "AssemblyInfo.cs",
-              "DocumentMoniker": "C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\Properties\\AssemblyInfo.cs",
+              "DocumentMoniker": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\Properties\\AssemblyInfo.cs",
               "RelativeDocumentMoniker": "Properties\\AssemblyInfo.cs",
-              "ToolTip": "C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\Properties\\AssemblyInfo.cs",
+              "ToolTip": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\Properties\\AssemblyInfo.cs",
               "RelativeToolTip": "Properties\\AssemblyInfo.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAABQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -133,24 +215,24 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 1,
               "Title": "MainWindow.xaml.cs",
-              "DocumentMoniker": "C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\Views\\MainWindow.xaml.cs",
+              "DocumentMoniker": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\Views\\MainWindow.xaml.cs",
               "RelativeDocumentMoniker": "Views\\MainWindow.xaml.cs",
-              "ToolTip": "C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\Views\\MainWindow.xaml.cs",
+              "ToolTip": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\Views\\MainWindow.xaml.cs",
               "RelativeToolTip": "Views\\MainWindow.xaml.cs",
-              "ViewState": "AgIAALwAAAAAAAAAAAAcwO4AAAAVAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAsAAAAJAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-02-03T07:01:11.156Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 5,
               "Title": "MainWindow.xaml",
-              "DocumentMoniker": "C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\Views\\MainWindow.xaml",
+              "DocumentMoniker": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\Views\\MainWindow.xaml",
               "RelativeDocumentMoniker": "Views\\MainWindow.xaml",
-              "ToolTip": "C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\Views\\MainWindow.xaml",
+              "ToolTip": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\Views\\MainWindow.xaml",
               "RelativeToolTip": "Views\\MainWindow.xaml",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
               "WhenOpened": "2026-02-03T07:00:32.17Z",
@@ -158,11 +240,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 11,
               "Title": "ProcessConfig.cs",
-              "DocumentMoniker": "C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\Models\\ProcessConfig.cs",
+              "DocumentMoniker": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\Models\\ProcessConfig.cs",
               "RelativeDocumentMoniker": "Models\\ProcessConfig.cs",
-              "ToolTip": "C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\Models\\ProcessConfig.cs",
+              "ToolTip": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\Models\\ProcessConfig.cs",
               "RelativeToolTip": "Models\\ProcessConfig.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAwAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -170,15 +252,16 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 8,
+              "DocumentIndex": 3,
               "Title": "AddIn.cs",
-              "DocumentMoniker": "C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\AddIn.cs",
+              "DocumentMoniker": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\AddIn.cs",
               "RelativeDocumentMoniker": "AddIn.cs",
-              "ToolTip": "C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\AddIn.cs",
+              "ToolTip": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\AddIn.cs",
               "RelativeToolTip": "AddIn.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAACkAAAAfAAAAAAAAAA==",
+              "ViewState": "AgIAAAMAAAAAAAAAAAAAABEAAAAIAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-01-29T14:47:15.874Z"
+              "WhenOpened": "2026-01-29T14:47:15.874Z",
+              "EditorCaption": ""
             }
           ]
         }

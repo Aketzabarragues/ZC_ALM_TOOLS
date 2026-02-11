@@ -1,0 +1,73 @@
+﻿<UserControl x:Class="ZC_ALM_TOOLS.Views.ViewDispositivos"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" 
+             d:DesignHeight="500" d:DesignWidth="800">
+
+    <Grid Background="White">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="260"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <Border Grid.Column="0" Background="#F0F0F0" BorderBrush="#CCCCCC" BorderThickness="0,0,1,0" Padding="15">
+            <StackPanel>
+                <TextBlock Text="FILTROS" FontWeight="Bold" Foreground="#333333" Margin="0,0,0,5"/>
+                <TextBlock Text="Familia de Dispositivos:" Margin="0,0,0,2"/>
+                <ComboBox ItemsSource="{Binding FamiliasDispositivos}" 
+                          SelectedItem="{Binding FamiliaSeleccionada}"
+                          Height="28" Margin="0,0,0,20"/>
+
+                <Separator Margin="0,0,0,20"/>
+
+                <TextBlock Text="WORKFLOW DE SINCRONIZACIÓN" FontWeight="Bold" Foreground="#005B96" Margin="0,0,0,10"/>
+
+                <TextBlock Text="Paso 1: Configuración" FontWeight="SemiBold" Margin="0,5,0,2"/>
+                <Button Command="{Binding SyncConstantesCommand}" 
+                        Content="Comprobar N_MAX (Constantes)" 
+                        Height="35" Margin="0,0,0,10"
+                        Background="White" BorderBrush="#007ACC" Foreground="#007ACC"/>
+
+                <TextBlock Text="Paso 2: Consistencia" FontWeight="SemiBold" Margin="0,5,0,2"/>
+                <Button Command="{Binding RefactoringCommand}" 
+                        Content="Refactoring (Renombrar Tags)" 
+                        Height="35" Margin="0,0,0,10"
+                        Background="White" BorderBrush="#D9534F" Foreground="#D9534F"/>
+
+                <TextBlock Text="Paso 3: Datos" FontWeight="SemiBold" Margin="0,5,0,2"/>
+                <Button Command="{Binding InyectarDatosCommand}" 
+                        Content="Inyectar XML / Comentarios" 
+                        Height="35" Margin="0,0,0,10"
+                        Background="White" BorderBrush="#5CB85C" Foreground="#5CB85C"/>
+
+            </StackPanel>
+        </Border>
+
+        <Grid Grid.Column="1" Margin="10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock Text="Previsualización de Datos (JSON vs TIA Portal)" 
+                       FontSize="16" FontWeight="Light" Margin="0,0,0,10"/>
+
+            <DataGrid Grid.Row="1" ItemsSource="{Binding ListaDispositivos}" 
+                      AutoGenerateColumns="False" 
+                      CanUserAddRows="False" 
+                      GridLinesVisibility="Horizontal"
+                      HeadersVisibility="Column"
+                      Background="White">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="UID" Binding="{Binding UID}" Width="80"/>
+                    <DataGridTextColumn Header="Num" Binding="{Binding Numero}" Width="50"/>
+                    <DataGridTextColumn Header="Tag (JSON)" Binding="{Binding Tag}" Width="150" FontWeight="Bold"/>
+                    <DataGridTextColumn Header="Descripción" Binding="{Binding Descripcion}" Width="*"/>
+                    <DataGridTextColumn Header="Estado Sincro" Binding="{Binding Estado}" Width="100"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Grid>
+    </Grid>
+</UserControl>

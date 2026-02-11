@@ -1,13 +1,7 @@
-﻿using System;
-using System.IO;
-using System.Linq;
-using System.Windows.Forms;
-using System.Collections.Generic;
-using System.Reflection; // <--- NECESARIO para manejar Assemblies
+﻿using System.Linq;
 using Siemens.Engineering;
 using Siemens.Engineering.AddIn.Menu;
 using Siemens.Engineering.SW;
-using Siemens.Engineering.SW.Tags;
 
 namespace ZC_ALM_TOOLS
 {
@@ -25,8 +19,8 @@ namespace ZC_ALM_TOOLS
         protected override void BuildContextMenuItems(ContextMenuAddInRoot addInRootSubmenu)
         {
             addInRootSubmenu.Items.AddActionItem<IEngineeringObject>(
-                "Generar Procesos",
-                GenerateNewProccess,
+                "ZC ALM TOOLS",
+                StartApplication,
                 OnCheckIfContextIsValid);
         }
 
@@ -42,7 +36,7 @@ namespace ZC_ALM_TOOLS
             return MenuStatus.Hidden;
         }
 
-        private void GenerateNewProccess(MenuSelectionProvider<IEngineeringObject> selectionProvider)
+        private void StartApplication(MenuSelectionProvider<IEngineeringObject> selectionProvider)
         {
             var selection = (IEngineeringObject)selectionProvider.GetSelection().FirstOrDefault();
             var plcSoftware = FindPlcSoftware(selection);

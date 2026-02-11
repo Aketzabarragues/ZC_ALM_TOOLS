@@ -1,13 +1,87 @@
 ﻿using System;
 using System.Collections.Generic;
+using ZC_ALM_TOOLS.Models; // Asegúrate de que esto apunta a tus modelos
 
 namespace ZC_ALM_TOOLS
 {
     public static class JsonParserHelper
     {
         // ----------------------------------------------------
-        // MÉTODOS PÚBLICOS (Los que llamas desde fuera)
+        // MÉTODOS PÚBLICOS
         // ----------------------------------------------------
+
+        // --- NUEVO: PARSEAR DISPOSITIVOS (Válvulas, Motores, etc.) ---
+        public static List<DispositivoModel> ParsearDispositivos(string json)
+        {
+            var lista = new List<DispositivoModel>();
+            try
+            {
+                string content = ExtraerContenidoData(json);
+                if (string.IsNullOrEmpty(content)) return lista;
+
+                // Separamos por objetos "}, {" o "},{"
+                string[] objetos = content.Split(new string[] { "}," }, StringSplitOptions.None);
+
+                foreach (var obj in objetos)
+                {
+                    var d = new DispositivoModel();
+                    var props = LimpiarYPartirPropiedades(obj);
+
+                    foreach (var kv in props)
+                    {
+                        string k = kv.Key;
+                        string v = kv.Value;
+
+                        // Mapeo manual según tu JSON (disp_v.json)
+                        if (k == "UID") d.UID = v;
+                        if (k == "Numero") d.Numero = ParseInt(v);
+                        if (k == "Tag" || k == "Nombre") d.Tag = v; // JSON suele traer "Tag"
+                        if (k == "Descripcion") d.Descripcion = v;
+                        if (k == "Proceso") d.Proceso = v; // Si lo añadiste
+
+                        // Campos específicos de TIA Portal (CP.*)
+                        if (k == "CP.Tag") d.TagTiaPortal = v;
+                        if (k == "CP.Comentario") d.ComentarioTiaPortal = v;
+                    }
+
+                    if (!string.IsNullOrEmpty(d.UID)) lista.Add(d);
+                }
+            }
+            catch (Exception)
+            {
+                // Manejo silencioso o log
+            }
+            return lista;
+        }
+
+        // --- NUEVO: LEER METADATOS (INFO) ---
+        // Devuelve el número total de items sin procesar toda la lista
+        public static int ObtenerTotalItems(string json)
+        {
+            try
+            {
+                // Buscamos "total_items": 15
+                int idxKey = json.IndexOf("\"total_items\"");
+                if (idxKey == -1) return 0;
+
+                int idxColon = json.IndexOf(':', idxKey);
+                int idxComma = json.IndexOf(',', idxColon);
+                int idxEndBrace = json.IndexOf('}', idxColon);
+
+                // El valor termina en la coma o en el cierre de llave
+                int end = (idxComma != -1 && idxComma < idxEndBrace) ? idxComma : idxEndBrace;
+
+                if (idxColon != -1 && end != -1)
+                {
+                    string numStr = json.Substring(idxColon + 1, end - idxColon - 1).Trim();
+                    return ParseInt(numStr);
+                }
+            }
+            catch { }
+            return 0;
+        }
+
+        // --- PARSEADORES EXISTENTES (PROCESOS Y PARAMETROS) ---
 
         public static List<ProcessConfig> ParsearProcesos(string json)
         {
@@ -17,7 +91,6 @@ namespace ZC_ALM_TOOLS
                 string content = ExtraerContenidoData(json);
                 if (string.IsNullOrEmpty(content)) return lista;
 
-                // Separamos por objetos "}, {"
                 string[] objetos = content.Split(new string[] { "}," }, StringSplitOptions.None);
 
                 foreach (var obj in objetos)
@@ -27,24 +100,17 @@ namespace ZC_ALM_TOOLS
 
                     foreach (var kv in props)
                     {
-                        string k = kv.Key;
-                        string v = kv.Value;
-
-                        if (k == "ID") p.Id = v; // Lo guardamos como string o int según tu clase
-                        if (k == "Nombre") p.Nombre = v;
-                        if (k.Contains("Etapas")) p.NumEtapas = ParseInt(v);
-                        if (k == "Preal") p.MaxPReal = ParseInt(v);
-                        if (k == "Pint") p.MaxPInt = ParseInt(v);
-                        if (k == "Alarmas") p.NumAlarmas = ParseInt(v);
+                        if (kv.Key == "ID") p.Id = kv.Value;
+                        if (kv.Key == "Nombre") p.Nombre = kv.Value;
+                        if (kv.Key.Contains("Etapas")) p.NumEtapas = ParseInt(kv.Value);
+                        if (kv.Key == "Preal") p.MaxPReal = ParseInt(kv.Value);
+                        if (kv.Key == "Pint") p.MaxPInt = ParseInt(kv.Value);
+                        if (kv.Key == "Alarmas") p.NumAlarmas = ParseInt(kv.Value);
                     }
-                    // Validación mínima: que tenga ID
                     if (!string.IsNullOrEmpty(p.Id)) lista.Add(p);
                 }
             }
-            catch
-            {
-                // En caso de error grave devolvemos lista vacía o parcial
-            }
+            catch { }
             return lista;
         }
 
@@ -65,16 +131,13 @@ namespace ZC_ALM_TOOLS
 
                     foreach (var kv in props)
                     {
-                        string k = kv.Key;
-                        string v = kv.Value;
-
-                        if (k == "UID") p.Uid = v;
-                        if (k == "Numero") p.Numero = v;
-                        if (k == "Proceso") p.Proceso = v;
-                        if (k == "Numero DB") p.DbNumber = v;
-                        if (k == "Tipo") p.Tipo = v;
-                        if (k == "Descripcion") p.Descripcion = v;
-                        if (k == "Visibilidad") p.Visibilidad = v;
+                        if (kv.Key == "UID") p.Uid = kv.Value;
+                        if (kv.Key == "Numero") p.Numero = kv.Value;
+                        if (kv.Key == "Proceso") p.Proceso = kv.Value;
+                        if (kv.Key == "Numero DB") p.DbNumber = kv.Value;
+                        if (kv.Key == "Tipo") p.Tipo = kv.Value;
+                        if (kv.Key == "Descripcion") p.Descripcion = kv.Value;
+                        if (kv.Key == "Visibilidad") p.Visibilidad = kv.Value;
                     }
                     if (!string.IsNullOrEmpty(p.Uid)) lista.Add(p);
                 }
@@ -82,8 +145,6 @@ namespace ZC_ALM_TOOLS
             catch { }
             return lista;
         }
-
-
 
         public static List<ParameterConfigInt> ParsearPInt(string json)
         {
@@ -102,17 +163,13 @@ namespace ZC_ALM_TOOLS
 
                     foreach (var kv in props)
                     {
-                        string k = kv.Key;
-                        string v = kv.Value;
-
-                        // AJUSTA ESTOS "IF" SEGÚN TU EXCEL
-                        if (k == "UID") p.Uid = v;
-                        if (k == "Proceso") p.Proceso = v;
-                        if (k == "Nombre" || k == "Variable") p.Nombre = v;
-                        if (k == "Tipo") p.Tipo = v;
-                        if (k == "Valor Inicial" || k == "Valor") p.ValorInicial = v;
-                        if (k == "Comentario" || k == "Descripcion") p.Comentario = v;
-                        if (k == "Visible" || k == "HMI") p.HmiVisible = v;
+                        if (kv.Key == "UID") p.Uid = kv.Value;
+                        if (kv.Key == "Proceso") p.Proceso = kv.Value;
+                        if (kv.Key == "Nombre" || kv.Key == "Variable") p.Nombre = kv.Value;
+                        if (kv.Key == "Tipo") p.Tipo = kv.Value;
+                        if (kv.Key == "Valor Inicial" || kv.Key == "Valor") p.ValorInicial = kv.Value;
+                        if (kv.Key == "Comentario" || kv.Key == "Descripcion") p.Comentario = kv.Value;
+                        if (kv.Key == "Visible" || kv.Key == "HMI") p.HmiVisible = kv.Value;
                     }
                     if (!string.IsNullOrEmpty(p.Uid)) lista.Add(p);
                 }
@@ -121,29 +178,13 @@ namespace ZC_ALM_TOOLS
             return lista;
         }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         // ----------------------------------------------------
         // MÉTODOS PRIVADOS (Auxiliares internos)
         // ----------------------------------------------------
 
         private static string ExtraerContenidoData(string json)
         {
+            // Busca "data": [ ... ]
             int idxData = json.IndexOf("\"data\":");
             if (idxData == -1) return null;
 
@@ -160,7 +201,8 @@ namespace ZC_ALM_TOOLS
             // Limpiamos llaves externas y espacios
             string limpio = objRaw.Replace("{", "").Replace("}", "").Trim();
 
-            // Separamos por comas
+            // ADVERTENCIA: Split(',') fallará si la descripción contiene comas (ej: "Valvula, retorno").
+            // Para "No dependencias", asumimos que los textos no tienen comas o aceptamos el riesgo.
             string[] props = limpio.Split(',');
 
             foreach (var prop in props)
@@ -179,6 +221,11 @@ namespace ZC_ALM_TOOLS
 
         private static int ParseInt(string val)
         {
+            // Limpiar decimales tipo 10.0 que vienen de Excel/Python a veces
+            if (val.Contains("."))
+            {
+                val = val.Split('.')[0];
+            }
             int.TryParse(val, out int r);
             return r;
         }

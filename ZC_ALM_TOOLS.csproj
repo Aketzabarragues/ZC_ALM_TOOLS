@@ -42,15 +42,14 @@
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="Siemens.Engineering.AddIn">
-      <HintPath>..\..\..\..\..\Program Files\Siemens\Automation\Portal V18\PublicAPI\V18.AddIn\Siemens.Engineering.AddIn.dll</HintPath>
-      <Private>False</Private>
+      <HintPath>C:\Program Files\Siemens\Automation\Portal V18\PublicAPI\V18.AddIn\Siemens.Engineering.AddIn.dll</HintPath>
     </Reference>
-    <Reference Include="Siemens.Engineering.AddIn.Utilities">
-      <HintPath>..\..\..\..\..\Program Files\Siemens\Automation\Portal V18\PublicAPI\V18.AddIn\Siemens.Engineering.AddIn.Utilities.dll</HintPath>
+    <Reference Include="Siemens.Engineering.AddIn.Utilities, Version=18.0.0.0, Culture=neutral, PublicKeyToken=65b871d8372d6a8f, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>C:\Program Files\Siemens\Automation\Portal V18\PublicAPI\V18.AddIn\Siemens.Engineering.AddIn.Utilities.dll</HintPath>
     </Reference>
     <Reference Include="Siemens.Engineering.Hmi">
-      <HintPath>..\..\..\..\..\Program Files\Siemens\Automation\Portal V18\PublicAPI\V18.AddIn\Siemens.Engineering.Hmi.dll</HintPath>
-      <Private>False</Private>
+      <HintPath>C:\Program Files\Siemens\Automation\Portal V18\PublicAPI\V18.AddIn\Siemens.Engineering.Hmi.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -70,14 +69,22 @@
   <ItemGroup>
     <Compile Include="AddIn.cs" />
     <Compile Include="AddInProvider.cs" />
+    <Compile Include="Core\INotifyPropertyChanged.cs" />
+    <Compile Include="Core\RelayCommand.cs" />
     <Compile Include="Helpers\JsonParserHelper.cs" />
+    <Compile Include="Models\DispositivoModel.cs" />
     <Compile Include="Models\ParameterConfig.cs" />
     <Compile Include="Models\ProjectDevice.cs" />
+    <Compile Include="ViewModels\DispositivosViewModel.cs" />
+    <Compile Include="ViewModels\MainViewModel.cs" />
     <Compile Include="Views\MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="Models\ProcessConfig.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Views\ViewDispositivos.xaml.cs">
+      <DependentUpon>ViewDispositivos.xaml</DependentUpon>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <Content Include="Config.xml" />
@@ -91,10 +98,14 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="Views\ViewDispositivos.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="Logic\" />
     <Folder Include="Resources\" />
+    <Folder Include="Services\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>

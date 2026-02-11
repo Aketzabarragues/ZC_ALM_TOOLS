@@ -12,3 +12,15 @@ C:\Users\ABH\source\repos\Siemens_DB_Tool\obj\Debug\ZC_ALM_TOOLS.csproj.CoreComp
 C:\Users\ABH\source\repos\Siemens_DB_Tool\obj\Debug\ZC_ALM_T.3B260920.Up2Date
 C:\Users\ABH\source\repos\Siemens_DB_Tool\obj\Debug\ZC_ALM_TOOLS.dll
 C:\Users\ABH\source\repos\Siemens_DB_Tool\obj\Debug\ZC_ALM_TOOLS.pdb
+D:\Zeus Control\Proyectos\GitHub\ZC_ALM_TOOLS\obj\Debug\ZC_ALM_TOOLS.csproj.AssemblyReference.cache
+D:\Zeus Control\Proyectos\GitHub\ZC_ALM_TOOLS\obj\Debug\Views\MainWindow.baml
+D:\Zeus Control\Proyectos\GitHub\ZC_ALM_TOOLS\obj\Debug\Views\MainWindow.g.cs
+D:\Zeus Control\Proyectos\GitHub\ZC_ALM_TOOLS\obj\Debug\ZC_ALM_TOOLS_MarkupCompile.cache
+D:\Zeus Control\Proyectos\GitHub\ZC_ALM_TOOLS\obj\Debug\ZC_ALM_TOOLS.g.resources
+D:\Zeus Control\Proyectos\GitHub\ZC_ALM_TOOLS\obj\Debug\ZC_ALM_TOOLS.csproj.CoreCompileInputs.cache
+D:\Zeus Control\Proyectos\GitHub\ZC_ALM_TOOLS\obj\Debug\ZC_ALM_TOOLS.dll
+D:\Zeus Control\Proyectos\GitHub\ZC_ALM_TOOLS\obj\Debug\ZC_ALM_TOOLS.pdb
+D:\Zeus Control\Proyectos\GitHub\ZC_ALM_TOOLS\obj\Debug\Views\ViewDispositivos.baml
+D:\Zeus Control\Proyectos\GitHub\ZC_ALM_TOOLS\obj\Debug\Views\ViewDispositivos.g.cs
+D:\Zeus Control\Proyectos\GitHub\ZC_ALM_TOOLS\obj\Debug\GeneratedInternalTypeHelper.g.cs
+D:\Zeus Control\Proyectos\GitHub\ZC_ALM_TOOLS\obj\Debug\ZC_ALM_TOOLS_MarkupCompile.lref
