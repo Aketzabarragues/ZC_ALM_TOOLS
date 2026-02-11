@@ -1,0 +1,14 @@
+C:\Users\ABH\source\repos\Siemens_DB_Tool\bin\Debug\ZC_ALM_TOOLS.dll.config
+C:\Users\ABH\source\repos\Siemens_DB_Tool\bin\Debug\ZC_ALM_TOOLS.dll
+C:\Users\ABH\source\repos\Siemens_DB_Tool\bin\Debug\ZC_ALM_TOOLS.pdb
+C:\Users\ABH\source\repos\Siemens_DB_Tool\bin\Debug\Siemens.Engineering.AddIn.Utilities.dll
+C:\Users\ABH\source\repos\Siemens_DB_Tool\bin\Debug\Siemens.Engineering.AddIn.Permissions.dll
+C:\Users\ABH\source\repos\Siemens_DB_Tool\obj\Debug\ZC_ALM_TOOLS.csproj.AssemblyReference.cache
+C:\Users\ABH\source\repos\Siemens_DB_Tool\obj\Debug\Views\MainWindow.baml
+C:\Users\ABH\source\repos\Siemens_DB_Tool\obj\Debug\Views\MainWindow.g.cs
+C:\Users\ABH\source\repos\Siemens_DB_Tool\obj\Debug\ZC_ALM_TOOLS_MarkupCompile.cache
+C:\Users\ABH\source\repos\Siemens_DB_Tool\obj\Debug\ZC_ALM_TOOLS.g.resources
+C:\Users\ABH\source\repos\Siemens_DB_Tool\obj\Debug\ZC_ALM_TOOLS.csproj.CoreCompileInputs.cache
+C:\Users\ABH\source\repos\Siemens_DB_Tool\obj\Debug\ZC_ALM_T.3B260920.Up2Date
+C:\Users\ABH\source\repos\Siemens_DB_Tool\obj\Debug\ZC_ALM_TOOLS.dll
+C:\Users\ABH\source\repos\Siemens_DB_Tool\obj\Debug\ZC_ALM_TOOLS.pdb

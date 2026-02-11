@@ -1,0 +1,188 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\views\\mainwindow.xaml.cs||{8B382828-6202-11D1-8870-0000F87579D2}|",
+      "RelativeMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|solutionrelative:views\\mainwindow.xaml.cs||{8B382828-6202-11D1-8870-0000F87579D2}|"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|c:\\users\\abh\\source\\repos\\siemens_db_tool\\views\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
+      "RelativeMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|solutionrelative:views\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|c:\\users\\abh\\source\\repos\\siemens_db_tool\\models\\projectdevice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|solutionrelative:models\\projectdevice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\helpers\\jsonparserhelper.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|solutionrelative:helpers\\jsonparserhelper.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|c:\\users\\abh\\source\\repos\\siemens_db_tool\\models\\parameterconfig.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|solutionrelative:models\\parameterconfig.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\models\\processconfig.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|solutionrelative:models\\processconfig.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\properties\\assemblyinfo.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|solutionrelative:properties\\assemblyinfo.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\addinprovider.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|solutionrelative:addinprovider.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\addin.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|solutionrelative:addin.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 10,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{e1b7d1f8-9b3c-49b1-8f4f-bfc63a88835d}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:131:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:132:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:130:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:133:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "ProjectDevice.cs",
+              "DocumentMoniker": "C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\Models\\ProjectDevice.cs",
+              "RelativeDocumentMoniker": "Models\\ProjectDevice.cs",
+              "ToolTip": "C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\Models\\ProjectDevice.cs",
+              "RelativeToolTip": "Models\\ProjectDevice.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-06T14:56:32.023Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "ParameterConfig.cs",
+              "DocumentMoniker": "C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\Models\\ParameterConfig.cs",
+              "RelativeDocumentMoniker": "Models\\ParameterConfig.cs",
+              "ToolTip": "C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\Models\\ParameterConfig.cs",
+              "RelativeToolTip": "Models\\ParameterConfig.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAYAAAArAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-06T14:21:35.232Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "JsonParserHelper.cs",
+              "DocumentMoniker": "C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\Helpers\\JsonParserHelper.cs",
+              "RelativeDocumentMoniker": "Helpers\\JsonParserHelper.cs",
+              "ToolTip": "C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\Helpers\\JsonParserHelper.cs",
+              "RelativeToolTip": "Helpers\\JsonParserHelper.cs",
+              "ViewState": "AgIAAEsAAAAAAAAAAAAqwEgAAAA6AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-06T11:47:07.311Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "AddInProvider.cs",
+              "DocumentMoniker": "C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\AddInProvider.cs",
+              "RelativeDocumentMoniker": "AddInProvider.cs",
+              "ToolTip": "C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\AddInProvider.cs",
+              "RelativeToolTip": "AddInProvider.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-06T06:49:46.74Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "AssemblyInfo.cs",
+              "DocumentMoniker": "C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\Properties\\AssemblyInfo.cs",
+              "RelativeDocumentMoniker": "Properties\\AssemblyInfo.cs",
+              "ToolTip": "C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\Properties\\AssemblyInfo.cs",
+              "RelativeToolTip": "Properties\\AssemblyInfo.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABQAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-04T07:29:01.399Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "MainWindow.xaml.cs",
+              "DocumentMoniker": "C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\Views\\MainWindow.xaml.cs",
+              "RelativeDocumentMoniker": "Views\\MainWindow.xaml.cs",
+              "ToolTip": "C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\Views\\MainWindow.xaml.cs",
+              "RelativeToolTip": "Views\\MainWindow.xaml.cs",
+              "ViewState": "AgIAALwAAAAAAAAAAAAcwO4AAAAVAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-03T07:01:11.156Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "MainWindow.xaml",
+              "DocumentMoniker": "C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\Views\\MainWindow.xaml",
+              "RelativeDocumentMoniker": "Views\\MainWindow.xaml",
+              "ToolTip": "C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\Views\\MainWindow.xaml",
+              "RelativeToolTip": "Views\\MainWindow.xaml",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
+              "WhenOpened": "2026-02-03T07:00:32.17Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "ProcessConfig.cs",
+              "DocumentMoniker": "C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\Models\\ProcessConfig.cs",
+              "RelativeDocumentMoniker": "Models\\ProcessConfig.cs",
+              "ToolTip": "C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\Models\\ProcessConfig.cs",
+              "RelativeToolTip": "Models\\ProcessConfig.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAwAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-02T15:05:19.591Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "AddIn.cs",
+              "DocumentMoniker": "C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\AddIn.cs",
+              "RelativeDocumentMoniker": "AddIn.cs",
+              "ToolTip": "C:\\Users\\ABH\\source\\repos\\Siemens_DB_Tool\\AddIn.cs",
+              "RelativeToolTip": "AddIn.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAACkAAAAfAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-29T14:47:15.874Z"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
