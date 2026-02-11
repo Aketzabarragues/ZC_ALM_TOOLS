@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using ZC_ALM_TOOLS.Core;
@@ -12,8 +13,15 @@ namespace ZC_ALM_TOOLS.ViewModels
     {
         // --- PROPIEDADES ---
 
+
+
         // Lista tipada con tu modelo
-        public ObservableCollection<Disp_V> ListaDispositivos { get; set; }
+        private ObservableCollection<object> _listaDispositivos;
+        public ObservableCollection<object> ListaDispositivos
+        {
+            get => _listaDispositivos;
+            set { _listaDispositivos = value; OnPropertyChanged(); }
+        }
 
         public ObservableCollection<string> FamiliasDispositivos { get; set; }
 
@@ -59,7 +67,7 @@ namespace ZC_ALM_TOOLS.ViewModels
 
 
             
-            ListaDispositivos = new ObservableCollection<Disp_V>();
+            ListaDispositivos = new ObservableCollection<object>();
 
             // Configurar comandos (Binds a los botones)
             SyncConstantesCommand = new RelayCommand(EjecutarSyncConstantes);
@@ -74,110 +82,59 @@ namespace ZC_ALM_TOOLS.ViewModels
         {
             try
             {
-                // DEBUG 1: ¿Qué ruta llega?
-                //MessageBox.Show($"DEBUG 1: Ruta recibida: '{carpetaTemp}'", "Carga TXT");
-
-                if (string.IsNullOrEmpty(carpetaTemp))
-                {
-                    MessageBox.Show("DEBUG ERROR: La ruta recibida está VACÍA.");
-                    return;
-                }
-
+                if (string.IsNullOrEmpty(carpetaTemp)) return;
                 _rutaTempCache = carpetaTemp;
 
-                // DEBUG 2: Familia seleccionada
-                //MessageBox.Show($"DEBUG 2: Familia actual: '{FamiliaSeleccionada}'", "Carga TXT");
-
+                // 1. Determinar qué archivo y familia cargar
+                string familia = FamiliaSeleccionada ?? "";
                 string nombreArchivo = "disp_v.txt";
-                if (FamiliaSeleccionada != null && FamiliaSeleccionada.ToLower().Contains("disp_ed")) nombreArchivo = "disp_ed.txt";
-                else if (FamiliaSeleccionada != null && FamiliaSeleccionada.ToLower().Contains("disp_ea")) nombreArchivo = "disp_ea.txt";
+                if (familia.ToLower().Contains("disp_ed")) nombreArchivo = "disp_ed.txt";
+                else if (familia.ToLower().Contains("disp_ea")) nombreArchivo = "disp_ea.txt";
 
                 string rutaCompleta = Path.Combine(carpetaTemp, nombreArchivo);
+                if (!File.Exists(rutaCompleta)) return;
 
-                // DEBUG 3: Archivo final
-                //MessageBox.Show($"DEBUG 3: Buscando archivo en:\n{rutaCompleta}", "Carga TXT");
-
-                if (!File.Exists(rutaCompleta))
-                {
-                    MessageBox.Show("DEBUG ERROR: El archivo NO EXISTE en esa ruta.");
-                    return;
-                }
-
-                // DEBUG 4: Lectura
+                // 2. Leer líneas
                 string[] lineas = File.ReadAllLines(rutaCompleta);
-                //MessageBox.Show($"DEBUG 4: Leídas {lineas.Length} líneas.", "Carga TXT");
-
-                var listaNueva = new List<Disp_V>();
+                var listaNueva = new List<object>();
 
                 for (int i = 1; i < lineas.Length; i++)
                 {
                     string linea = lineas[i];
                     if (string.IsNullOrWhiteSpace(linea)) continue;
-
                     string[] c = linea.Split('|');
 
-                    // Aquí solemos tener problemas si el array 'c' no tiene los elementos esperados
                     try
                     {
-                        var d = new Disp_V
-                        {
-                            UID = GetVal(c, 0),
-                            Numero = ParseInt(GetVal(c, 1)),
-                            Tag = GetVal(c, 2),
-                            Descripcion = GetVal(c, 3),
-                            FAT = GetVal(c, 4),
-                            SByte = GetVal(c, 5),
-                            SBit = GetVal(c, 6),
-                            RRByte = GetVal(c, 7),
-                            RRBit = GetVal(c, 8),
-                            RTByte = GetVal(c, 9),
-                            RTBit = GetVal(c, 10),
-                            GrAlarma = GetVal(c, 11),
-                            Cuadro = GetVal(c, 12),
-                            Observaciones = GetVal(c, 13),
-                            CPTag = GetVal(c, 14),
-                            CPTipo = GetVal(c, 15),
-                            CPNum = ParseInt(GetVal(c, 16)),
-                            CPComentario = GetVal(c, 17)
-                        };
-                        listaNueva.Add(d);
+                        // 3. Mapeo condicional según el archivo
+                        if (nombreArchivo == "disp_ed.txt")
+                            listaNueva.Add(MapearDigital(c));
+                        else if (nombreArchivo == "disp_ea.txt")
+                            listaNueva.Add(MapearAnalogica(c));
+                        else
+                            listaNueva.Add(MapearValvula(c));
                     }
-                    catch (Exception exItem)
-                    {
-                        MessageBox.Show($"ERROR parseando línea {i}: {exItem.Message}");
-                    }
+                    catch (Exception ex) { Debug.WriteLine($"Error en línea {i}: {ex.Message}"); }
                 }
 
-                // DEBUG 5: Actualización de UI
-                //MessageBox.Show("DEBUG 5: Intentando actualizar ListaDispositivos...", "Carga TXT");
-
-                // IMPORTANTE: En Add-ins de TIA Portal a veces Application.Current es null
+                // 4. Actualización de UI (mantenemos tu lógica de Dispatcher)
                 if (Application.Current == null)
-                {
-                    // Si no hay Application, actualizamos directo (estamos en el hilo principal probablemente)
                     ActualizarListaUI(listaNueva);
-                }
                 else
-                {
-                    Application.Current.Dispatcher.Invoke(() => {
-                        ActualizarListaUI(listaNueva);
-                    });
-                }
-
+                    Application.Current.Dispatcher.Invoke(() => ActualizarListaUI(listaNueva));
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"FALLO CRÍTICO en CargarDatosDesdeTxt:\n{ex.Message}\n\nStack:\n{ex.StackTrace}");
+                MessageBox.Show($"FALLO CRÍTICO: {ex.Message}");
             }
         }
 
 
-        private void ActualizarListaUI(List<Disp_V> datos)
+        private void ActualizarListaUI(List<object> datos)
         {
             if (ListaDispositivos == null)
-            {                
-                ListaDispositivos = new ObservableCollection<Disp_V>();
-            }
+                ListaDispositivos = new ObservableCollection<object>();
+
             ListaDispositivos.Clear();
             foreach (var item in datos) ListaDispositivos.Add(item);
         }
@@ -201,7 +158,64 @@ namespace ZC_ALM_TOOLS.ViewModels
         // Métodos auxiliares para evitar errores de índice o formato
         private string GetVal(string[] array, int index) => index < array.Length ? array[index] : "";
         private int ParseInt(string val) { int.TryParse(val, out int r); return r; }
+        private Disp_ED MapearDigital(string[] c) => new Disp_ED
+        {
+            Numero = ParseInt(GetVal(c, 0)),
+            Tag = GetVal(c, 1),
+            Descripcion = GetVal(c, 2),
+            FAT = GetVal(c, 3),
+            EByte = GetVal(c, 4),
+            EBit = GetVal(c, 5),
+            GrAlarma = GetVal(c, 6),
+            Cuadro = GetVal(c, 7),
+            Observaciones = GetVal(c, 8),
+            CPTag = GetVal(c, 9),
+            CPTipo = GetVal(c, 10),
+            CPNum = ParseInt(GetVal(c, 11)),
+            CPComentario = GetVal(c, 12)
+        };
 
+        private Disp_EA MapearAnalogica(string[] c) => new Disp_EA
+        {
+            UID = GetVal(c, 0),
+            Numero = ParseInt(GetVal(c, 1)),
+            Tag = GetVal(c, 2),
+            Descripcion = GetVal(c, 3),
+            FAT = GetVal(c, 4),
+            EByte = GetVal(c, 5),
+            Unidades = GetVal(c, 6),
+            RII = GetVal(c, 7),
+            RSI = GetVal(c, 8),
+            GrAlarma = GetVal(c, 9),
+            Cuadro = GetVal(c, 10),
+            Observaciones = GetVal(c, 11),
+            CPTag = GetVal(c, 12),
+            CPTipo = GetVal(c, 13),
+            CPNum = ParseInt(GetVal(c, 14)),
+            CPComentario = GetVal(c, 15)
+        };
+
+        private Disp_V MapearValvula(string[] c) => new Disp_V
+        {
+            UID = GetVal(c, 0),
+            Numero = ParseInt(GetVal(c, 1)),
+            Tag = GetVal(c, 2),
+            Descripcion = GetVal(c, 3),
+            FAT = GetVal(c, 4),
+            SByte = GetVal(c, 5),
+            SBit = GetVal(c, 6),
+            RRByte = GetVal(c, 7),
+            RRBit = GetVal(c, 8),
+            RTByte = GetVal(c, 9),
+            RTBit = GetVal(c, 10),
+            GrAlarma = GetVal(c, 11),
+            Cuadro = GetVal(c, 12),
+            Observaciones = GetVal(c, 13),
+            CPTag = GetVal(c, 14),
+            CPTipo = GetVal(c, 15),
+            CPNum = ParseInt(GetVal(c, 16)),
+            CPComentario = GetVal(c, 17)
+        };
 
 
 

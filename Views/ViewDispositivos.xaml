@@ -55,16 +55,18 @@
                        FontSize="16" FontWeight="Light" Margin="0,0,0,10"/>
 
             <DataGrid Grid.Row="1" ItemsSource="{Binding ListaDispositivos}" 
-                      AutoGenerateColumns="False" 
-                      CanUserAddRows="False" 
-                      GridLinesVisibility="Horizontal"
-                      HeadersVisibility="Column"
-                      Background="White">
+          AutoGenerateColumns="False" 
+          CanUserAddRows="False" 
+          GridLinesVisibility="Horizontal"
+          HeadersVisibility="Column"
+          Background="White">
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="UID" Binding="{Binding UID}" Width="80"/>
-                    <DataGridTextColumn Header="Num" Binding="{Binding Numero}" Width="50"/>
-                    <DataGridTextColumn Header="Tag (JSON)" Binding="{Binding Tag}" Width="150" FontWeight="Bold"/>
+                    <DataGridTextColumn Header="Nº" Binding="{Binding Numero}" Width="60"/>
+
+                    <DataGridTextColumn Header="Tag" Binding="{Binding Tag}" Width="180" FontWeight="Bold"/>
+
                     <DataGridTextColumn Header="Descripción" Binding="{Binding Descripcion}" Width="*"/>
+
                 </DataGrid.Columns>
             </DataGrid>
         </Grid>

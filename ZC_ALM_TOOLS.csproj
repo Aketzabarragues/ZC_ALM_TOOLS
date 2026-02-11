@@ -75,6 +75,8 @@
     <Compile Include="Core\INotifyPropertyChanged.cs" />
     <Compile Include="Core\RelayCommand.cs" />
     <Compile Include="Helpers\JsonParserHelper.cs" />
+    <Compile Include="Models\Disp_EA.cs" />
+    <Compile Include="Models\Disp_ED.cs" />
     <Compile Include="Models\Disp_V.cs" />
     <Compile Include="Models\ParameterConfig.cs" />
     <Compile Include="Models\ProjectDevice.cs" />
