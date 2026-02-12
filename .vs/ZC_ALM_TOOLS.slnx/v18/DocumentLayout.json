@@ -11,11 +11,11 @@
       "RelativeMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|solutionrelative:viewmodels\\dispositivosviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|d:\\zeus control\\proyectos\\github\\zc_alm_tools\\models\\idispositivo.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\models\\idispositivo.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|solutionrelative:models\\idispositivo.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|d:\\zeus control\\proyectos\\github\\zc_alm_tools\\viewmodels\\mainviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\viewmodels\\mainviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|solutionrelative:viewmodels\\mainviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
@@ -71,8 +71,7 @@
               "RelativeToolTip": "Models\\IDispositivo.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAkAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-12T07:59:07.913Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-02-12T07:59:07.913Z"
             },
             {
               "$type": "Document",
@@ -84,8 +83,7 @@
               "RelativeToolTip": "ViewModels\\MainViewModel.cs",
               "ViewState": "AgIAAJQAAAAAAAAAAAAkwLIAAABFAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-12T07:37:38.695Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-02-12T07:37:38.695Z"
             },
             {
               "$type": "Document",
@@ -97,8 +95,7 @@
               "RelativeToolTip": "ViewModels\\DispositivosViewModel.cs",
               "ViewState": "AgIAAOoAAAAAAAAAAAAawAIBAABjAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-11T12:08:26.33Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-02-11T12:08:26.33Z"
             }
           ]
         }
