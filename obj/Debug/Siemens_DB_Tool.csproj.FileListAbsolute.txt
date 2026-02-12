@@ -1,6 +1,0 @@
-C:\Users\ABH\source\repos\Siemens_DB_Tool\bin\Debug\Siemens_DB_Tool.dll
-C:\Users\ABH\source\repos\Siemens_DB_Tool\bin\Debug\Siemens_DB_Tool.pdb
-C:\Users\ABH\source\repos\Siemens_DB_Tool\obj\Debug\Siemens_DB_Tool.csproj.AssemblyReference.cache
-C:\Users\ABH\source\repos\Siemens_DB_Tool\obj\Debug\Siemens_DB_Tool.csproj.CoreCompileInputs.cache
-C:\Users\ABH\source\repos\Siemens_DB_Tool\obj\Debug\Siemens_DB_Tool.dll
-C:\Users\ABH\source\repos\Siemens_DB_Tool\obj\Debug\Siemens_DB_Tool.pdb
