@@ -15,16 +15,37 @@
         </Grid.RowDefinitions>
 
         <Border Grid.Row="0" Padding="10" Background="#F5F6F7" BorderBrush="#E1E1E1" BorderThickness="0,0,0,1">
-            <StackPanel Orientation="Horizontal">
-
-                <Button Content="📂 Cargar Excel Definicion programacion" 
+            <Grid>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                    <Button Content="📂 Cargar Excel Definicion programacion" 
                     Command="{Binding CargarDatosCommand}" 
                     Width="250" Height="30" Margin="0,0,10,0"/>
 
-                <TextBlock Text="{Binding ArchivoExcelSeleccionado, TargetNullValue='Ningún archivo seleccionado'}" 
+                    <TextBlock Text="{Binding ArchivoExcelSeleccionado, TargetNullValue='Ningún archivo seleccionado'}" 
                        VerticalAlignment="Center" Foreground="Gray" FontStyle="Italic"/>
+                </StackPanel>
 
-            </StackPanel>
+                <Button Command="{Binding ConfigurarRutaExeCommand}"
+                HorizontalAlignment="Right"
+                Width="30" Height="30"
+                ToolTip="Configurar ruta del Extractor"
+                Background="Transparent"
+                BorderThickness="0"
+                FontSize="16"
+                Content="⚙️">
+                    <Button.Style>
+                        <Style TargetType="Button">
+                            <Setter Property="Foreground" Value="#555555"/>
+                            <Style.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Foreground" Value="Black"/>
+                                    <Setter Property="Background" Value="#E5E5E5"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+            </Grid>
         </Border>
 
         <TabControl Grid.Row="1" Margin="5">

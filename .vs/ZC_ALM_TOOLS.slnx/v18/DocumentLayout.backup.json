@@ -7,20 +7,40 @@
       "RelativeMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|solutionrelative:views\\viewdispositivos.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|d:\\zeus control\\proyectos\\github\\zc_alm_tools\\viewmodels\\dispositivosviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|d:\\zeus control\\proyectos\\github\\zc_alm_tools\\core\\containsconverter.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|solutionrelative:core\\containsconverter.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\viewmodels\\dispositivosviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|solutionrelative:viewmodels\\dispositivosviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|d:\\zeus control\\proyectos\\github\\zc_alm_tools\\models\\disp_ea.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|d:\\zeus control\\proyectos\\github\\zc_alm_tools\\services\\tiaservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|solutionrelative:services\\tiaservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\models\\disp_v.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|solutionrelative:models\\disp_v.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|d:\\zeus control\\proyectos\\github\\zc_alm_tools\\viewmodels\\mainviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|solutionrelative:viewmodels\\mainviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|d:\\zeus control\\proyectos\\github\\zc_alm_tools\\views\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
+      "RelativeMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|solutionrelative:views\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\models\\disp_ea.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|solutionrelative:models\\disp_ea.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|d:\\zeus control\\proyectos\\github\\zc_alm_tools\\models\\disp_ed.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\models\\disp_ed.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|solutionrelative:models\\disp_ed.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|d:\\zeus control\\proyectos\\github\\zc_alm_tools\\models\\disp_v.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|solutionrelative:models\\disp_v.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|d:\\zeus control\\proyectos\\github\\zc_alm_tools\\core\\datahelper.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|solutionrelative:core\\datahelper.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -30,7 +50,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 5,
+          "SelectedChildIndex": 6,
           "Children": [
             {
               "$type": "Bookmark",
@@ -54,6 +74,19 @@
             },
             {
               "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "ContainsConverter.cs",
+              "DocumentMoniker": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\Core\\ContainsConverter.cs",
+              "RelativeDocumentMoniker": "Core\\ContainsConverter.cs",
+              "ToolTip": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\Core\\ContainsConverter.cs",
+              "RelativeToolTip": "Core\\ContainsConverter.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABcAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-11T15:29:55.743Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
               "DocumentIndex": 0,
               "Title": "ViewDispositivos.xaml",
               "DocumentMoniker": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\Views\\ViewDispositivos.xaml",
@@ -61,44 +94,95 @@
               "ToolTip": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\Views\\ViewDispositivos.xaml",
               "RelativeToolTip": "Views\\ViewDispositivos.xaml",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
-              "WhenOpened": "2026-02-11T12:11:20.826Z",
+              "WhenOpened": "2026-02-11T15:28:12.539Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 3,
+              "Title": "TiaService.cs",
+              "DocumentMoniker": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\Services\\TiaService.cs",
+              "RelativeDocumentMoniker": "Services\\TiaService.cs",
+              "ToolTip": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\Services\\TiaService.cs",
+              "RelativeToolTip": "Services\\TiaService.cs",
+              "ViewState": "AgIAAAMAAAAAAAAAAAAAAI8AAAArAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-11T14:38:19.165Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "MainWindow.xaml",
+              "DocumentMoniker": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\Views\\MainWindow.xaml",
+              "RelativeDocumentMoniker": "Views\\MainWindow.xaml",
+              "ToolTip": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\Views\\MainWindow.xaml",
+              "RelativeToolTip": "Views\\MainWindow.xaml",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
+              "WhenOpened": "2026-02-11T14:24:41.082Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "DataHelper.cs",
+              "DocumentMoniker": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\Core\\DataHelper.cs",
+              "RelativeDocumentMoniker": "Core\\DataHelper.cs",
+              "ToolTip": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\Core\\DataHelper.cs",
+              "RelativeToolTip": "Core\\DataHelper.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA0AAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-11T14:07:23.803Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "MainViewModel.cs",
+              "DocumentMoniker": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\ViewModels\\MainViewModel.cs",
+              "RelativeDocumentMoniker": "ViewModels\\MainViewModel.cs",
+              "ToolTip": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\ViewModels\\MainViewModel.cs",
+              "RelativeToolTip": "ViewModels\\MainViewModel.cs",
+              "ViewState": "AgIAABcAAAAAAAAAAAAwwF4AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-11T13:42:22.954Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
               "Title": "DispositivosViewModel.cs",
               "DocumentMoniker": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\ViewModels\\DispositivosViewModel.cs",
               "RelativeDocumentMoniker": "ViewModels\\DispositivosViewModel.cs",
               "ToolTip": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\ViewModels\\DispositivosViewModel.cs",
               "RelativeToolTip": "ViewModels\\DispositivosViewModel.cs",
-              "ViewState": "AgIAAB0AAAAAAAAAAAAiwEIAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAKgAAAAAAAAAAAAqwNwAAAANAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-02-11T12:08:26.33Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 7,
               "Title": "Disp_EA.cs",
               "DocumentMoniker": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\Models\\Disp_EA.cs",
               "RelativeDocumentMoniker": "Models\\Disp_EA.cs",
               "ToolTip": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\Models\\Disp_EA.cs",
               "RelativeToolTip": "Models\\Disp_EA.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAAnAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABYAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-02-11T12:07:22.394Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 8,
               "Title": "Disp_ED.cs",
               "DocumentMoniker": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\Models\\Disp_ED.cs",
               "RelativeDocumentMoniker": "Models\\Disp_ED.cs",
               "ToolTip": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\Models\\Disp_ED.cs",
               "RelativeToolTip": "Models\\Disp_ED.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABIAAAAwAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABYAAAAWAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-02-11T12:07:15.945Z",
               "EditorCaption": ""
@@ -111,7 +195,7 @@
               "RelativeDocumentMoniker": "Models\\Disp_V.cs",
               "ToolTip": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\Models\\Disp_V.cs",
               "RelativeToolTip": "Models\\Disp_V.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA8AAAAqAAAAAAAAAA==",
+              "ViewState": "AgIAAAsAAAAAAAAAAAAIwBgAAAAwAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-02-11T12:06:53.296Z",
               "EditorCaption": ""

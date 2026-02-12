@@ -72,14 +72,16 @@
   <ItemGroup>
     <Compile Include="AddIn.cs" />
     <Compile Include="AddInProvider.cs" />
+    <Compile Include="Core\ContainsConverter.cs" />
+    <Compile Include="Core\DataHelper.cs" />
     <Compile Include="Core\INotifyPropertyChanged.cs" />
     <Compile Include="Core\RelayCommand.cs" />
-    <Compile Include="Helpers\JsonParserHelper.cs" />
     <Compile Include="Models\Disp_EA.cs" />
     <Compile Include="Models\Disp_ED.cs" />
     <Compile Include="Models\Disp_V.cs" />
     <Compile Include="Models\ParameterConfig.cs" />
     <Compile Include="Models\ProjectDevice.cs" />
+    <Compile Include="Services\TiaService.cs" />
     <Compile Include="ViewModels\DispositivosViewModel.cs" />
     <Compile Include="ViewModels\MainViewModel.cs" />
     <Compile Include="Views\MainWindow.xaml.cs">
@@ -110,7 +112,6 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Resources\" />
-    <Folder Include="Services\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
