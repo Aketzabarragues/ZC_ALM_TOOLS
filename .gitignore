@@ -1,5 +1,31 @@
-.vs/ 
-bin/ 
-obj/ 
-*.user 
-*.suo 
+# --- Directorios de compilación ---
+[Bb]in/
+[Oo]bj/
+Generated/
+
+# --- Visual Studio ---
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.opendb
+*.dbmdl
+
+# --- Paquetes NuGet ---
+*.nupkg
+packages/
+# Excluye paquetes si usas PackageReference en el .csproj, pero por si acaso:
+!packages/build/
+
+# --- Archivos de publicación ---
+*.publish.xml
+*.pubxml
+*.azurepubs
+appsettings.Development.json
+
+# --- Otros (Temporales y Logs) ---
+*.log
+*.tmp
+*.bak
+TestResults/
