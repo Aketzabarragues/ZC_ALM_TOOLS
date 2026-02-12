@@ -2,8 +2,9 @@
 
 namespace ZC_ALM_TOOLS.Models
 {
-    public class Disp_EA : ObservableObject
+    public class Disp_EA : ObservableObject, IDispositivo
     {
+        // --- PROPIEDADES DEL EXCEL
         public string UID { get; set; }
         public int Numero { get; set; }
         public string Tag { get; set; }
@@ -21,8 +22,16 @@ namespace ZC_ALM_TOOLS.Models
         public int CPNum { get; set; }        
         public string CPComentario { get; set; }
 
+        // --- PROPIEDAD PARA LA INTERFAZ ---
+        // No se carga desde el CSV, se usa solo para mostrar resultados de comparación
+        private string _Estado = "Sin comprobar";
+        public string Estado
+        {
+            get => _Estado;
+            set { _Estado = value; OnPropertyChanged(); }
+        }
 
-
+        // --- MÉTODO DE CARGA
         public static Disp_EA FromCsv(string[] c) => new Disp_EA
         {
             UID = DataHelper.GetVal(c, 0),

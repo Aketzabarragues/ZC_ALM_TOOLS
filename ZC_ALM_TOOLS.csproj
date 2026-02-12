@@ -79,6 +79,7 @@
     <Compile Include="Models\Disp_EA.cs" />
     <Compile Include="Models\Disp_ED.cs" />
     <Compile Include="Models\Disp_V.cs" />
+    <Compile Include="Models\IDispositivo.cs" />
     <Compile Include="Models\ParameterConfig.cs" />
     <Compile Include="Models\ProjectDevice.cs" />
     <Compile Include="Services\TiaService.cs" />

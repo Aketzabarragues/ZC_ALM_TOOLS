@@ -10,10 +10,11 @@ namespace ZC_ALM_TOOLS.Core
         {
             if (value == null || parameter == null) return false;
 
-            string text = value.ToString().ToLower();
-            string searchTerm = parameter.ToString().ToLower();
+            string text = value.ToString();
+            string search = parameter.ToString();
 
-            return text.Contains(searchTerm);
+            // Comprueba si contiene el texto ignorando mayúsculas/minúsculas
+            return text.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)

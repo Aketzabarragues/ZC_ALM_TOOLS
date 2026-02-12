@@ -2,7 +2,7 @@
 
 namespace ZC_ALM_TOOLS.Models
 {
-    public class Disp_V : ObservableObject
+    public class Disp_V : ObservableObject, IDispositivo
     {
         // --- PROPIEDADES DEL EXCEL
         public string UID { get; set; }

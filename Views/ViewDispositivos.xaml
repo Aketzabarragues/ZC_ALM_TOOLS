@@ -3,9 +3,14 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:core="clr-namespace:ZC_ALM_TOOLS.Core"
              mc:Ignorable="d" 
              d:DesignHeight="500" d:DesignWidth="800">
 
+    <UserControl.Resources>
+        <core:ContainsConverter x:Key="ContainsConverter" />
+    </UserControl.Resources>
+    
     <Grid Background="White">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="260"/>
@@ -24,25 +29,17 @@
 
                 <TextBlock Text="WORKFLOW DE SINCRONIZACIÓN" FontWeight="Bold" Foreground="#005B96" Margin="0,0,0,10"/>
 
-                <TextBlock Text="Paso 2: Consistencia" FontWeight="SemiBold" Margin="0,5,0,2"/>
-                <Button Command="{Binding RefactoringCommand}"                         
+                <TextBlock Text="Paso 1: Comprobaciones" FontWeight="SemiBold" Margin="0,5,0,2"/>
+                <Button Command="{Binding ComparacionCommand}"                         
                         Content="🔍 Comparar con TIA" 
                         Height="35" Margin="0,0,0,10"
                         Background="White" BorderBrush="#5CB85C" Foreground="#5CB85C"/>
                 
-                <TextBlock Text="Paso 1: Configuración" FontWeight="SemiBold" Margin="0,5,0,2"/>
+                <TextBlock Text="Paso 2: Actualización" FontWeight="SemiBold" Margin="0,5,0,2"/>
                 <Button Command="{Binding SyncConstantesCommand}" 
                         Content="Comprobar N_MAX (Constantes)" 
                         Height="35" Margin="0,0,0,10"
                         Background="White" BorderBrush="#007ACC" Foreground="#007ACC"/>
-
-                
-
-                <TextBlock Text="Paso 3: Datos" FontWeight="SemiBold" Margin="0,5,0,2"/>
-                <Button Command="{Binding InyectarDatosCommand}" 
-                        Content="Inyectar XML / Comentarios" 
-                        Height="35" Margin="0,0,0,10"
-                        Background="White" BorderBrush="#5CB85C" Foreground="#5CB85C"/>
 
             </StackPanel>
         </Border>
