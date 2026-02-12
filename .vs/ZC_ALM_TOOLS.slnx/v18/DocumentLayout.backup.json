@@ -3,6 +3,10 @@
   "WorkspaceRootPath": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|d:\\zeus control\\proyectos\\github\\zc_alm_tools\\views\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
+      "RelativeMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|solutionrelative:views\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|d:\\zeus control\\proyectos\\github\\zc_alm_tools\\services\\tiaservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{B8BA93B5-01B3-4765-8EC9-C16955F8815F}|ZC_ALM_TOOLS.csproj|solutionrelative:services\\tiaservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
@@ -51,6 +55,18 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
+              "Title": "MainWindow.xaml",
+              "DocumentMoniker": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\Views\\MainWindow.xaml",
+              "RelativeDocumentMoniker": "Views\\MainWindow.xaml",
+              "ToolTip": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\Views\\MainWindow.xaml",
+              "RelativeToolTip": "Views\\MainWindow.xaml",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
+              "WhenOpened": "2026-02-12T15:16:00.484Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
               "Title": "TiaService.cs",
               "DocumentMoniker": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\Services\\TiaService.cs",
               "RelativeDocumentMoniker": "Services\\TiaService.cs",
@@ -63,7 +79,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 3,
               "Title": "IDispositivo.cs",
               "DocumentMoniker": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\Models\\IDispositivo.cs",
               "RelativeDocumentMoniker": "Models\\IDispositivo.cs",
@@ -75,7 +91,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 4,
               "Title": "MainViewModel.cs",
               "DocumentMoniker": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\ViewModels\\MainViewModel.cs",
               "RelativeDocumentMoniker": "ViewModels\\MainViewModel.cs",
@@ -87,7 +103,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 2,
               "Title": "DispositivosViewModel.cs",
               "DocumentMoniker": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_TOOLS\\ViewModels\\DispositivosViewModel.cs",
               "RelativeDocumentMoniker": "ViewModels\\DispositivosViewModel.cs",
