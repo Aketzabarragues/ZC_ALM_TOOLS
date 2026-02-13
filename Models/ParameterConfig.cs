@@ -1,25 +1,31 @@
-﻿namespace ZC_ALM_TOOLS
+﻿using System.Xml.Linq;
+using ZC_ALM_TOOLS.Core;
+
+namespace ZC_ALM_TOOLS.Models
 {
-    public class ParameterConfigReal
+    public class ParameterConfig
     {
         public string Uid { get; set; }
-        public string Numero { get; set; }
+        public int Numero { get; set; }
         public string Proceso { get; set; }
-        public string DbNumber { get; set; } // Corresponde a "Numero DB"
+        public int DbNumber { get; set; }
+        public string Producto { get; set; }
         public string Tipo { get; set; }
         public string Descripcion { get; set; }
+        public string ComentarioDB { get; set; }
         public string Visibilidad { get; set; }
-    }
 
-
-    public class ParameterConfigInt
-    {
-        public string Uid { get; set; }
-        public string Proceso { get; set; } // NECESARIO para filtrar
-        public string Nombre { get; set; }
-        public string Tipo { get; set; }
-        public string ValorInicial { get; set; }
-        public string Comentario { get; set; }
-        public string HmiVisible { get; set; } // Ejemplo por si hay visibilidad
+        public static ParameterConfig FromXml(XElement x) => new ParameterConfig
+        {
+            Uid = DataHelper.GetXmlVal(x, "UID"),
+            Numero = DataHelper.GetXmlInt(x, "Numero"),
+            Proceso = DataHelper.GetXmlVal(x, "Proceso"),
+            DbNumber = DataHelper.GetXmlInt(x, "Num.DB"),
+            Producto = DataHelper.GetXmlVal(x, "Producto"),
+            Tipo = DataHelper.GetXmlVal(x, "Tipo"),
+            Descripcion = DataHelper.GetXmlVal(x, "Descripcion"),
+            ComentarioDB = DataHelper.GetXmlVal(x, "ComentarioDB"),
+            Visibilidad = DataHelper.GetXmlVal(x, "Visibilidad")
+        };
     }
 }

@@ -3,7 +3,7 @@ using ZC_ALM_TOOLS.Core;
 
 namespace ZC_ALM_TOOLS.Models
 {
-    public class Disp_V : ObservableObject, IDispositivo
+    public class Disp_SA : ObservableObject, IDispositivo
     {
         // --- PROPIEDADES DEL EXCEL
         public string UID { get; set; }
@@ -12,37 +12,34 @@ namespace ZC_ALM_TOOLS.Models
         public string Descripcion { get; set; }
         public string FAT { get; set; }
         public string SByte { get; set; }
-        public string SBit { get; set; }
-        public string RRByte { get; set; }
-        public string RRBit { get; set; }
-        public string RTByte { get; set; }
-        public string RTBit { get; set; }
+        public string Unidades { get; set; }
+        public string RII { get; set; }
+        public string RSI { get; set; }
         public string GrAlarma { get; set; }
         public string Cuadro { get; set; }
         public string Observaciones { get; set; }
         public string CPTag { get; set; }
         public string CPTipo { get; set; }
-        public int CPNum { get; set; }
+        public int CPNum { get; set; }        
         public string CPComentario { get; set; }
 
-
         // --- PROPIEDAD PARA LA INTERFAZ ---
+        // No se carga desde el CSV, se usa solo para mostrar resultados de comparación
         private string _Estado = "Sin comprobar";
         public string Estado { get => _Estado; set { _Estado = value; OnPropertyChanged(); } }
 
-        public static Disp_V FromXml(XElement x) => new Disp_V
+        // --- MÉTODO DE CARGA
+        public static Disp_SA FromXml(XElement x) => new Disp_SA
         {
             UID = DataHelper.GetXmlVal(x, "UID"),
             Numero = DataHelper.GetXmlInt(x, "Numero"),
             Tag = DataHelper.GetXmlVal(x, "Tag"),
             Descripcion = DataHelper.GetXmlVal(x, "Descripcion"),
             FAT = DataHelper.GetXmlVal(x, "FAT"),
-            SByte = DataHelper.GetXmlVal(x, "S.Byte"),
-            SBit = DataHelper.GetXmlVal(x, "S.Bit"),
-            RRByte = DataHelper.GetXmlVal(x, "RR.Byte"),
-            RRBit = DataHelper.GetXmlVal(x, "RR.Bit"),
-            RTByte = DataHelper.GetXmlVal(x, "RT.Byte"),
-            RTBit = DataHelper.GetXmlVal(x, "RT.Bit"),
+            SByte = DataHelper.GetXmlVal(x, "S.Byte"), // Ojo al punto, coincide con tu XML
+            Unidades = DataHelper.GetXmlVal(x, "UNIDADES"),
+            RII = DataHelper.GetXmlVal(x, "RII"),
+            RSI = DataHelper.GetXmlVal(x, "RSI"),
             GrAlarma = DataHelper.GetXmlVal(x, "Gr.Alarma"),
             Cuadro = DataHelper.GetXmlVal(x, "Cuadro"),
             Observaciones = DataHelper.GetXmlVal(x, "Observaciones"),
@@ -51,8 +48,7 @@ namespace ZC_ALM_TOOLS.Models
             CPNum = DataHelper.GetXmlInt(x, "CP.Num."),
             CPComentario = DataHelper.GetXmlVal(x, "CP.Comentario")
         };
-
-
     }
+
 
 }

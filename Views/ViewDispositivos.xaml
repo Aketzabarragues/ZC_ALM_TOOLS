@@ -21,8 +21,9 @@
             <StackPanel>
                 <TextBlock Text="FILTROS" FontWeight="Bold" Foreground="#333333" Margin="0,0,0,5"/>
                 <TextBlock Text="Familia de Dispositivos:" Margin="0,0,0,2"/>
-                <ComboBox ItemsSource="{Binding FamiliasDispositivos}" 
-                          SelectedItem="{Binding FamiliaSeleccionada}"
+                <ComboBox ItemsSource="{Binding Categorias}" 
+                          SelectedItem="{Binding CategoriaSeleccionada}"
+                          DisplayMemberPath="Name" 
                           Height="28" Margin="0,0,0,20"/>
 
                 <Separator Margin="0,0,0,20"/>
@@ -53,12 +54,15 @@
             <TextBlock Text="Previsualización de Datos (JSON vs TIA Portal)" 
                        FontSize="16" FontWeight="Light" Margin="0,0,0,10"/>
 
-            <DataGrid Grid.Row="1" ItemsSource="{Binding ListaDispositivos}" 
-          AutoGenerateColumns="False" 
-          CanUserAddRows="False" 
-          GridLinesVisibility="Horizontal"
-          HeadersVisibility="Column"
-          Background="White">
+            <DataGrid Grid.Row="1" ItemsSource="{Binding ListaDispositivos}"
+                      AutoGenerateColumns="False"
+                      VirtualizingStackPanel.IsVirtualizing="True"
+                      VirtualizingStackPanel.VirtualizationMode="Recycling"
+                      EnableRowVirtualization="True"
+                      CanUserAddRows="False" 
+                      GridLinesVisibility="Horizontal"
+                      HeadersVisibility="Column"
+                      Background="White">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="Nº" Binding="{Binding Numero}" Width="60"/>
 

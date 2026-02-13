@@ -2,383 +2,315 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Reflection; // Necesario para encontrar la ruta real
+using System.Linq;
 using System.Threading;
 using System.Windows;
+using System.Xml.Linq;
 using Microsoft.Win32;
 using Siemens.Engineering;
 using Siemens.Engineering.SW;
 using ZC_ALM_TOOLS.Core;
+using ZC_ALM_TOOLS.Services;
 using ZC_ALM_TOOLS.Models;
 
 namespace ZC_ALM_TOOLS.ViewModels
 {
+    /* * RESUMEN DE PASOS DEL MAIN VIEW MODEL:
+     * 1. INICIALIZACIÓN: Se configuran las rutas, se cargan los ajustes (settings.xml) y el mapa de dispositivos (disp_settings.xml).
+     * 2. INTERFAZ DE USUARIO: Gestiona el comando para seleccionar un archivo Excel de definición.
+     * 3. EXTRACCIÓN EXTERNA: Lanza el proceso Python (ZC_Extractor.exe) encargado de leer el Excel y generar archivos XML temporales.
+     * 4. SINCRONIZACIÓN Y ESPERA: El programa monitoriza la carpeta de exportación hasta que todos los XML esperados están listos.
+     * 5. CARGA DINÁMICA (REFLEXIÓN): Lee cada XML y, mediante reflexión, instancia automáticamente el modelo C# correspondiente (Disp_V, Disp_ED, etc.).
+     * 6. INYECCIÓN DE DATOS: Envía la información procesada al DispositivosViewModel para su visualización en el DataGrid.
+     * 7. GESTIÓN DE LOGS: Registra cada evento importante en un archivo de depuración para facilitar el mantenimiento.
+     */
+
     public class MainViewModel : ObservableObject
     {
-
-
-        private Dictionary<string, List<object>> _cacheIngenieria = new Dictionary<string, List<object>>();
-
-
-        public DispositivosViewModel DispositivosViewModel { get; set; }
+        // =================================================================================================================
+        // 1. PROPIEDADES Y SERVICIOS
 
         private TiaService _tiaService;
-        private bool _isBusy;
-        public bool IsBusy
-        {
-            get { return _isBusy; }
-            set { _isBusy = value; OnPropertyChanged(); }
-        }
-
         private TiaPortal _tiaPortal;
         private PlcSoftware _plcSoftware;
 
+        // Diccionario que almacena los objetos cargados (Key: Nombre de categoría, Value: Lista de objetos)
+        private Dictionary<string, List<object>> _cacheIngenieria = new Dictionary<string, List<object>>();
+        public DispositivosViewModel DispositivosViewModel { get; set; }
+
+        // Lista de categorías configuradas en disp_settings.xml
+        public List<DeviceCategory> Categorias { get; set; }
+
+        private bool _isBusy;
+        public bool IsBusy { get => _isBusy; set { _isBusy = value; OnPropertyChanged(); } }
+
         private string _archivoExcelSeleccionado;
-        public string ArchivoExcelSeleccionado
-        {
-            get { return _archivoExcelSeleccionado; }
-            set { _archivoExcelSeleccionado = value; OnPropertyChanged(); }
-        }
-
-
-        private string _exePath;
+        public string ArchivoExcelSeleccionado { get => _archivoExcelSeleccionado; set { _archivoExcelSeleccionado = value; OnPropertyChanged(); } }
 
         private string _mensajeEstado;
-        public string MensajeEstado
-        {
-            get { return _mensajeEstado; }
-            set { _mensajeEstado = value; OnPropertyChanged(); }
-        }
+        public string MensajeEstado { get => _mensajeEstado; set { _mensajeEstado = value; OnPropertyChanged(); } }
 
-        private string _colorEstado = "Black"; // Color por defecto
-        public string ColorEstado
-        {
-            get { return _colorEstado; }
-            set
-            {
-                _colorEstado = value;
-                OnPropertyChanged();
-            }
-        }
-                
+        private string _colorEstado = "Black";
+        public string ColorEstado { get => _colorEstado; set { _colorEstado = value; OnPropertyChanged(); } }
+
+        // Comandos enlazados a los botones de la View
         public RelayCommand CargarDatosCommand { get; set; }
         public RelayCommand ConfigurarRutaExeCommand { get; set; }
+        public RelayCommand ConfigurarDispositivosCommand { get; set; }
 
 
-
-
-
-
+        // =================================================================================================================
+        // 2. CONSTRUCTOR
 
         public MainViewModel(TiaPortal tiaPortal, PlcSoftware plcSoftware)
         {
-
             _tiaPortal = tiaPortal;
             _plcSoftware = plcSoftware;
 
-            // 1. Creamos el servicio
-            _tiaService = new TiaService(plcSoftware);
+            LogService.Clear();
+            LogService.Write("Inicializando MainViewModel...");
 
-            // 2. Inicializamos el sub-viewmodel
+            // Paso 1: Configura carpetas y archivos base si no existen
+            AppConfigManager.InicializarEntorno();
+
+            // Paso 2: Carga la configuración de qué dispositivos vamos a manejar
+            Categorias = AppConfigManager.ObtenerMapaDispositivos();
+
+            // Paso 3: Inicializa servicios de TIA Portal y sub-vistas
+            _tiaService = new TiaService(plcSoftware);
             DispositivosViewModel = new DispositivosViewModel();
 
-            // 3. CONEXIONES (Cables)
-            // Pasamos el servicio al sub-viewmodel
+            // Inyecta la configuración al sub-viewmodel de dispositivos
+            DispositivosViewModel.Categorias = Categorias;
             DispositivosViewModel.SetTiaService(_tiaService);
 
-            // Suscribimos el sub-viewmodel a nuestra función de ActualizarEstado
+            // Suscribe eventos para reflejar mensajes del servicio en la barra de estado
             DispositivosViewModel.StatusRequest = (msg, error) => ActualizarEstado(msg, error);
-
-            // Suscribimos también el servicio para que él pueda hablar solo
             _tiaService.OnStatusChanged = (msg, error) => ActualizarEstado(msg, error);
 
-
-            InicializarConfiguracion();
+            if (Categorias.Count > 0)
+                DispositivosViewModel.CategoriaSeleccionada = Categorias[0];
 
             MensajeEstado = $"Conectado a PLC: {plcSoftware.Name}";
+            LogService.Write($"Conectado a PLC: {plcSoftware.Name}");
 
+            // Mapeo de comandos
             CargarDatosCommand = new RelayCommand(CargarExcelYGenerarJson);
             ConfigurarRutaExeCommand = new RelayCommand(EjecutarConfiguracionRuta);
+            ConfigurarDispositivosCommand = new RelayCommand(EjecutarConfiguracionDispositivos);
         }
 
 
+        // =================================================================================================================
+        // 3. LÓGICA DE EXTRACCIÓN Y CARGA
 
-        private void InicializarConfiguracion()
-        {
-            try
-            {
-                string carpetaConfig = Path.Combine(Path.GetTempPath(), "_ZC_ALM_TOOLS");
-                string archivoConfig = Path.Combine(carpetaConfig, "config_path.txt");
-
-                // 1. Crear carpeta si no existe
-                if (!Directory.Exists(carpetaConfig)) Directory.CreateDirectory(carpetaConfig);
-
-                // 2. Gestionar el archivo de ruta
-                if (File.Exists(archivoConfig))
-                {
-                    _exePath = File.ReadAllText(archivoConfig).Trim();
-                }
-                else
-                {
-                    // Ruta por defecto si es la primera vez que se abre
-                    _exePath = @"C:\Program Files\Siemens\Automation\Portal V18\AddIns\ZC_ALM_TOOLS\ZC_Extractor.exe";
-                    File.WriteAllText(archivoConfig, _exePath);
-                }
-            }
-            catch (Exception ex)
-            {
-                _exePath = @"C:\Program Files\Siemens\Automation\Portal V18\AddIns\ZC_ALM_TOOLS\ZC_Extractor.exe";
-            }
-        }
-
-
+        // Orquestador principal: Selecciona Excel -> Lanza Python -> Espera XML -> Carga en Memoria
         private void CargarExcelYGenerarJson()
         {
+            LogService.Write("Botón 'Cargar' pulsado.");
+
             try
             {
-                // PASO 1: Abrir Selector
                 OpenFileDialog openFileDialog = new OpenFileDialog
                 {
                     Filter = "Excel Files|*.xlsm;*.xlsx",
                     Title = "Selecciona el archivo de definición"
                 };
 
-                ActualizarEstado("Esperando selección de archivo...");
-
-                if (openFileDialog.ShowDialog() != true)
-                {
-                    ActualizarEstado("Operación cancelada.");
-                    return;
-                }
+                if (openFileDialog.ShowDialog() != true) return;
 
                 ArchivoExcelSeleccionado = openFileDialog.FileName;
+                LogService.Write($"Archivo seleccionado: {ArchivoExcelSeleccionado}");
 
-                // PASO 2: Configuración de rutas
-                string exePath = _exePath;
-                string carpetaTrabajo = Path.Combine(Path.GetTempPath(), "_ZC_ALM_TOOLS");
+                string exePath = AppConfigManager.LeerExePath();
+                LogService.Write($"Ruta extractor: {exePath}");
 
-                // PASO 3: Verificar existencia del extractor
                 if (!File.Exists(exePath))
                 {
+                    LogService.Write("ERROR: Extractor no encontrado", true);
                     ActualizarEstado("Error: No se encuentra ZC_Extractor.exe", true);
-                    MessageBox.Show($"El extractor no existe en la ruta configurada:\n{exePath}", "Error de configuración");
+                    MessageBox.Show($"Extractor no encontrado en:\n{exePath}", "Error de configuración");
                     return;
                 }
 
-                // PASO 4: Construir Argumentos
-                string argumentos = "--path \"" + ArchivoExcelSeleccionado + "\"";
+                // Limpieza de datos antiguos para evitar confusiones
+                LogService.Write("Limpiando archivos exportados...");
+                ActualizarEstado("Limpiando archivos exportados...");
+                LimpiarCarpetaExportar(AppConfigManager.ExportPath);
 
-                // PASO 5: Borrar archivos previos
-                ActualizarEstado("Limpiando archivos temporales...");
-                LimpiarCarpetaTemporal(carpetaTrabajo);
+                // Ejecución del extractor Python de forma asíncrona para el sistema operativo
+                LogService.Write("Lanzando proceso Python...");
+                ActualizarEstado("Ejecutando extractor Python...");
+                string argumentos = $"--path \"{ArchivoExcelSeleccionado}\"";
+                var proceso = Siemens.Engineering.AddIn.Utilities.Process.Start(exePath, argumentos);
 
-                // PASO 6: EJECUCIÓN
-                try
+                // Bucle de monitorización de archivos
+                if (EsperarArchivosPython())
                 {
-                    ActualizarEstado("Ejecutando extractor Python...");
-                    Siemens.Engineering.AddIn.Utilities.Process.Start(exePath, argumentos);
-                }
-                catch (Exception ex)
-                {
-                    ActualizarEstado("Error al iniciar el proceso externo.", true);
-                    MessageBox.Show($"Fallo al ejecutar Siemens.Process.Start:\n{ex.Message}", "Error Crítico");
-                    return;
-                }
+                    LogService.Write("Archivos XML detectados con éxito.");
+                    ActualizarEstado("Sincronizando base de datos interna...");
 
-                // --- PASO 7: ESPERA ACTIVA (Timeout 20s) ---
-                ActualizarEstado("Generando archivos TXT (esperando hasta 30s)...");
+                    // Lee los XML generados y los convierte en objetos C#
+                    CargarTodoDesdeCarpeta(AppConfigManager.ExportPath);
 
-                List<string> archivosEsperados = new List<string>
-                {
-                    Path.Combine(carpetaTrabajo, "procesos.txt"),
-                    Path.Combine(carpetaTrabajo, "preal.txt"),
-                    Path.Combine(carpetaTrabajo, "pint.txt"),
-                    Path.Combine(carpetaTrabajo, "alarmas.txt"),
-                    Path.Combine(carpetaTrabajo, "disp_ed.txt"),
-                    Path.Combine(carpetaTrabajo, "disp_ea.txt"),
-                    Path.Combine(carpetaTrabajo, "disp_v.txt")
-                };
-
-                bool todosListos = false;
-                for (int i = 0; i < 150; i++)
-                {
-                    bool faltanArchivos = false;
-                    foreach (string ruta in archivosEsperados)
-                    {
-                        if (!File.Exists(ruta))
-                        {
-                            faltanArchivos = true;
-                            break;
-                        }
-                    }
-
-                    if (!faltanArchivos)
-                    {
-                        todosListos = true;
-                        break;
-                    }
-                    Thread.Sleep(200);
-                    ActualizarEstadoDuranteCiclo();
-                }
-
-                if (!todosListos)
-                {
-                    string faltantes = "";
-                    foreach (string ruta in archivosEsperados)
-                    {
-                        if (!File.Exists(ruta)) faltantes += Path.GetFileName(ruta) + " ";
-                    }
-                    ActualizarEstado($"Error: Tiempo de espera agotado.", true);
-                    MessageBox.Show($"Timeout: No se crearon todos los archivos.\nFaltan: {faltantes}", "Error de Extracción");
-                    return;
-                }
-
-
-
-                // PASO 8: Cargar Datos
-                ActualizarEstado("Sincronizando base de datos interna...");
-
-
-                CargarTodoDesdeCarpeta(carpetaTrabajo);
-
-
-                // --- INYECCIÓN A LOS SUB-VIEWMODELS ---
-                DispositivosViewModel.SetDatos(_cacheIngenieria);
-
-                // En el futuro inyectarás aquí otros módulos:
-                // ProcesosViewModel.SetDatos(listaProcesos);
-
-                ActualizarEstado("Listo. Todos los módulos cargados.");
-            }
-            catch (Exception ex)
-            {
-                ActualizarEstado("Crash general en el proceso.", true);
-                MessageBox.Show($"CRASH GENERAL:\n{ex.Message}\n{ex.StackTrace}", "Debug Fatal");
-            }
-        }
-
-
-        private void LimpiarCarpetaTemporal(string ruta)
-        {
-            try
-            {
-                if (Directory.Exists(ruta))
-                {
-                    string[] archivos = Directory.GetFiles(ruta);
-                    foreach (string archivo in archivos)
-                    {
-                        // OBTENER SOLO EL NOMBRE DEL ARCHIVO (sin la ruta completa)
-                        string nombreArchivo = Path.GetFileName(archivo);
-
-                        // SEGURIDAD: Si es el archivo de configuración, NO lo borramos
-                        if (nombreArchivo.Equals("config_path.txt", StringComparison.OrdinalIgnoreCase))
-                        {
-                            continue; // Salta a la siguiente iteración del bucle
-                        }
-
-                        try
-                        {
-                            File.Delete(archivo);
-                        }
-                        catch (IOException)
-                        {
-                            Debug.WriteLine($"No se pudo borrar (está en uso): {archivo}");
-                        }
-                    }
+                    // Envía el diccionario con todos los datos al ViewModel de la tabla
+                    DispositivosViewModel.SetDatos(_cacheIngenieria);
+                    ActualizarEstado("Listo. Todos los módulos cargados.");
                 }
                 else
                 {
-                    Directory.CreateDirectory(ruta);
+                    ActualizarEstado("Error: Tiempo de espera agotado o faltan archivos XML.", true);
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error al limpiar carpeta temporal: {ex.Message}");
+                LogService.Write($"CRASH EN CARGA: {ex.Message}", true);
+                LogService.Write($"STACKTRACE: {ex.StackTrace}", true);
+                ActualizarEstado("Crash general en el proceso.", true);
+                MessageBox.Show($"{ex.Message}", "Error Crítico");
             }
         }
 
+        // Monitoriza la carpeta hasta que aparecen todos los ficheros configurados en disp_settings.xml
+        private bool EsperarArchivosPython()
+        {
+            LogService.Write($"Iniciando espera de archivos en: {AppConfigManager.ExportPath}");
+            ActualizarEstado("Generando archivos XML (esperando hasta 30s)...");
 
-        // ==========================================================================================================================
-        // Carga de todos los archivos en diccionario
+            if (Categorias == null || Categorias.Count == 0)
+            {
+                LogService.Write("ERROR: La lista de Categorías está vacía. Revisa disp_settings.xml", true);
+                return false;
+            }
+
+            for (int i = 0; i < 150; i++) // 30 segundos de timeout total
+            {
+                string archivoFaltante = "";
+                bool faltan = false;
+
+                foreach (var cat in Categorias)
+                {
+                    string rutaCheck = Path.Combine(AppConfigManager.ExportPath, cat.XmlFile);
+                    if (!File.Exists(rutaCheck))
+                    {
+                        faltan = true;
+                        archivoFaltante = cat.XmlFile;
+                        break;
+                    }
+                }
+
+                if (!faltan)
+                {
+                    LogService.Write("¡ÉXITO! Todos los archivos encontrados.");
+                    return true;
+                }
+
+                if (i % 10 == 0) LogService.Write($"Intento {i}/150: No se encuentra {archivoFaltante}");
+
+                Thread.Sleep(200);
+                ActualizarEstadoDuranteCiclo(); // Mantiene la UI viva
+            }
+
+            LogService.Write("TIMEOUT: No se encontraron los archivos esperados.", true);
+            return false;
+        }
+
+        // Recorre la carpeta de exportación cargando cada categoría configurada
         private void CargarTodoDesdeCarpeta(string carpeta)
         {
             _cacheIngenieria.Clear();
-
-            // Cargamos cada familia usando tus funciones de mapeo existentes
-            _cacheIngenieria["disp_v"] = LeerArchivoEspecifico(Path.Combine(carpeta, "disp_v.txt"), "disp_v");
-            _cacheIngenieria["disp_ed"] = LeerArchivoEspecifico(Path.Combine(carpeta, "disp_ed.txt"), "disp_ed");
-            _cacheIngenieria["disp_ea"] = LeerArchivoEspecifico(Path.Combine(carpeta, "disp_ea.txt"), "disp_ea");
-
-            // Aquí podrás añadir: 
-            // var procesos = LeerArchivoProcesos(Path.Combine(carpeta, "procesos.txt"));
+            foreach (var cat in Categorias)
+            {
+                string ruta = Path.Combine(carpeta, cat.XmlFile);
+                if (File.Exists(ruta))
+                {
+                    _cacheIngenieria[cat.Name] = LeerArchivoEspecifico(ruta, cat);
+                }
+            }
         }
 
-
-
-        // ==========================================================================================================================
-        // Funcion para leer archivo especifico
-        private List<object> LeerArchivoEspecifico(string ruta, string tipo)
+        // Método maestro: Usa Reflexión para invocar el método "FromXml" de la clase definida en la configuración
+        private List<object> LeerArchivoEspecifico(string ruta, DeviceCategory cat)
         {
+            LogService.Write($"Procesando archivo: {cat.XmlFile} para modelo: {cat.ModelClass}");
             var lista = new List<object>();
-            if (!File.Exists(ruta)) return lista;
 
-            string[] lineas = File.ReadAllLines(ruta);
-            for (int i = 1; i < lineas.Length; i++)
+            try
             {
-                if (string.IsNullOrWhiteSpace(lineas[i])) continue;
-                string[] c = lineas[i].Split('|');
-                try
+                XDocument doc = XDocument.Load(ruta);
+                var elementos = doc.Root.Elements();
+
+                // Busca la clase modelo por nombre de string (ej: "Disp_V")
+                string nombreCompletoClase = $"ZC_ALM_TOOLS.Models.{cat.ModelClass}";
+                Type tipoClase = Type.GetType(nombreCompletoClase);
+
+                if (tipoClase == null)
                 {
-                    if (tipo == "disp_v") lista.Add(Disp_V.FromCsv(c));
-                    else if (tipo == "disp_ed") lista.Add(Disp_ED.FromCsv(c));
-                    else if (tipo == "disp_ea") lista.Add(Disp_EA.FromCsv(c));
+                    LogService.Write($"ERROR: No se encontró la clase {nombreCompletoClase}", true);
+                    return lista;
                 }
-                catch { /* Omitir líneas con error */ }
+
+                // Obtiene el método estático FromXml del modelo
+                var metodoFromXml = tipoClase.GetMethod("FromXml",
+                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+
+                if (metodoFromXml == null)
+                {
+                    LogService.Write($"ERROR: {cat.ModelClass} no tiene método FromXml", true);
+                    return lista;
+                }
+
+                foreach (var el in elementos)
+                {
+                    // Ejecuta el método FromXml y añade el objeto resultante a la lista
+                    var objetoCargado = metodoFromXml?.Invoke(null, new object[] { el });
+                    if (objetoCargado != null) lista.Add(objetoCargado);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error dinámico cargando {cat.ModelClass}: {ex.Message}");
             }
             return lista;
         }
 
-
-
-        // ==========================================================================================================================
-        // Funcion para editar el archivo de configuracion
-        private void EjecutarConfiguracionRuta()
+        // Elimina residuos de exportaciones anteriores
+        private void LimpiarCarpetaExportar(string ruta)
         {
             try
             {
-                string carpetaConfig = Path.Combine(Path.GetTempPath(), "_ZC_ALM_TOOLS");
-                string archivoConfig = Path.Combine(carpetaConfig, "config_path.txt");
-
-                // Si por algún motivo no existe, lo creamos con la ruta por defecto antes de abrirlo
-                if (!File.Exists(archivoConfig))
+                if (!Directory.Exists(ruta)) return;
+                foreach (string archivo in Directory.GetFiles(ruta))
                 {
-                    InicializarConfiguracion();
+                    try { File.Delete(archivo); } catch { }
                 }
-
-                // Abrimos el Notepad con el archivo
-                Siemens.Engineering.AddIn.Utilities.Process.Start("notepad.exe", $"\"{archivoConfig}\"");
-
-                ActualizarEstado("Editando configuración en Notepad...");
             }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"No se pudo abrir el editor: {ex.Message}");
-            }
+            catch { }
         }
 
+        // =================================================================================================================
+        // 4. CONFIGURACIÓN Y EDITORES
 
+        private void EjecutarConfiguracionRuta() => AbrirEditor(AppConfigManager.SettingsXmlFile, "Editando ajustes generales...");
 
-        // ==========================================================================================================================
-        // Método auxiliar para actualizar el estado con color opcional
+        private void EjecutarConfiguracionDispositivos() => AbrirEditor(AppConfigManager.DeviceXmlFile, "Editando mapa de dispositivos...");
+
+        // Abre archivos XML en el Bloc de Notas para edición rápida
+        private void AbrirEditor(string ruta, string mensaje)
+        {
+            if (!File.Exists(ruta)) return;
+            Siemens.Engineering.AddIn.Utilities.Process.Start("notepad.exe", $"\"{ruta}\"");
+            ActualizarEstado(mensaje);
+        }
+
+        // Helper para actualizar la barra inferior de la aplicación
         private void ActualizarEstado(string mensaje, bool esError = false)
         {
             MensajeEstado = mensaje;
             ColorEstado = esError ? "Red" : "Black";
         }
 
-
-        // ==========================================================================================================================
-        // Método auxiliar para actualizar el estado durante un bucle
+        // "Truco" para procesar eventos de la UI durante un hilo de ejecución pesado y evitar que se congele
         private void ActualizarEstadoDuranteCiclo()
         {
             System.Windows.Threading.DispatcherFrame frame = new System.Windows.Threading.DispatcherFrame();
@@ -391,6 +323,5 @@ namespace ZC_ALM_TOOLS.ViewModels
                 }), frame);
             System.Windows.Threading.Dispatcher.PushFrame(frame);
         }
-
     }
 }

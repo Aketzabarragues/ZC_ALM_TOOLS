@@ -1,4 +1,5 @@
-﻿using ZC_ALM_TOOLS.Core;
+﻿using System.Xml.Linq;
+using ZC_ALM_TOOLS.Core;
 
 namespace ZC_ALM_TOOLS.Models
 {
@@ -25,31 +26,27 @@ namespace ZC_ALM_TOOLS.Models
         // --- PROPIEDAD PARA LA INTERFAZ ---
         // No se carga desde el CSV, se usa solo para mostrar resultados de comparación
         private string _Estado = "Sin comprobar";
-        public string Estado
-        {
-            get => _Estado;
-            set { _Estado = value; OnPropertyChanged(); }
-        }
+        public string Estado { get => _Estado; set { _Estado = value; OnPropertyChanged(); } }
 
         // --- MÉTODO DE CARGA
-        public static Disp_EA FromCsv(string[] c) => new Disp_EA
+        public static Disp_EA FromXml(XElement x) => new Disp_EA
         {
-            UID = DataHelper.GetVal(c, 0),
-            Numero = DataHelper.ParseInt(DataHelper.GetVal(c, 1)),
-            Tag = DataHelper.GetVal(c, 2),
-            Descripcion = DataHelper.GetVal(c, 3),
-            FAT = DataHelper.GetVal(c, 4),
-            EByte = DataHelper.GetVal(c, 5),
-            Unidades = DataHelper.GetVal(c, 6),
-            RII = DataHelper.GetVal(c, 7),
-            RSI = DataHelper.GetVal(c, 8),
-            GrAlarma = DataHelper.GetVal(c, 9),
-            Cuadro = DataHelper.GetVal(c, 10),
-            Observaciones = DataHelper.GetVal(c, 11),
-            CPTag = DataHelper.GetVal(c, 12),
-            CPTipo = DataHelper.GetVal(c, 13),
-            CPNum = DataHelper.ParseInt(DataHelper.GetVal(c, 14)),
-            CPComentario = DataHelper.GetVal(c, 15)
+            UID = DataHelper.GetXmlVal(x, "UID"),
+            Numero = DataHelper.GetXmlInt(x, "Numero"),
+            Tag = DataHelper.GetXmlVal(x, "Tag"),
+            Descripcion = DataHelper.GetXmlVal(x, "Descripcion"),
+            FAT = DataHelper.GetXmlVal(x, "FAT"),
+            EByte = DataHelper.GetXmlVal(x, "E.Byte"), // Ojo al punto, coincide con tu XML
+            Unidades = DataHelper.GetXmlVal(x, "UNIDADES"),
+            RII = DataHelper.GetXmlVal(x, "RII"),
+            RSI = DataHelper.GetXmlVal(x, "RSI"),
+            GrAlarma = DataHelper.GetXmlVal(x, "Gr.Alarma"),
+            Cuadro = DataHelper.GetXmlVal(x, "Cuadro"),
+            Observaciones = DataHelper.GetXmlVal(x, "Observaciones"),
+            CPTag = DataHelper.GetXmlVal(x, "CP.Tag"),
+            CPTipo = DataHelper.GetXmlVal(x, "CP.Tipo"),
+            CPNum = DataHelper.GetXmlInt(x, "CP.Num."),
+            CPComentario = DataHelper.GetXmlVal(x, "CP.Comentario")
         };
     }
 

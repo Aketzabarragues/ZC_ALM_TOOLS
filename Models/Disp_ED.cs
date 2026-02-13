@@ -1,4 +1,5 @@
-﻿using ZC_ALM_TOOLS.Core;
+﻿using System.Xml.Linq;
+using ZC_ALM_TOOLS.Core;
 
 namespace ZC_ALM_TOOLS.Models
 {
@@ -21,32 +22,27 @@ namespace ZC_ALM_TOOLS.Models
         public string CPComentario { get; set; }
 
         // --- PROPIEDAD PARA LA INTERFAZ ---
-        // No se carga desde el CSV, se usa solo para mostrar resultados de comparación
         private string _Estado = "Sin comprobar";
-        public string Estado
-        {
-            get => _Estado;
-            set { _Estado = value; OnPropertyChanged(); }
-        }
+        public string Estado { get => _Estado; set { _Estado = value; OnPropertyChanged(); } }
 
-        // --- MÉTODO DE CARGA
-        public static Disp_ED FromCsv(string[] c) => new Disp_ED
+        public static Disp_ED FromXml(XElement x) => new Disp_ED
         {
-            UID = DataHelper.GetVal(c, 0),
-            Numero = DataHelper.ParseInt(DataHelper.GetVal(c, 1)),
-            Tag = DataHelper.GetVal(c, 2),
-            Descripcion = DataHelper.GetVal(c, 3),
-            FAT = DataHelper.GetVal(c, 4),
-            EByte = DataHelper.GetVal(c, 5),
-            EBit = DataHelper.GetVal(c, 6),
-            GrAlarma = DataHelper.GetVal(c, 7),
-            Cuadro = DataHelper.GetVal(c, 8),
-            Observaciones = DataHelper.GetVal(c, 9),
-            CPTag = DataHelper.GetVal(c, 10),
-            CPTipo = DataHelper.GetVal(c, 11),
-            CPNum = DataHelper.ParseInt(DataHelper.GetVal(c, 12)),
-            CPComentario = DataHelper.GetVal(c, 13)
+            UID = DataHelper.GetXmlVal(x, "UID"),
+            Numero = DataHelper.GetXmlInt(x, "Numero"),
+            Tag = DataHelper.GetXmlVal(x, "Tag"),
+            Descripcion = DataHelper.GetXmlVal(x, "Descripcion"),
+            FAT = DataHelper.GetXmlVal(x, "FAT"),
+            EByte = DataHelper.GetXmlVal(x, "E.Byte"),
+            EBit = DataHelper.GetXmlVal(x, "E.Bit"),
+            GrAlarma = DataHelper.GetXmlVal(x, "Gr.Alarma"),
+            Cuadro = DataHelper.GetXmlVal(x, "Cuadro"),
+            Observaciones = DataHelper.GetXmlVal(x, "Observaciones"),
+            CPTag = DataHelper.GetXmlVal(x, "CP.Tag"),
+            CPTipo = DataHelper.GetXmlVal(x, "CP.Tipo"),
+            CPNum = DataHelper.GetXmlInt(x, "CP.Num."),
+            CPComentario = DataHelper.GetXmlVal(x, "CP.Comentario")
         };
+    
 
     }
 
