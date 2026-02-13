@@ -99,35 +99,45 @@ namespace ZC_ALM_TOOLS.ViewModels
         // PASO: Sincronización (Escribir del Excel al PLC)
         private void EjecutarSyncConstantes()
         {
-            if (ListaDispositivos == null || CategoriaSeleccionada == null) return;
+            if (CategoriaSeleccionada == null) return;
 
-            LogService.Write($"--- INICIO SINCRONIZACIÓN PLC: {CategoriaSeleccionada.Name} ---");
+            // Pregunta de seguridad extra
+            var resultado = MessageBox.Show(
+                "¿Deseas sincronizar? Los elementos que existan en el PLC pero NO en el Excel serán eliminados para que ambas listas sean idénticas.",
+                "Confirmar Sincronización Total",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (resultado != MessageBoxResult.Yes) return;
 
             try
             {
-                string rutaXml = Path.Combine(AppConfigManager.BasePath, "temp", "sync_tmp.xml");
+                LogService.Write($"--- INICIO SINCRONIZACIÓN TOTAL: {CategoriaSeleccionada.Name} ---");
 
-                // Exportación previa para asegurar que la tabla existe y está accesible
-                LogService.Write($"[1/2] Exportando tabla {CategoriaSeleccionada.TiaTable}...");
-                _tiaService.ExportarTablaVariables(
-                    CategoriaSeleccionada.TiaGroup,
-                    CategoriaSeleccionada.TiaTable,
-                    rutaXml);
+                // FILTRADO CRÍTICO: 
+                // Solo mandamos al PLC los objetos que NO sean "fantasmas" (es decir, los que están en el Excel)
+                // Usamos el diccionario original de datos inyectados para estar seguros.
+                if (_datosInyectados.TryGetValue(CategoriaSeleccionada.Name, out var listaObjetos))
+                {
+                    var listaParaSincronizar = listaObjetos.Cast<IDispositivo>().ToList();
 
-                // Inyección masiva de constantes usando la interfaz IDispositivo
-                LogService.Write($"[2/2] Sincronizando datos con TIA Portal...");
-                _tiaService.SincronizarConstantesConExcel(
-                    CategoriaSeleccionada.TiaGroup,
-                    CategoriaSeleccionada.TiaTable,
-                    ListaDispositivos.Cast<IDispositivo>().ToList());
+                    _tiaService.SincronizarConstantesConExcel(
+                        CategoriaSeleccionada.TiaGroup,
+                        CategoriaSeleccionada.TiaTable,
+                        listaParaSincronizar);
 
-                LogService.Write($"Sincronización finalizada correctamente.");
-                MessageBox.Show($"PLC actualizado correctamente.", "Éxito");
+                    LogService.Write("Sincronización finalizada. PLC y Excel son ahora idénticos.");
+
+                    // Volvemos a comparar para limpiar los mensajes de la pantalla
+                    EjecutarComparacion();
+
+                    MessageBox.Show("Sincronización total completada.");
+                }
             }
             catch (Exception ex)
             {
-                LogService.Write($"ERROR EN SYNC: {ex.Message}", true);
-                MessageBox.Show($"Error en la sincronización.");
+                LogService.Write($"ERROR CRÍTICO EN SYNC: {ex.Message}", true);
+                MessageBox.Show("Error durante la sincronización.");
             }
         }
 
@@ -136,33 +146,34 @@ namespace ZC_ALM_TOOLS.ViewModels
         {
             if (CategoriaSeleccionada == null) return;
 
+            // 1. IMPORTANTE: Reseteamos la lista a los datos del Excel para limpiar "fantasmas" de comparaciones previas
+            RefrescarVista();
+
             LogService.Write($"--- INICIO COMPARACIÓN: {CategoriaSeleccionada.Name} ---");
 
             try
             {
-                // 1. Exportación XML desde TIA Portal (Uso de rutas dinámicas del config)
                 string rutaXml = Path.Combine(AppConfigManager.BasePath, "temp", "check_comp.xml");
                 LogService.Write($"[PASO 1] Exportando XML desde TIA Portal...");
+                _tiaService.ExportarTablaVariables(CategoriaSeleccionada.TiaGroup, CategoriaSeleccionada.TiaTable, rutaXml);
 
-                _tiaService.ExportarTablaVariables(
-                    CategoriaSeleccionada.TiaGroup,
-                    CategoriaSeleccionada.TiaTable,
-                    rutaXml);
-
-                // 2. Parseo del XML del PLC para crear un diccionario de búsqueda rápida
                 LogService.Write($"[PASO 2] Procesando constantes del PLC...");
                 var dicPlc = LeerDiccionarioDelPlc(rutaXml);
-                LogService.Write($"Detectadas {dicPlc.Count} constantes en el PLC.");
 
-                // 3. Cruce lógico de datos
-                LogService.Write($"[PASO 3] Comparando con Excel...");
-                int ok = 0, cambios = 0, nuevos = 0;
+                // --- NUEVA LÓGICA DE CRUCE DOBLE ---
 
+                // Usaremos un HashSet para saber qué IDs del PLC ya hemos procesado
+                HashSet<int> idsProcesados = new HashSet<int>();
+                int ok = 0, cambios = 0, nuevos = 0, sobrantes = 0;
+
+                // PARTE A: De Excel a PLC (Lo que ya tenías)
+                LogService.Write($"[PASO 3] Buscando diferencias y nuevos dispositivos...");
                 foreach (var item in ListaDispositivos)
                 {
                     if (item is IDispositivo d)
                     {
-                        // Buscamos si el ID del Excel existe en el diccionario del PLC
+                        idsProcesados.Add(d.Numero); // Marcamos este ID como "visto" en el Excel
+
                         if (dicPlc.TryGetValue(d.Numero, out string tagEnPlc))
                         {
                             if (tagEnPlc == d.CPTag)
@@ -172,7 +183,6 @@ namespace ZC_ALM_TOOLS.ViewModels
                             }
                             else
                             {
-                                // Si los nombres no coinciden, marcamos para renombrar
                                 d.Estado = $"CAMBIO: {tagEnPlc} -> {d.CPTag}";
                                 LogService.Write($"[DIFERENCIA] ID {d.Numero}: PLC='{tagEnPlc}', Excel='{d.CPTag}'");
                                 cambios++;
@@ -180,7 +190,6 @@ namespace ZC_ALM_TOOLS.ViewModels
                         }
                         else
                         {
-                            // Si el ID no existe en el PLC, es un dispositivo nuevo
                             d.Estado = "NUEVO";
                             LogService.Write($"[NUEVO] ID {d.Numero}: No existe en PLC.");
                             nuevos++;
@@ -188,12 +197,44 @@ namespace ZC_ALM_TOOLS.ViewModels
                     }
                 }
 
-                LogService.Write($"--- COMPARACIÓN FINALIZADA | OK: {ok}, Cambios: {cambios}, Nuevos: {nuevos} ---");
+                // PARTE B: De PLC a Excel (Detectar lo que sobra en el PLC)
+                LogService.Write($"[PASO 4] Buscando dispositivos sobrantes en el PLC...");
 
-                if (cambios > 0 || nuevos > 0)
-                    MessageBox.Show($"Comparación terminada con diferencias. Revisa el log.", "Aviso");
+                // Preparamos la reflexión para crear objetos del tipo correcto (Disp_V, Disp_ED...)
+                string nombreCompletoClase = $"ZC_ALM_TOOLS.Models.{CategoriaSeleccionada.ModelClass}";
+                Type tipoClase = Type.GetType(nombreCompletoClase);
+
+                foreach (var kvp in dicPlc)
+                {
+                    // Si el ID del PLC no ha sido procesado, es que no está en el Excel
+                    if (!idsProcesados.Contains(kvp.Key))
+                    {
+                        sobrantes++;
+                        LogService.Write($"[SOBRANTE] ID {kvp.Key}: '{kvp.Value}' está en el PLC pero NO en el Excel.");
+
+                        // Creamos un "Fantasma" para mostrarlo en la tabla de la interfaz
+                        if (tipoClase != null)
+                        {
+                            var ghost = Activator.CreateInstance(tipoClase);
+                            if (ghost is IDispositivo dGhost)
+                            {
+                                dGhost.Numero = kvp.Key;
+                                dGhost.CPTag = kvp.Value;
+                                dGhost.Estado = "ELIMINAR / NO EN EXCEL";
+
+                                // Lo añadimos a la lista observable para que el usuario lo vea en el DataGrid
+                                ListaDispositivos.Add(ghost);
+                            }
+                        }
+                    }
+                }
+
+                LogService.Write($"--- COMPARACIÓN FINALIZADA | OK: {ok}, Cambios: {cambios}, Nuevos: {nuevos}, Sobrantes: {sobrantes} ---");
+
+                if (cambios > 0 || nuevos > 0 || sobrantes > 0)
+                    MessageBox.Show($"Comparación terminada con diferencias ({sobrantes} elementos de más en el PLC). Revisa el log y la tabla.", "Atención");
                 else
-                    MessageBox.Show($"Todo está sincronizado.", "Resultado OK");
+                    MessageBox.Show($"Todo está perfectamente sincronizado.", "Resultado OK");
 
             }
             catch (Exception ex)

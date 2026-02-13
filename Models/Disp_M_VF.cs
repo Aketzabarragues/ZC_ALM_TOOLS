@@ -1,0 +1,60 @@
+﻿using System.Xml.Linq;
+using ZC_ALM_TOOLS.Core;
+
+namespace ZC_ALM_TOOLS.Models
+{
+    public class Disp_M_VF : ObservableObject, IDispositivo
+    {
+        // --- PROPIEDADES DEL EXCEL
+        public string UID { get; set; }
+        public int Numero { get; set; }
+        public string Tag { get; set; }
+        public string Descripcion { get; set; }
+        public string FAT { get; set; }
+        public string SByte { get; set; }
+        public string SBit { get; set; }
+        public string RTByte { get; set; }
+        public string RTBit { get; set; }
+        public string RMByte { get; set; }
+        public string RMBit { get; set; }
+        public string SAByte { get; set; }
+        public string GrAlarma { get; set; }
+        public string Cuadro { get; set; }
+        public string Observaciones { get; set; }
+        public string CPTag { get; set; }
+        public string CPTipo { get; set; }
+        public int CPNum { get; set; }
+        public string CPComentario { get; set; }
+
+
+        // --- PROPIEDAD PARA LA INTERFAZ ---
+        private string _Estado = "Sin comprobar";
+        public string Estado { get => _Estado; set { _Estado = value; OnPropertyChanged(); } }
+
+        public static Disp_M_VF FromXml(XElement x) => new Disp_M_VF
+        {
+            UID = DataHelper.GetXmlVal(x, "UID"),
+            Numero = DataHelper.GetXmlInt(x, "Numero"),
+            Tag = DataHelper.GetXmlVal(x, "Tag"),
+            Descripcion = DataHelper.GetXmlVal(x, "Descripcion"),
+            FAT = DataHelper.GetXmlVal(x, "FAT"),
+            SByte = DataHelper.GetXmlVal(x, "S.Byte"),
+            SBit = DataHelper.GetXmlVal(x, "S.Bit"),
+            RTByte = DataHelper.GetXmlVal(x, "RT.Byte"),
+            RTBit = DataHelper.GetXmlVal(x, "RT.Bit"),
+            RMByte = DataHelper.GetXmlVal(x, "RM.Byte"),
+            RMBit = DataHelper.GetXmlVal(x, "RM.Bit"),
+            SAByte = DataHelper.GetXmlVal(x, "SA.Byte"),
+            GrAlarma = DataHelper.GetXmlVal(x, "Gr.Alarma"),
+            Cuadro = DataHelper.GetXmlVal(x, "Cuadro"),
+            Observaciones = DataHelper.GetXmlVal(x, "Observaciones"),
+            CPTag = DataHelper.GetXmlVal(x, "CP.Tag"),
+            CPTipo = DataHelper.GetXmlVal(x, "CP.Tipo"),
+            CPNum = DataHelper.GetXmlInt(x, "CP.Num."),
+            CPComentario = DataHelper.GetXmlVal(x, "CP.Comentario")
+        };
+
+
+    }
+
+}
