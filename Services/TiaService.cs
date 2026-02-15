@@ -6,24 +6,21 @@ using Siemens.Engineering.SW;
 using Siemens.Engineering.SW.Tags;
 using ZC_ALM_TOOLS.Models;
 using ZC_ALM_TOOLS.Services;
+using Siemens.Engineering.Compiler;
 
 namespace ZC_ALM_TOOLS.Core
 {
     /* * RESUMEN DE FUNCIONAMIENTO - TIA SERVICE:
-     * 1. INTERFAZ CON OPENNESS: Es el puente directo entre nuestra App y la API de Siemens TIA Portal.
-     * 2. GESTIÓN DE TABLAS: Localiza grupos y tablas de variables dentro del software del PLC.
-     * 3. EXPORTACIÓN: Genera archivos XML de las tablas actuales para su posterior comparación.
-     * 4. SINCRONIZACIÓN QUIRÚRGICA: 
-     * - Identifica y elimina variables en el PLC que no están en el Excel (Limpieza).
-     * - Actualiza nombres y comentarios de variables existentes.
-     * - Crea las variables nuevas que solo existen en el Excel de ingeniería.
+     * 1. INTERFAZ CON OPENNESS: Conexión directa con la API de Siemens.
+     * 2. GESTIÓN DE CONFIGURACIÓN: Sincroniza constantes globales (N_MAX) que definen tamaños de arrays.
+     * 3. COMPILACIÓN: Fuerza al PLC a regenerar bloques tras cambios estructurales.
+     * 4. SINCRONIZACIÓN QUIRÚRGICA: Gestión de constantes de dispositivos (ID -> Nombre).
      */
 
     public class TiaService
     {
         private readonly PlcSoftware _plcSoftware;
 
-        // Delegado para enviar mensajes cortos a la barra de estado de la interfaz (UI)
         public Action<string, bool> OnStatusChanged { get; set; }
 
         public TiaService(PlcSoftware plcSoftware)
@@ -31,144 +28,182 @@ namespace ZC_ALM_TOOLS.Core
             _plcSoftware = plcSoftware;
         }
 
+        #region GESTIÓN DE CONSTANTES GLOBALES (DIMENSIONADO)
+
         /// <summary>
-        /// Exporta una tabla de constantes de usuario a un archivo XML.
+        /// Busca una constante en una tabla específica y devuelve su valor entero.
+        /// Útil para refrescar la UI (Excel vs PLC).
         /// </summary>
-        public void ExportarTablaVariables(string nombreCarpeta, string nombreTabla, string rutaXml)
+        public int ObtenerValorConstante(string nombreTabla, string nombreConstante)
         {
             try
             {
-                LogService.Write($"[TIA] Intentando exportar tabla '{nombreTabla}' a XML...");
+                var tabla = BuscarTabla(nombreTabla);
+                if (tabla == null) return -1;
 
-                if (File.Exists(rutaXml))
+                var constante = tabla.UserConstants.Find(nombreConstante);
+                if (constante != null && int.TryParse(constante.Value, out int valor))
                 {
-                    LogService.Write($"[TIA] El archivo ya existe. Borrando '{rutaXml}' para permitir nueva exportación...");
-                    File.Delete(rutaXml);
+                    return valor;
                 }
-
-                // Buscamos el grupo (carpeta) y la tabla dentro del PLC
-                var grupo = _plcSoftware.TagTableGroup.Groups.Find(nombreCarpeta);
-                if (grupo == null) throw new Exception($"No se encuentra la carpeta '{nombreCarpeta}'");
-
-                var tabla = grupo.TagTables.Find(nombreTabla);
-                if (tabla == null) throw new Exception($"No se encuentra la tabla '{nombreTabla}'");
-
-                // Exportación mediante Openness (sobreescribe si ya existe)
-                tabla.Export(new System.IO.FileInfo(rutaXml), Siemens.Engineering.ExportOptions.WithDefaults);
-
-                LogService.Write($"[TIA] Exportación exitosa: {rutaXml}");
+                return 0;
             }
-            catch (Exception ex)
+            catch
             {
-                LogService.Write($"[TIA-ERROR] Fallo al exportar tabla: {ex.Message}", true);
-                throw;
+                return -1;
             }
         }
 
         /// <summary>
-        /// Sincroniza el PLC para que sea un espejo exacto de la lista del Excel.
-        /// Borra lo que sobra, actualiza lo que existe y crea lo nuevo.
+        /// Paso A: Sincroniza el valor de una constante global (ej. N_MAX_V).
         /// </summary>
+        public void SincronizarDimensionGlobal(string nombreTabla, string nombreConstante, int nuevoValor)
+        {
+            try
+            {
+                LogService.Write($"[TIA] Verificando constante de dimensionado: {nombreConstante}...");
+
+                var tabla = BuscarTabla(nombreTabla);
+                if (tabla == null) throw new Exception($"No se encontró la tabla '{nombreTabla}'");
+
+                var constante = tabla.UserConstants.Find(nombreConstante);
+                if (constante == null) throw new Exception($"No existe la constante '{nombreConstante}' en el PLC.");
+
+                if (int.TryParse(constante.Value, out int valorActual))
+                {
+                    if (valorActual != nuevoValor)
+                    {
+                        LogService.Write($"[TIA-CONFIG] Modificando {nombreConstante}: {valorActual} -> {nuevoValor}");
+                        constante.Value = nuevoValor.ToString();
+                        EnviarEstado($"{nombreConstante} actualizado a {nuevoValor}.");
+                    }
+                    else
+                    {
+                        LogService.Write($"[TIA] La dimensión {nombreConstante} ya coincide ({nuevoValor}).");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogService.Write($"[TIA-ERROR] Fallo en Sincronización Global: {ex.Message}", true);
+                throw;
+            }
+        }
+
+        #endregion
+
+        #region COMPILACIÓN (PASO B)
+
+        /// <summary>
+        /// Paso B: Compila el software del PLC para aplicar cambios estructurales (redimensionado de DBs).
+        /// </summary>
+        public void CompilarSoftware()
+        {
+            
+        }
+
+        #endregion
+
+        #region MÉTODOS DE TABLAS Y EXPORTACIÓN
+
+        public void ExportarTablaVariables(string nombreCarpeta, string nombreTabla, string rutaXml)
+        {
+            try
+            {
+                LogService.Write($"[TIA] Exportando tabla '{nombreTabla}'...");
+
+                if (File.Exists(rutaXml)) File.Delete(rutaXml);
+
+                var tabla = BuscarTablaEnCarpeta(nombreCarpeta, nombreTabla);
+                if (tabla == null) throw new Exception($"No se encuentra la tabla '{nombreTabla}' en '{nombreCarpeta}'");
+
+                tabla.Export(new FileInfo(rutaXml), Siemens.Engineering.ExportOptions.WithDefaults);
+                LogService.Write($"[TIA] Exportación exitosa.");
+            }
+            catch (Exception ex)
+            {
+                LogService.Write($"[TIA-ERROR] Error exportando: {ex.Message}", true);
+                throw;
+            }
+        }
+
         public void SincronizarConstantesConExcel(string nombreCarpeta, string nombreTabla, List<IDispositivo> listaExcel)
         {
             try
             {
-                LogService.Write($"[TIA] === INICIANDO SINCRONIZACIÓN QUIRÚRGICA: {nombreTabla} ===");
-                EnviarEstado($"Sincronizando {listaExcel.Count} dispositivos...");
+                LogService.Write($"[TIA] === SINCRONIZANDO DISPOSITIVOS: {nombreTabla} ===");
+                var tabla = BuscarTablaEnCarpeta(nombreCarpeta, nombreTabla);
+                if (tabla == null) throw new Exception($"La tabla '{nombreTabla}' no existe.");
 
-                var grupo = _plcSoftware.TagTableGroup.Groups.Find(nombreCarpeta);
-                var tabla = grupo.TagTables.Find(nombreTabla);
-
-                if (tabla == null) throw new Exception($"La tabla '{nombreTabla}' no existe en el proyecto TIA.");
-
-                // --- FASE 1: LIMPIEZA DE SOBRANTES (PLC -> EXCEL) ---
-                // Creamos un conjunto de IDs presentes en el Excel para una búsqueda rápida (O(1))
                 var idsEnExcel = new HashSet<int>(listaExcel.Select(d => d.Numero));
-                var constantesAEliminar = new List<PlcUserConstant>();
+                var constantesAEliminar = tabla.UserConstants.Where(c => int.TryParse(c.Value, out int id) && !idsEnExcel.Contains(id)).ToList();
 
-                foreach (var constante in tabla.UserConstants)
+                foreach (var c in constantesAEliminar)
                 {
-                    if (int.TryParse(constante.Value, out int idPLC))
-                    {
-                        // Si el ID del PLC no está en el Excel, el dispositivo ha sido borrado o movido
-                        if (!idsEnExcel.Contains(idPLC))
-                        {
-                            constantesAEliminar.Add(constante);
-                        }
-                    }
+                    LogService.Write($"[TIA-DELETE] Borrando ID {c.Value}: {c.Name}");
+                    c.Delete();
                 }
 
-                if (constantesAEliminar.Count > 0)
-                {
-                    LogService.Write($"[TIA] Se han detectado {constantesAEliminar.Count} variables sobrantes en el PLC. Borrando...");
-                    foreach (var c in constantesAEliminar)
-                    {
-                        LogService.Write($"[TIA-DELETE] Borrando ID {c.Value}: {c.Name}");
-                        c.Delete();
-                    }
-                }
-
-                // --- FASE 2: ACTUALIZACIÓN Y CREACIÓN (EXCEL -> PLC) ---
                 foreach (var disp in listaExcel)
                 {
-                    // Buscamos la constante en el PLC por su valor (ID único de ingeniería)
                     PlcUserConstant constanteTIA = tabla.UserConstants.FirstOrDefault(c => c.Value == disp.Numero.ToString());
 
                     if (constanteTIA == null)
                     {
-                        // Si no existe el ID en el PLC, creamos la constante nueva
                         LogService.Write($"[TIA-CREATE] Creando ID {disp.Numero}: {disp.CPTag}");
                         constanteTIA = tabla.UserConstants.Create(disp.CPTag, "Int", disp.Numero.ToString());
                     }
 
-                    // Sincronizamos el nombre (Tag) si ha cambiado en el Excel
                     if (constanteTIA.Name != disp.CPTag)
                     {
                         LogService.Write($"[TIA-RENAME] ID {disp.Numero}: {constanteTIA.Name} -> {disp.CPTag}");
                         constanteTIA.Name = disp.CPTag;
                     }
 
-                    // Sincronizamos comentarios en todos los idiomas del proyecto TIA Portal
                     ActualizarComentarios(constanteTIA, disp.CPComentario);
                 }
-
-                LogService.Write($"[TIA] === SINCRONIZACIÓN FINALIZADA CON ÉXITO ===");
-                EnviarEstado("Sincronización finalizada correctamente.");
+                EnviarEstado("Sincronización de dispositivos finalizada.");
             }
             catch (Exception ex)
             {
-                LogService.Write($"[TIA-FATAL] Error en Sincronización: {ex.Message}", true);
-                EnviarEstado($"Error: {ex.Message}", true);
+                LogService.Write($"[TIA-FATAL] Error en Sync: {ex.Message}", true);
                 throw;
             }
         }
 
-        /// <summary>
-        /// Helper para actualizar el comentario en todos los idiomas disponibles de la constante.
-        /// </summary>
+        #endregion
+
+        #region HELPERS INTERNOS
+
+        private PlcTagTable BuscarTabla(string nombre)
+        {
+            // Busca en la raíz y en todos los grupos
+            var tablaRaiz = _plcSoftware.TagTableGroup.TagTables.Find(nombre);
+            if (tablaRaiz != null) return tablaRaiz;
+
+            return _plcSoftware.TagTableGroup.Groups.SelectMany(g => g.TagTables).FirstOrDefault(t => t.Name == nombre);
+        }
+
+        private PlcTagTable BuscarTablaEnCarpeta(string carpeta, string tabla)
+        {
+            var grupo = _plcSoftware.TagTableGroup.Groups.Find(carpeta);
+            return grupo?.TagTables.Find(tabla);
+        }
+
         private void ActualizarComentarios(PlcUserConstant constante, string comentario)
         {
             foreach (var item in constante.Comment.Items)
             {
-                try
-                {
-                    // Intentamos asignación directa (rápida)
-                    item.Text = comentario;
-                }
-                catch
-                {
-                    // Plan B: Uso de atributos dinámicos si la propiedad Text está bloqueada
-                    item.SetAttribute("Text", comentario);
-                }
+                try { item.Text = comentario; }
+                catch { item.SetAttribute("Text", comentario); }
             }
         }
 
-        /// <summary>
-        /// Helper para enviar mensajes a la UI y al Log simultáneamente.
-        /// </summary>
         private void EnviarEstado(string msg, bool esError = false)
         {
             OnStatusChanged?.Invoke(msg, esError);
         }
+
+        #endregion
     }
 }

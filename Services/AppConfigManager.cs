@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Xml.Linq;
 using ZC_ALM_TOOLS.Models;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.TextBox;
 
 namespace ZC_ALM_TOOLS.Services
 {
@@ -15,6 +16,8 @@ namespace ZC_ALM_TOOLS.Services
         public static string ConfigPath => Path.Combine(BasePath, "Config");
         public static string ExportPath => Path.Combine(BasePath, "Export");
         public static string TempPath => Path.Combine(BasePath, "Temp");
+
+        public static string dispConfig = Path.Combine(BasePath, ExportPath, "config_disp.xml");
 
         // Nombres de archivos (Aplicando tu cambio de nombre)
         public static string SettingsXmlFile => Path.Combine(ConfigPath, "settings.xml");
@@ -46,37 +49,49 @@ namespace ZC_ALM_TOOLS.Services
                         new XElement("TiaGroup", "002_Dispositivos"),
                         new XElement("TiaTable", "002_Disp_ED"),
                         new XElement("ModelClass", "Disp_ED"),
-                        new XElement("XmlFile", "disp_ed.xml")),
+                        new XElement("XmlFile", "disp_ed.xml"),
+                        new XElement("GlobalConfigKey", "Num_Disp_ED"),
+                        new XElement("PlcCountConstant", "N_MAX_DISP_ED")),
                     new XElement("DeviceCategory", new XAttribute("Name", "Entrada Analogica"),
                         new XElement("ExcelSheet", "DISP_EA"),
                         new XElement("TiaGroup", "002_Dispositivos"),
                         new XElement("TiaTable", "002_Disp_EA"),
                         new XElement("ModelClass", "Disp_EA"),
-                        new XElement("XmlFile", "disp_ea.xml")),
+                        new XElement("XmlFile", "disp_ea.xml"),
+                        new XElement("GlobalConfigKey", "Num_Disp_EA"),
+                        new XElement("PlcCountConstant", "N_MAX_DISP_EA")),
                     new XElement("DeviceCategory", new XAttribute("Name", "Salida Analogica"),
                         new XElement("ExcelSheet", "DISP_SA"),
                         new XElement("TiaGroup", "002_Dispositivos"),
                         new XElement("TiaTable", "002_Disp_SA"),
                         new XElement("ModelClass", "Disp_SA"),
-                        new XElement("XmlFile", "disp_sa.xml")),
+                        new XElement("XmlFile", "disp_sa.xml"),
+                        new XElement("GlobalConfigKey", "Num_Disp_SA"),
+                        new XElement("PlcCountConstant", "N_MAX_DISP_SA")),
                     new XElement("DeviceCategory", new XAttribute("Name", "Válvula"),
                         new XElement("ExcelSheet", "DISP_V"),
                         new XElement("TiaGroup", "002_Dispositivos"),
                         new XElement("TiaTable", "002_Disp_V"),
                         new XElement("ModelClass", "Disp_V"),
-                        new XElement("XmlFile", "disp_v.xml")),
+                        new XElement("XmlFile", "disp_v.xml"),
+                        new XElement("GlobalConfigKey", "Num_Disp_V"),
+                        new XElement("PlcCountConstant", "N_MAX_DISP_V")),
                     new XElement("DeviceCategory", new XAttribute("Name", "Motor"),
                         new XElement("ExcelSheet", "DISP_M"),
                         new XElement("TiaGroup", "002_Dispositivos"),
                         new XElement("TiaTable", "002_Disp_M"),
                         new XElement("ModelClass", "Disp_M"),
-                        new XElement("XmlFile", "disp_m.xml")),
+                        new XElement("XmlFile", "disp_m.xml"),
+                        new XElement("GlobalConfigKey", "Num_Disp_M"),
+                        new XElement("PlcCountConstant", "N_MAX_DISP_M")),
                     new XElement("DeviceCategory", new XAttribute("Name", "Motor variador"),
                         new XElement("ExcelSheet", "DISP_M_VF"),
                         new XElement("TiaGroup", "002_Dispositivos"),
                         new XElement("TiaTable", "002_Disp_M_VF"),
                         new XElement("ModelClass", "Disp_M_VF"),
-                        new XElement("XmlFile", "disp_m_vf.xml"))
+                        new XElement("XmlFile", "disp_m_vf.xml"),
+                        new XElement("GlobalConfigKey", "Num_Disp_M_VF"),
+                        new XElement("PlcCountConstant", "N_MAX_DISP_M_VF"))
                 ));
                 doc.Save(DeviceXmlFile);
             }
@@ -95,7 +110,9 @@ namespace ZC_ALM_TOOLS.Services
                 TiaGroup = x.Element("TiaGroup")?.Value,
                 TiaTable = x.Element("TiaTable")?.Value,
                 ModelClass = x.Element("ModelClass")?.Value,
-                XmlFile = x.Element("XmlFile")?.Value
+                XmlFile = x.Element("XmlFile")?.Value,
+                GlobalConfigKey = x.Element("GlobalConfigKey")?.Value,
+                PlcCountConstant = x.Element("PlcCountConstant")?.Value
             }).ToList();
         }
 

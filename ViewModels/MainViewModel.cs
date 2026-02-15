@@ -36,6 +36,7 @@ namespace ZC_ALM_TOOLS.ViewModels
 
         // Diccionario que almacena los objetos cargados (Key: Nombre de categoría, Value: Lista de objetos)
         private Dictionary<string, List<object>> _cacheIngenieria = new Dictionary<string, List<object>>();
+        private Dictionary<string, int> _cacheDispConfig = new Dictionary<string, int>();
         public DispositivosViewModel DispositivosViewModel { get; set; }
 
         // Lista de categorías configuradas en disp_settings.xml
@@ -154,7 +155,7 @@ namespace ZC_ALM_TOOLS.ViewModels
                     CargarTodoDesdeCarpeta(AppConfigManager.ExportPath);
 
                     // Envía el diccionario con todos los datos al ViewModel de la tabla
-                    DispositivosViewModel.SetDatos(_cacheIngenieria);
+                    DispositivosViewModel.SetDatos(_cacheIngenieria, _cacheDispConfig);
                     ActualizarEstado("Listo. Todos los módulos cargados.");
                 }
                 else
@@ -199,6 +200,18 @@ namespace ZC_ALM_TOOLS.ViewModels
                     }
                 }
 
+
+                if (!faltan)
+                {
+                    // Usamos la variable que ya tienes definida en AppConfigManager
+                    if (!File.Exists(AppConfigManager.dispConfig))
+                    {
+                        faltan = true;
+                        archivoFaltante = Path.GetFileName(AppConfigManager.dispConfig);
+                    }
+                }
+
+
                 if (!faltan)
                 {
                     LogService.Write("¡ÉXITO! Todos los archivos encontrados.");
@@ -219,6 +232,11 @@ namespace ZC_ALM_TOOLS.ViewModels
         private void CargarTodoDesdeCarpeta(string carpeta)
         {
             _cacheIngenieria.Clear();
+            _cacheDispConfig.Clear();
+
+
+            _cacheDispConfig = LeerConfiguracionDispositivo(AppConfigManager.dispConfig);
+
             foreach (var cat in Categorias)
             {
                 string ruta = Path.Combine(carpeta, cat.XmlFile);
@@ -227,6 +245,37 @@ namespace ZC_ALM_TOOLS.ViewModels
                     _cacheIngenieria[cat.Name] = LeerArchivoEspecifico(ruta, cat);
                 }
             }
+        }
+
+
+        // Método lectura configuracion dispositivo
+        private Dictionary<string, int> LeerConfiguracionDispositivo(string ruta)
+        {
+            var config = new Dictionary<string, int>();
+
+            if (!File.Exists(ruta))
+            {
+                LogService.Write($"ADVERTENCIA: Archivo de configuración global no encontrado en {ruta}", true);
+                return config;
+            }
+
+            try
+            {
+                XDocument doc = XDocument.Load(ruta);
+
+                // --- CAMBIO AQUÍ: Usamos el método FromXml de tu modelo ---
+                config = doc.Descendants("Item")
+                            .Select(x => Disp_Config.FromXml(x)) // Mapeamos cada nodo XML al objeto Disp_Config
+                            .ToDictionary(c => c.Name, c => c.Value); // Luego lo convertimos al diccionario
+
+                LogService.Write($"[CONFIG] Cargados {config.Count} parámetros globales correctamente usando modelo Disp_Config.");
+            }
+            catch (Exception ex)
+            {
+                LogService.Write($"ERROR al leer configuración global: {ex.Message}", true);
+            }
+
+            return config;
         }
 
         // Método maestro: Usa Reflexión para invocar el método "FromXml" de la clase definida en la configuración

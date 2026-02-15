@@ -77,6 +77,7 @@
     <Compile Include="Core\INotifyPropertyChanged.cs" />
     <Compile Include="Core\RelayCommand.cs" />
     <Compile Include="Models\DeviceCategory.cs" />
+    <Compile Include="Models\Disp_Config.cs" />
     <Compile Include="Models\Disp_M_VF.cs" />
     <Compile Include="Models\Disp_SA.cs" />
     <Compile Include="Models\Disp_EA.cs" />

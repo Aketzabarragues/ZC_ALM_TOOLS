@@ -51,8 +51,21 @@
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
-            <TextBlock Text="Previsualización de Datos (JSON vs TIA Portal)" 
-                       FontSize="16" FontWeight="Light" Margin="0,0,0,10"/>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                <TextBlock Text="Previsualización de Datos" 
+               FontSize="16" FontWeight="Light"/>
+
+                <Border Background="{Binding NMaxColor}" CornerRadius="4" Padding="8,2" Margin="15,0,0,0" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <Path Data="M12,20L12,20M12,4L12,4M12,12L12,12" Stroke="#007ACC" StrokeThickness="2" Margin="0,0,5,0"/>
+                        <TextBlock Text="{Binding NMaxInfo}" 
+                                   FontSize="12" 
+                                   Foreground="#005B96"
+                                   VerticalAlignment="Center"
+                                   FontWeight="SemiBold"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
 
             <DataGrid Grid.Row="1" ItemsSource="{Binding ListaDispositivos}"
                       AutoGenerateColumns="False"

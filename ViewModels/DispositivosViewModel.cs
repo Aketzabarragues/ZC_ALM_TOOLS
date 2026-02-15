@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Xml.Linq;
+using Siemens.Engineering.SW.Blocks;
 using ZC_ALM_TOOLS.Core;
 using ZC_ALM_TOOLS.Models;
 using ZC_ALM_TOOLS.Services;
@@ -23,10 +24,35 @@ namespace ZC_ALM_TOOLS.ViewModels
     {
         // --- PROPIEDADES PRIVADAS ---
         private Dictionary<string, List<object>> _datosInyectados; // Almacén de datos por categoría
+        private Dictionary<string, int> _datosGlobales;
+
+        private Dictionary<string, int> _cacheNMaxPlc = new Dictionary<string, int>();
+
         private TiaService _tiaService;
         public Action<string, bool> StatusRequest { get; set; } // Delegado para mensajes en el Main
 
         // --- BINDINGS PARA LA INTERFAZ (UI) ---
+
+        // Valor de constante N_MAX de dispositivo
+        private string _nMaxInfo = "Dimensiones: Excel (-) | PLC (-)";
+        public string NMaxInfo
+        {
+            get => _nMaxInfo;
+            set { _nMaxInfo = value; OnPropertyChanged(); }
+        }
+
+        // Color de comparacion N_MAX
+        private string _nMaxColor = "#E8F4FD";
+        public string NMaxColor
+        {
+            get => _nMaxColor;
+            set { _nMaxColor = value; OnPropertyChanged(); }
+        }
+
+        // Valores internos para construir el string
+        private int _nMaxExcel = 0;
+        private int _nMaxTia = 0;
+
 
         // Lista de objetos que se enlaza al ItemsSource del DataGrid
         private ObservableCollection<object> _listaDispositivos = new ObservableCollection<object>();
@@ -75,9 +101,10 @@ namespace ZC_ALM_TOOLS.ViewModels
         public void SetTiaService(TiaService service) => _tiaService = service;
 
         // Recibe el diccionario de datos desde el MainViewModel tras la carga
-        public void SetDatos(Dictionary<string, List<object>> datos)
+        public void SetDatos(Dictionary<string, List<object>> datos, Dictionary<string, int> globales)
         {
             _datosInyectados = datos;
+            _datosGlobales = globales;
             RefrescarVista();
         }
 
@@ -88,10 +115,52 @@ namespace ZC_ALM_TOOLS.ViewModels
 
             if (_datosInyectados.TryGetValue(CategoriaSeleccionada.Name, out var lista))
             {
-                // Creamos una nueva instancia para disparar una sola notificación de cambio a la UI
                 ListaDispositivos = new ObservableCollection<object>(lista);
                 LogService.Write($"Cargada categoría: {CategoriaSeleccionada.Name} ({lista.Count} elementos)");
+
+                // Actualizamos el numero maximo de constante dispositivo
+                if (_datosGlobales != null && _datosGlobales.TryGetValue(CategoriaSeleccionada.GlobalConfigKey, out int valor))
+                {
+                    _nMaxExcel = valor;
+                    if (_cacheNMaxPlc.TryGetValue(CategoriaSeleccionada.Name, out int valorGuardadoPlc))
+                    {
+                        _nMaxTia = valorGuardadoPlc;
+                    }
+                    else
+                    {
+                        _nMaxTia = 0; // Solo aquí ponemos 0 si nunca se ha pulsado comparar
+                    }
+                    ActualizarLabelNMax();
+                }
             }
+
+
+        }
+
+        // Actualizar el numero maximo de dispositivo, para mostrar en la UI
+        private void ActualizarLabelNMax()
+        {
+            string plcText = _nMaxTia > 0 ? _nMaxTia.ToString() : "-";
+            string aviso = "";
+
+            // LÓGICA DE COLOR Y AVISO
+            if (_nMaxTia == 0)
+            {
+                NMaxColor = "#F5F5F5"; // Gris (no comparado aún)
+                aviso = "";
+            }
+            else if (_nMaxTia != _nMaxExcel)
+            {
+                NMaxColor = "#FFF3E0"; // Naranja suave (alerta de desincronización)
+                aviso = "  ⚠️ REQUIERE SYNC";
+            }
+            else
+            {
+                NMaxColor = "#E8F5E9"; // Verde suave (sincronizado)
+                aviso = "  ✅ OK";
+            }
+
+            NMaxInfo = $"Dimensiones ({CategoriaSeleccionada?.PlcCountConstant}): Excel ({_nMaxExcel}) | PLC ({plcText}){aviso}";
         }
 
         // --- LÓGICA DE NEGOCIO (TIA PORTAL) ---
@@ -113,6 +182,25 @@ namespace ZC_ALM_TOOLS.ViewModels
             try
             {
                 LogService.Write($"--- INICIO SINCRONIZACIÓN TOTAL: {CategoriaSeleccionada.Name} ---");
+
+                
+                // SINCRONIZAR DIMENSIÓN GLOBAL (N_MAX)
+                if (!string.IsNullOrEmpty(CategoriaSeleccionada.GlobalConfigKey) &&
+                    !string.IsNullOrEmpty(CategoriaSeleccionada.PlcCountConstant))
+                {
+                    // Buscamos el valor en nuestro diccionario cargado del XML global
+                    if (_datosGlobales != null && _datosGlobales.TryGetValue(CategoriaSeleccionada.GlobalConfigKey, out int valorExcel))
+                    {
+                        LogService.Write($"[PASO A] Ajustando constante de dimensión: {CategoriaSeleccionada.PlcCountConstant} -> {valorExcel}");
+
+                        // Escribimos en la tabla 000_Config_Dispositivos del PLC
+                        _tiaService.SincronizarDimensionGlobal("000_Config_Dispositivos", CategoriaSeleccionada.PlcCountConstant, valorExcel);
+
+                        _nMaxTia = valorExcel;
+                        _cacheNMaxPlc[CategoriaSeleccionada.Name] = valorExcel;
+                        ActualizarLabelNMax();
+                    }
+                }
 
                 // FILTRADO CRÍTICO: 
                 // Solo mandamos al PLC los objetos que NO sean "fantasmas" (es decir, los que están en el Excel)
@@ -141,6 +229,11 @@ namespace ZC_ALM_TOOLS.ViewModels
             }
         }
 
+
+
+
+
+
         // PASO: Comparación (Leer PLC y cruzar con Excel)
         private void EjecutarComparacion()
         {
@@ -151,8 +244,35 @@ namespace ZC_ALM_TOOLS.ViewModels
 
             LogService.Write($"--- INICIO COMPARACIÓN: {CategoriaSeleccionada.Name} ---");
 
+
+
+            bool dimensionCorrecta = true;
+
             try
             {
+
+                if (!string.IsNullOrEmpty(CategoriaSeleccionada.PlcCountConstant))
+                {
+                    LogService.Write($"[PASO 0] Consultando {CategoriaSeleccionada.PlcCountConstant} en el PLC...");
+
+                    // Usamos el servicio para obtener el valor real de la tabla de configuración
+                    _nMaxTia = _tiaService.ObtenerValorConstante("000_Config_Dispositivos", CategoriaSeleccionada.PlcCountConstant);
+
+
+                    _cacheNMaxPlc[CategoriaSeleccionada.Name] = _nMaxTia;
+
+                    // Refrescamos el texto de la UI (Excel vs PLC)
+                    ActualizarLabelNMax();
+
+                    // Comparamos los dos valores
+                    if (_nMaxExcel != _nMaxTia)
+                    {
+                        dimensionCorrecta = false;
+                        LogService.Write($"[DIFERENCIA] La dimensión global no coincide: Excel({_nMaxExcel}) != PLC({_nMaxTia})", true);
+                    }
+                }
+
+
                 string rutaXml = Path.Combine(AppConfigManager.BasePath, "temp", "check_comp.xml");
                 LogService.Write($"[PASO 1] Exportando XML desde TIA Portal...");
                 _tiaService.ExportarTablaVariables(CategoriaSeleccionada.TiaGroup, CategoriaSeleccionada.TiaTable, rutaXml);
@@ -160,8 +280,7 @@ namespace ZC_ALM_TOOLS.ViewModels
                 LogService.Write($"[PASO 2] Procesando constantes del PLC...");
                 var dicPlc = LeerDiccionarioDelPlc(rutaXml);
 
-                // --- NUEVA LÓGICA DE CRUCE DOBLE ---
-
+                
                 // Usaremos un HashSet para saber qué IDs del PLC ya hemos procesado
                 HashSet<int> idsProcesados = new HashSet<int>();
                 int ok = 0, cambios = 0, nuevos = 0, sobrantes = 0;
@@ -231,10 +350,16 @@ namespace ZC_ALM_TOOLS.ViewModels
 
                 LogService.Write($"--- COMPARACIÓN FINALIZADA | OK: {ok}, Cambios: {cambios}, Nuevos: {nuevos}, Sobrantes: {sobrantes} ---");
 
-                if (cambios > 0 || nuevos > 0 || sobrantes > 0)
-                    MessageBox.Show($"Comparación terminada con diferencias ({sobrantes} elementos de más en el PLC). Revisa el log y la tabla.", "Atención");
+                if (cambios > 0 || nuevos > 0 || sobrantes > 0 || !dimensionCorrecta)
+                {
+                    string motivo = !dimensionCorrecta ? "La dimensión global (N_MAX) no coincide. " : "";
+                    motivo += sobrantes > 0 ? $"Hay {sobrantes} elementos de más en el PLC." : "Existen diferencias en los datos.";                    
+                    MessageBox.Show(motivo, "Atención: Diferencias detectadas", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
                 else
-                    MessageBox.Show($"Todo está perfectamente sincronizado.", "Resultado OK");
+                {
+                    MessageBox.Show("Todo está perfectamente sincronizado (Dimensiones y Dispositivos).", "Resultado OK", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
 
             }
             catch (Exception ex)
