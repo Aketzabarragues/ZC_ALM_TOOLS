@@ -209,10 +209,25 @@ namespace ZC_ALM_TOOLS.ViewModels
                 {
                     var listaParaSincronizar = listaObjetos.Cast<IDispositivo>().ToList();
 
+                    // SINCRONIZAR CONSTANTES DE VARIABLES (IDs y Tags)
                     _tiaService.SincronizarConstantesConExcel(
                         CategoriaSeleccionada.TiaGroup,
                         CategoriaSeleccionada.TiaTable,
                         listaParaSincronizar);
+
+
+                    // COMPILAR (Obligatorio para que el DB cambie de tamaño antes de exportar)
+                    _tiaService.CompilarBloque(CategoriaSeleccionada.TiaDbName);
+
+                    // SINCRONIZAR COMENTARIOS DEL DB (La cirugía XML)
+                    if (!string.IsNullOrEmpty(CategoriaSeleccionada.TiaDbName) &&
+                        !string.IsNullOrEmpty(CategoriaSeleccionada.TiaDbArrayName))
+                    {
+                        _tiaService.SincronizarComentariosDB(
+                            CategoriaSeleccionada.TiaDbName,
+                            CategoriaSeleccionada.TiaDbArrayName,
+                            listaParaSincronizar);
+                    }
 
                     LogService.Write("Sincronización finalizada. PLC y Excel son ahora idénticos.");
 
