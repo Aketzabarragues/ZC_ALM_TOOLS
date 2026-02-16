@@ -65,6 +65,10 @@
                     <TextBlock Text="Módulo de Alarmas (Pendiente)" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Grid>
             </TabItem>
+
+            <TabItem Header="Log de Sistema">
+                <views:ViewLog DataContext="{Binding LogViewModel}"/>
+            </TabItem>
         </TabControl>
 
         <StatusBar Grid.Row="2">

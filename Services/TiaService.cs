@@ -21,12 +21,23 @@ namespace ZC_ALM_TOOLS.Core
      * 4. SINCRONIZACIÓN QUIRÚRGICA: Gestión de constantes de dispositivos (ID -> Nombre).
      */
 
+    /// <summary>
+    /// Servicio encargado de la comunicación directa con la API de Siemens Openness.
+    /// Proporciona métodos para leer/escribir constantes, compilar bloques, exportar tablas
+    /// y realizar modificaciones avanzadas en bloques de datos mediante XML.
+    /// </summary>
     public class TiaService
     {
+        /// <summary>Referencia al software del PLC seleccionado en el proyecto de TIA Portal.</summary>
         private readonly PlcSoftware _plcSoftware;
 
+        /// <summary>Acción que se dispara para notificar cambios de estado o errores a la capa superior (UI).</summary>
         public Action<string, bool> OnStatusChanged { get; set; }
 
+        /// <summary>
+        /// Inicializa una nueva instancia de <see cref="TiaService"/>.
+        /// </summary>
+        /// <param name="plcSoftware">Objeto PlcSoftware del PLC activo.</param>
         public TiaService(PlcSoftware plcSoftware)
         {
             _plcSoftware = plcSoftware;
@@ -35,9 +46,11 @@ namespace ZC_ALM_TOOLS.Core
         #region GESTIÓN DE CONSTANTES GLOBALES (DIMENSIONADO)
 
         /// <summary>
-        /// Busca una constante en una tabla específica y devuelve su valor entero.
-        /// Útil para refrescar la UI (Excel vs PLC).
+        /// Busca una constante de usuario en una tabla específica y devuelve su valor entero.
         /// </summary>
+        /// <param name="nombreTabla">Nombre de la tabla de variables donde buscar.</param>
+        /// <param name="nombreConstante">Nombre de la constante a leer.</param>
+        /// <returns>El valor de la constante como entero, o 0 si no se encuentra.</returns>
         public int ObtenerValorConstante(string nombreTabla, string nombreConstante)
         {
             try
@@ -59,8 +72,12 @@ namespace ZC_ALM_TOOLS.Core
         }
 
         /// <summary>
-        /// Paso A: Sincroniza el valor de una constante global (ej. N_MAX_V).
+        /// Sincroniza el valor de una constante de dimensión (ej. N_MAX) en el PLC.
+        /// Si el valor es diferente al actual, lo actualiza.
         /// </summary>
+        /// <param name="nombreTabla">Nombre de la tabla de variables.</param>
+        /// <param name="nombreConstante">Nombre de la constante de dimensionado.</param>
+        /// <param name="nuevoValor">Valor de dimensionado procedente del Excel.</param>
         public void SincronizarDimensionGlobal(string nombreTabla, string nombreConstante, int nuevoValor)
         {
             try
@@ -107,6 +124,11 @@ namespace ZC_ALM_TOOLS.Core
         }
 
 
+        /// <summary>
+        /// Ejecuta la compilación de un bloque específico mediante el servicio ICompilable.
+        /// Es necesario tras cambios estructurales para que los DBs se actualicen.
+        /// </summary>
+        /// <param name="nombreBloque">Nombre del bloque a compilar (ej. DB2010_V).</param>
         public void CompilarBloque(string nombreBloque)
         {
             try
@@ -123,6 +145,14 @@ namespace ZC_ALM_TOOLS.Core
                         .SelectMany(g => g.Blocks)
                         .FirstOrDefault(b => b.Name == nombreBloque);
                 }
+
+
+                if (bloque == null)
+                {
+                    LogService.Write($"[TIA-ERROR] No se encontró el bloque '{nombreBloque}' para compilar.", true);
+                    return;
+                }
+
 
                 if (bloque != null)
                 {
@@ -176,6 +206,12 @@ namespace ZC_ALM_TOOLS.Core
 
 
 
+        /// <summary>
+        /// Exporta una tabla de variables de TIA Portal a un archivo XML.
+        /// </summary>
+        /// <param name="nombreGrupo">Nombre de la carpeta de variables (opcional).</param>
+        /// <param name="nombreTabla">Nombre de la tabla de variables.</param>
+        /// <param name="rutaDestino">Ruta física donde se guardará el XML.</param>
         public void ExportarTablaVariables(string nombreCarpeta, string nombreTabla, string rutaXml)
         {
             try
@@ -201,6 +237,12 @@ namespace ZC_ALM_TOOLS.Core
 
 
 
+        /// <summary>
+        /// Crea, renombra o elimina constantes de usuario en el PLC basándose en la lista del Excel.
+        /// </summary>
+        /// <param name="nombreGrupo">Carpeta de destino en TIA Portal.</param>
+        /// <param name="nombreTabla">Tabla de variables de destino.</param>
+        /// <param name="dispositivos">Lista de dispositivos sincronizados desde el Excel.</param>
         public void SincronizarConstantesConExcel(string nombreCarpeta, string nombreTabla, List<IDispositivo> listaExcel)
         {
             try
@@ -248,6 +290,16 @@ namespace ZC_ALM_TOOLS.Core
 
 
 
+        /// <summary>
+        /// Realiza una cirugía XML sobre un Bloque de Datos (DB) para inyectar descripciones en los elementos de un Array.
+        /// </summary>
+        /// <param name="nombreDb">Nombre del DB (ej. DB2010_V).</param>
+        /// <param name="nombreArray">Nombre del Array dentro del DB (ej. V).</param>
+        /// <param name="dispositivos">Lista de dispositivos con las descripciones del Excel.</param>
+        /// <remarks>
+        /// Este método exporta el bloque, modifica el XML inyectando nodos 'Subelement' con 'Comment' 
+        /// y re-importa el bloque en su carpeta original.
+        /// </remarks>
         public void SincronizarComentariosDB(string nombreDb, string nombreArray, List<IDispositivo> dispositivos)
         {
             try
@@ -264,6 +316,7 @@ namespace ZC_ALM_TOOLS.Core
                 {
                     // Esto te ayudará a saber si el error es que NO EXISTE o que NO ES un GlobalDB
                     LogService.Write($"[TIA-ERROR] No se pudo encontrar o castear el bloque: {nombreDb}", true);
+                    return;
                 }
 
 
@@ -374,6 +427,11 @@ namespace ZC_ALM_TOOLS.Core
 
         #region HELPERS INTERNOS
 
+        /// <summary>
+        /// Busca una tabla de variables en la raíz o en carpetas de primer nivel.
+        /// </summary>
+        /// <param name="nombre">Nombre de la tabla.</param>
+        /// <returns>La tabla encontrada o null.</returns>
         private PlcTagTable BuscarTabla(string nombre)
         {
             // Busca en la raíz y en todos los grupos
@@ -383,6 +441,12 @@ namespace ZC_ALM_TOOLS.Core
             return _plcSoftware.TagTableGroup.Groups.SelectMany(g => g.TagTables).FirstOrDefault(t => t.Name == nombre);
         }
 
+        /// <summary>
+        /// Busca una tabla de variables dentro de una carpeta específica.
+        /// </summary>
+        /// <param name="carpeta">Nombre de la carpeta.</param>
+        /// <param name="tabla">Nombre de la tabla.</param>
+        /// <returns>La tabla encontrada o null.</returns>
         private PlcTagTable BuscarTablaEnCarpeta(string carpeta, string tabla)
         {
             var grupo = _plcSoftware.TagTableGroup.Groups.Find(carpeta);
@@ -398,12 +462,23 @@ namespace ZC_ALM_TOOLS.Core
             }
         }
 
+        /// <summary>
+        /// Helper para enviar notificaciones de estado a la interfaz de usuario.
+        /// </summary>
+        /// <param name="msg">Mensaje a mostrar.</param>
+        /// <param name="esError">Si es verdadero, se marca como error.</param>
         private void EnviarEstado(string msg, bool esError = false)
         {
             OnStatusChanged?.Invoke(msg, esError);
         }
 
 
+        /// <summary>
+        /// Busca un bloque de forma recursiva navegando por todas las subcarpetas de bloques del PLC.
+        /// </summary>
+        /// <param name="group">Grupo de bloques donde iniciar la búsqueda.</param>
+        /// <param name="nombre">Nombre del bloque buscado.</param>
+        /// <returns>El bloque encontrado o null.</returns>
         private PlcBlock BuscarBloqueRecursivo(PlcBlockUserGroup group, string nombre)
         {
             // 1. Buscar en la carpeta actual
