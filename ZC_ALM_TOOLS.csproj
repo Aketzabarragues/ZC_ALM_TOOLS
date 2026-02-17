@@ -92,7 +92,6 @@
     <Compile Include="Services\LogService.cs" />
     <Compile Include="Services\TiaService.cs" />
     <Compile Include="ViewModels\DispositivosViewModel.cs" />
-    <Compile Include="ViewModels\LogViewModel.cs" />
     <Compile Include="ViewModels\MainViewModel.cs" />
     <Compile Include="Views\MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>

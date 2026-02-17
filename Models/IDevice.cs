@@ -1,13 +1,13 @@
 ﻿namespace ZC_ALM_TOOLS.Models
 {
-    // Interfaz común para todos los dispositivos (Válvulas, Motores, etc.)
+    // Interfaz común para que el sistema maneje cualquier dispositivo del Excel
     public interface IDevice
     {
-        int Number { get; set; }        // ID numérico (índice del array en el PLC)
-        string Tag { get; set; }       // Nombre original en el Excel
-        string Description { get; set; } // Descripción del dispositivo
-        string PlcTag { get; set; }    // Nombre formateado para el PLC
-        string PlcComment { get; set; } // Comentario formateado para el PLC
-        string Status { get; set; }     // Estado visual (Sincronizado, Nuevo, o la flecha ->)
+        int Numero { get; set; }           // ID o índice del array
+        string Tag { get; set; }          // Nombre del dispositivo
+        string Descripcion { get; set; }   // Descripción técnica
+        string CPTag { get; set; }        // Nombre para TIA Portal
+        string CPComentario { get; set; } // Comentario para TIA Portal
+        string Estado { get; set; }       // Estado de sincronización (UI)
     }
 }

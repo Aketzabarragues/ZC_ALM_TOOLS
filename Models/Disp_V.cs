@@ -5,7 +5,7 @@ namespace ZC_ALM_TOOLS.Models
 {
     public class Disp_V : ObservableObject, IDevice
     {
-        // --- PROPIEDADES DEL EXCEL
+        // Propiedades mapeadas directamente del Excel/XML
         public string UID { get; set; }
         public int Numero { get; set; }
         public string Tag { get; set; }
@@ -25,11 +25,11 @@ namespace ZC_ALM_TOOLS.Models
         public int CPNum { get; set; }
         public string CPComentario { get; set; }
 
+        // Propiedad para la interfaz (con notificación de cambio)
+        private string _estado = "Sin comprobar";
+        public string Estado { get => _estado; set { _estado = value; OnPropertyChanged(); } }
 
-        // --- PROPIEDAD PARA LA INTERFAZ ---
-        private string _Estado = "Sin comprobar";
-        public string Estado { get => _Estado; set { _Estado = value; OnPropertyChanged(); } }
-
+        // Crea el objeto desde un elemento XML generado por Python
         public static Disp_V FromXml(XElement x) => new Disp_V
         {
             UID = DataHelper.GetXmlVal(x, "UID"),
@@ -51,8 +51,5 @@ namespace ZC_ALM_TOOLS.Models
             CPNum = DataHelper.GetXmlInt(x, "CP.Num."),
             CPComentario = DataHelper.GetXmlVal(x, "CP.Comentario")
         };
-
-
     }
-
 }
