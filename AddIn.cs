@@ -15,15 +15,22 @@ namespace ZC_ALM_TOOLS
     {
 
 
-        private const string s_DisplayNameOfAddIn = "ZC ALM TOOLS";
+        private const string _displayName = "ZC ALM TOOLS";
         private readonly TiaPortal _tiaPortal;
-                
-        public AddIn(TiaPortal tiaportal) : base(s_DisplayNameOfAddIn)
+
+
+        /// <summary>
+        /// Constructor del Add-In. Define el nombre que aparecerá en el menú contextual.
+        /// </summary>
+        public AddIn(TiaPortal tiaportal) : base(_displayName)
         {
             _tiaPortal = tiaportal;          
         }
 
-        
+
+        /// <summary>
+        /// Configura los botones del menú contextual.
+        /// </summary>
         protected override void BuildContextMenuItems(ContextMenuAddInRoot addInRootSubmenu)
         {
             addInRootSubmenu.Items.AddActionItem<IEngineeringObject>(
@@ -31,6 +38,8 @@ namespace ZC_ALM_TOOLS
                 StartApplication,
                 OnCheckIfContextIsValid);
         }
+
+
 
         private MenuStatus OnCheckIfContextIsValid(MenuSelectionProvider<IEngineeringObject> selectionProvider)
         {
@@ -46,6 +55,7 @@ namespace ZC_ALM_TOOLS
 
         private void StartApplication(MenuSelectionProvider<IEngineeringObject> selectionProvider)
         {
+            // Buscamos el objeto PlcSoftware activo (donde se ha hecho clic o el contexto actual)
             var selection = (IEngineeringObject)selectionProvider.GetSelection().FirstOrDefault();
             var plcSoftware = FindPlcSoftware(selection);
 

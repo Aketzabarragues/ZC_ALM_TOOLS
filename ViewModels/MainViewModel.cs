@@ -51,10 +51,6 @@ namespace ZC_ALM_TOOLS.ViewModels
 
 
 
-        /// <summary>Colección de mensajes de log vinculada a la pestaña de Log en la UI.</summary>
-        public LogViewModel LogViewModel { get; set; }
-
-
 
 
 
@@ -116,14 +112,13 @@ namespace ZC_ALM_TOOLS.ViewModels
             // Paso 3: Inicializa servicios de TIA Portal y sub-vistas
             _tiaService = new TiaService(plcSoftware);
             DispositivosViewModel = new DispositivosViewModel();
-            LogViewModel = new LogViewModel();
 
             // Inyecta la configuración al sub-viewmodel de dispositivos
             DispositivosViewModel.Categorias = Categorias;
             DispositivosViewModel.SetTiaService(_tiaService);
 
             // Suscribe eventos para reflejar mensajes del servicio en la barra de estado
-            DispositivosViewModel.StatusRequest = (msg, error) => ActualizarEstado(msg, error);
+            DispositivosViewModel.OnStatusRequest = (msg, error) => ActualizarEstado(msg, error);
             _tiaService.OnStatusChanged = (msg, error) => ActualizarEstado(msg, error);
 
             if (Categorias.Count > 0)
