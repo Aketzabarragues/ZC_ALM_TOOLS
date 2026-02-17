@@ -132,7 +132,7 @@ namespace ZC_ALM_TOOLS.ViewModels
                     ActualizarLabelNMax();
                 }
 
-                var listaParaSincronizar = _datosInyectados[CategoriaSeleccionada.Name].Cast<IDispositivo>().ToList();
+                var listaParaSincronizar = _datosInyectados[CategoriaSeleccionada.Name].Cast<IDevice>().ToList();
 
                 // 2. PASO B: CONSTANTES
                 exitoConst = _tiaService.SincronizarConstantesConExcel(CategoriaSeleccionada.TiaGroup, CategoriaSeleccionada.TiaTable, listaParaSincronizar);
@@ -198,7 +198,7 @@ namespace ZC_ALM_TOOLS.ViewModels
                 }
 
                 var dicPlc = LeerDiccionarioDelPlc(rutaTemp);
-                var listaExcel = _datosInyectados[CategoriaSeleccionada.Name].Cast<IDispositivo>().ToList();
+                var listaExcel = _datosInyectados[CategoriaSeleccionada.Name].Cast<IDevice>().ToList();
                 bool todasOk = true;
 
                 foreach (var disp in listaExcel)

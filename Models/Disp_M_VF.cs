@@ -3,7 +3,7 @@ using ZC_ALM_TOOLS.Core;
 
 namespace ZC_ALM_TOOLS.Models
 {
-    public class Disp_M_VF : ObservableObject, IDispositivo
+    public class Disp_M_VF : ObservableObject, IDevice
     {
         // --- PROPIEDADES DEL EXCEL
         public string UID { get; set; }

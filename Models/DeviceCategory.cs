@@ -1,74 +1,55 @@
-﻿using System;
-using ZC_ALM_TOOLS.Core;
+﻿using ZC_ALM_TOOLS.Core;
 
 namespace ZC_ALM_TOOLS.Models
 {
-    /// <summary>
-    /// Define los estados posibles para los indicadores visuales (semáforos) de la UI.
-    /// </summary>
-    public enum EstadoSincronizacion
-    {
-        Pendiente, // Gris
-        Ok,        // Verde
-        Error,     // Rojo
-        Warning    // Naranja/Amarillo
-    }
 
-    /// <summary>
-    /// Modelo que representa una categoría de dispositivos (ej. Motores, Válvulas)
-    /// y contiene su configuración específica para TIA Portal y su estado de sincronización.
-    /// </summary>
+    // Representa una categoría de dispositivos y su configuración de ingeniería
     public class DeviceCategory : ObservableObject
     {
-        // --- CONFIGURACIÓN DE IDENTIFICACIÓN ---
 
-        /// <summary>Nombre legible de la categoría (ej. "Válvula").</summary>
-        public string Name { get; set; }
-
-        /// <summary>Clave para buscar el valor N_MAX en el diccionario de datos globales del Excel.</summary>
-        public string GlobalConfigKey { get; set; }
-
-        /// <summary>Nombre de la constante en el PLC que define el tamaño del array (ej. N_MAX_V).</summary>
-        public string PlcCountConstant { get; set; }
+        // ==================================================================================================================
+        // Propiedades de identificación y Excel    
+        public string Name { get; set; } // Nombre de la categoría (ej. "Motor")
+        public string ExcelSheet { get; set; } // Nombre de la hoja de Excel origen
 
 
-        // --- CONFIGURACIÓN TIA PORTAL (MAPPING) ---
-
-        /// <summary>Carpeta o Grupo donde se encuentra la tabla de variables.</summary>
-        public string TiaGroup { get; set; }
-
-        /// <summary>Nombre de la tabla de variables (Tag Table).</summary>
-        public string TiaTable { get; set; }
-
-        /// <summary>Nombre del bloque de datos para la cirugía XML (ej. DB2010_V).</summary>
-        public string TiaDbName { get; set; }
-
-        /// <summary>Nombre del Array dentro del DB donde se inyectarán comentarios (ej. V).</summary>
-        public string TiaDbArrayName { get; set; }
+        // ==================================================================================================================
+        // Configuración TIA Portal
+        public string TiaGroup { get; set; } // Carpeta donde se encuentra la tabla de variables
+        public string TiaTable { get; set; } // Nombre de la tabla de variables
+        public string TiaDbName { get; set; } // Nombre del bloque de datos para cirugía XML
+        public string TiaDbArrayName { get; set; } // Nombre del Array dentro del DB para los comentarios
 
 
-        // --- PROPIEDADES DE ESTADO (SEMÁFOROS UI) ---
-        // Usamos OnPropertyChanged para que los círculos de la UI cambien de color al instante.
+        // ==================================================================================================================
+        // Lógica interna y Archivos
+        public string ModelClass { get; set; } // Clase C# que representa el modelo (ej. Disp_V)
+        public string XmlFile { get; set; } // Nombre del archivo XML intermedio generado por Python
+        public string GlobalConfigKey { get; set; } // Clave para buscar el N_MAX en el Excel        
+        public string PlcCountConstant { get; set; } // Nombre de la constante de dimensionado en el PLC
 
-        private EstadoSincronizacion _estadoNMax = EstadoSincronizacion.Pendiente;
-        public EstadoSincronizacion EstadoNMax
+
+        // ==================================================================================================================
+        // Propiedades de estado
+        private SynchronizationStatus _nMaxStatus = SynchronizationStatus.Pending;
+        public SynchronizationStatus NMaxStatus
         {
-            get => _estadoNMax;
-            set { _estadoNMax = value; OnPropertyChanged(); }
+            get => _nMaxStatus;
+            set { _nMaxStatus = value; OnPropertyChanged(); }
         }
 
-        private EstadoSincronizacion _estadoConstantes = EstadoSincronizacion.Pendiente;
-        public EstadoSincronizacion EstadoConstantes
+        private SynchronizationStatus _constantsStatus = SynchronizationStatus.Pending;
+        public SynchronizationStatus ConstantsStatus
         {
-            get => _estadoConstantes;
-            set { _estadoConstantes = value; OnPropertyChanged(); }
+            get => _constantsStatus;
+            set { _constantsStatus = value; OnPropertyChanged(); }
         }
 
-        private EstadoSincronizacion _estadoDB = EstadoSincronizacion.Pendiente;
-        public EstadoSincronizacion EstadoDB
+        private SynchronizationStatus _dbStatus = SynchronizationStatus.Pending;
+        public SynchronizationStatus DbStatus
         {
-            get => _estadoDB;
-            set { _estadoDB = value; OnPropertyChanged(); }
+            get => _dbStatus;
+            set { _dbStatus = value; OnPropertyChanged(); }
         }
     }
 }

@@ -194,7 +194,7 @@ namespace ZC_ALM_TOOLS.Core
         /// <summary>
         /// Crea, renombra o elimina constantes de usuario en el PLC basándose en la lista del Excel.
         /// </summary>
-        public bool SincronizarConstantesConExcel(string nombreCarpeta, string nombreTabla, List<IDispositivo> listaExcel)
+        public bool SincronizarConstantesConExcel(string nombreCarpeta, string nombreTabla, List<IDevice> listaExcel)
         {
             try
             {
@@ -242,7 +242,7 @@ namespace ZC_ALM_TOOLS.Core
         /// <summary>
         /// Realiza una cirugía XML sobre un Bloque de Datos (DB) para inyectar descripciones.
         /// </summary>
-        public bool SincronizarComentariosDB(string nombreDb, string nombreArray, List<IDispositivo> dispositivos)
+        public bool SincronizarComentariosDB(string nombreDb, string nombreArray, List<IDevice> dispositivos)
         {
             try
             {

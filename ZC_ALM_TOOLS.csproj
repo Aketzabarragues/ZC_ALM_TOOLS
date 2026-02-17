@@ -85,8 +85,9 @@
     <Compile Include="Models\Disp_ED.cs" />
     <Compile Include="Models\Disp_M.cs" />
     <Compile Include="Models\Disp_V.cs" />
-    <Compile Include="Models\IDispositivo.cs" />
+    <Compile Include="Models\IDevice.cs" />
     <Compile Include="Models\ParameterConfig.cs" />
+    <Compile Include="Models\SynchronizationStatus.cs" />
     <Compile Include="Services\AppConfigManager.cs" />
     <Compile Include="Services\LogService.cs" />
     <Compile Include="Services\TiaService.cs" />
