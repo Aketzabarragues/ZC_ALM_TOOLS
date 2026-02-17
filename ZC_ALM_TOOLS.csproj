@@ -101,9 +101,6 @@
     <Compile Include="Views\ViewDispositivos.xaml.cs">
       <DependentUpon>ViewDispositivos.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Views\ViewLog.xaml.cs">
-      <DependentUpon>ViewLog.xaml</DependentUpon>
-    </Compile>
   </ItemGroup>
   <ItemGroup>
     <Content Include="Config.xml" />
@@ -118,10 +115,6 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Views\ViewDispositivos.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Views\ViewLog.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

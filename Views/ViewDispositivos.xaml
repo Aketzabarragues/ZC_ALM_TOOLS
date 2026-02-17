@@ -5,102 +5,179 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:core="clr-namespace:ZC_ALM_TOOLS.Core"
              mc:Ignorable="d" 
-             d:DesignHeight="500" d:DesignWidth="800">
+             d:DesignHeight="600" d:DesignWidth="1000">
 
     <UserControl.Resources>
         <core:ContainsConverter x:Key="ContainsConverter" />
+
+        <Style x:Key="EstadoIndicatorStyle" TargetType="Border">
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Margin" Value="0,0,10,0"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="#F5F5F5"/>
+            <Setter Property="BorderBrush" Value="#DDDDDD"/>
+            <Setter Property="TextBlock.Foreground" Value="#777777"/>
+            <Setter Property="TextBlock.FontWeight" Value="SemiBold"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=Tag}" Value="Ok">
+                    <Setter Property="Background" Value="#DFF0D8"/>
+                    <Setter Property="BorderBrush" Value="#3C763D"/>
+                    <Setter Property="TextBlock.Foreground" Value="#3C763D"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=Tag}" Value="Error">
+                    <Setter Property="Background" Value="#F2DEDE"/>
+                    <Setter Property="BorderBrush" Value="#A94442"/>
+                    <Setter Property="TextBlock.Foreground" Value="#A94442"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="EstadoTextStyle" TargetType="TextBlock">
+            <Setter Property="Text" Value="PENDIENTE"/>
+            <Setter Property="Margin" Value="5,0,0,0"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=Border}, Path=Tag}" Value="Ok">
+                    <Setter Property="Text" Value="CORRECTO ✓"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=Border}, Path=Tag}" Value="Error">
+                    <Setter Property="Text" Value="DIFERENTE ✕"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
     </UserControl.Resources>
-    
+
     <Grid Background="White">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="260"/>
+            <ColumnDefinition Width="280"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <Border Grid.Column="0" Background="#F0F0F0" BorderBrush="#CCCCCC" BorderThickness="0,0,1,0" Padding="15">
+        <Border Grid.Column="0" Background="#F8F9FA" BorderBrush="#E0E0E0" BorderThickness="0,0,1,0" Padding="15">
             <StackPanel>
                 <TextBlock Text="FILTROS" FontWeight="Bold" Foreground="#333333" Margin="0,0,0,5"/>
-                <TextBlock Text="Familia de Dispositivos:" Margin="0,0,0,2"/>
+                <TextBlock Text="Familia de Dispositivos:" Margin="0,0,0,2" Foreground="#555"/>
                 <ComboBox ItemsSource="{Binding Categorias}" 
                           SelectedItem="{Binding CategoriaSeleccionada}"
+                          IsEnabled="{Binding ProyectoCargado}"
                           DisplayMemberPath="Name" 
-                          Height="28" Margin="0,0,0,20"/>
+                          Height="30" Margin="0,0,0,20"
+                          VerticalContentAlignment="Center"/>
 
-                <Separator Margin="0,0,0,20"/>
+                <Separator Margin="0,0,0,20" Background="#DDD"/>
 
                 <TextBlock Text="WORKFLOW DE SINCRONIZACIÓN" FontWeight="Bold" Foreground="#005B96" Margin="0,0,0,10"/>
 
-                <TextBlock Text="Paso 1: Comprobaciones" FontWeight="SemiBold" Margin="0,5,0,2"/>
-                <Button Command="{Binding ComparacionCommand}"                         
-                        Content="🔍 Comparar con TIA" 
-                        Height="35" Margin="0,0,0,10"
-                        Background="White" BorderBrush="#5CB85C" Foreground="#5CB85C"/>
-                
-                <TextBlock Text="Paso 2: Actualización" FontWeight="SemiBold" Margin="0,5,0,2"/>
-                <Button Command="{Binding SyncConstantesCommand}" 
-                        Content="Comprobar N_MAX (Constantes)" 
-                        Height="35" Margin="0,0,0,10"
-                        Background="White" BorderBrush="#007ACC" Foreground="#007ACC"/>
+                <TextBlock Text="Paso 1: Comprobaciones" FontWeight="SemiBold" Margin="0,5,0,2" Foreground="#444"/>
+                <Button Command="{Binding ComparacionCommand}"                          
+                        Content="🔍 Comparar con TIA Portal" 
+                        Height="40" Margin="0,0,0,15"
+                        Background="White" BorderBrush="#5CB85C" BorderThickness="1" Foreground="#5CB85C" FontWeight="Bold"/>
 
+                <TextBlock Text="Paso 2: Actualización" FontWeight="SemiBold" Margin="0,5,0,2" Foreground="#444"/>
+                <Button Command="{Binding SyncConstantesCommand}" 
+                        Content="🔄 Sincronizar Todo" 
+                        Height="40" Margin="0,0,0,10"
+                        Background="#007ACC" BorderThickness="0" Foreground="White" FontWeight="Bold">
+                    <Button.Resources>
+                        <Style TargetType="Border">
+                            <Setter Property="CornerRadius" Value="4"/>
+                        </Style>
+                    </Button.Resources>
+                </Button>
+                <TextBlock Text="*Sincroniza N_MAX, Constantes y Comentarios DB" FontSize="10" Foreground="#888" TextWrapping="Wrap" HorizontalAlignment="Center"/>
             </StackPanel>
         </Border>
 
-        <Grid Grid.Column="1" Margin="10">
+        <Grid Grid.Column="1" Margin="20">
             <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                <TextBlock Text="Previsualización de Datos" 
-               FontSize="16" FontWeight="Light"/>
+            <StackPanel Grid.Row="0" Margin="0,0,0,20">
+                <TextBlock Text="{Binding CategoriaSeleccionada.Name, StringFormat='Estado de Sincronización: {0}'}" 
+                           FontSize="18" FontWeight="Light" Foreground="#333" Margin="0,0,0,10"/>
 
-                <Border Background="{Binding NMaxColor}" CornerRadius="4" Padding="8,2" Margin="15,0,0,0" VerticalAlignment="Center">
-                    <StackPanel Orientation="Horizontal">
-                        <Path Data="M12,20L12,20M12,4L12,4M12,12L12,12" Stroke="#007ACC" StrokeThickness="2" Margin="0,0,5,0"/>
-                        <TextBlock Text="{Binding NMaxInfo}" 
-                                   FontSize="12" 
-                                   Foreground="#005B96"
-                                   VerticalAlignment="Center"
-                                   FontWeight="SemiBold"/>
-                    </StackPanel>
+                <StackPanel Orientation="Horizontal">
+                    <Border Style="{StaticResource EstadoIndicatorStyle}" Tag="{Binding CategoriaSeleccionada.EstadoNMax}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="N_MAX:"/>
+                            <TextBlock Style="{StaticResource EstadoTextStyle}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource EstadoIndicatorStyle}" Tag="{Binding CategoriaSeleccionada.EstadoConstantes}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Constantes:"/>
+                            <TextBlock Style="{StaticResource EstadoTextStyle}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource EstadoIndicatorStyle}" Tag="{Binding CategoriaSeleccionada.EstadoDB}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="DB &amp; Comentarios:"/>
+                            <TextBlock Style="{StaticResource EstadoTextStyle}"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </StackPanel>
+
+            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,15">
+                <TextBlock Text="Detalle de Dimensionado:" VerticalAlignment="Center" Foreground="#666" Margin="0,0,10,0"/>
+                <Border Background="{Binding NMaxColor}" CornerRadius="4" Padding="10,4">
+                    <TextBlock Text="{Binding NMaxInfo}" FontSize="12" FontWeight="Bold" Foreground="#333"/>
                 </Border>
             </StackPanel>
 
-            <DataGrid Grid.Row="1" ItemsSource="{Binding ListaDispositivos}"
+            <DataGrid Grid.Row="2" ItemsSource="{Binding ListaDispositivos}"
                       AutoGenerateColumns="False"
-                      VirtualizingStackPanel.IsVirtualizing="True"
-                      VirtualizingStackPanel.VirtualizationMode="Recycling"
-                      EnableRowVirtualization="True"
                       CanUserAddRows="False" 
                       GridLinesVisibility="Horizontal"
+                      HorizontalGridLinesBrush="#EEE"
                       HeadersVisibility="Column"
-                      Background="White">
+                      Background="White"
+                      RowHeaderWidth="0">
+
+                <DataGrid.Resources>
+                    <Style TargetType="DataGridColumnHeader">
+                        <Setter Property="Padding" Value="10,8"/>
+                        <Setter Property="Background" Value="#F8F9FA"/>
+                        <Setter Property="FontWeight" Value="SemiBold"/>
+                        <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                        <Setter Property="BorderBrush" Value="#DDD"/>
+                    </Style>
+                </DataGrid.Resources>
+
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="Nº" Binding="{Binding Numero}" Width="60"/>
-
+                    <DataGridTextColumn Header="Nº" Binding="{Binding Numero}" Width="50"/>
                     <DataGridTextColumn Header="Tag" Binding="{Binding Tag}" Width="180" FontWeight="Bold"/>
-
                     <DataGridTextColumn Header="Descripción" Binding="{Binding Descripcion}" Width="*"/>
-                    <DataGridTextColumn Header="Estado" Binding="{Binding Estado}" IsReadOnly="True" Width="200">
+
+                    <DataGridTextColumn Header="Estado" Binding="{Binding Estado}" IsReadOnly="True" Width="220">
                         <DataGridTextColumn.ElementStyle>
                             <Style TargetType="TextBlock">
+                                <Setter Property="Padding" Value="5,0"/>
                                 <Style.Triggers>
                                     <Trigger Property="Text" Value="Sincronizado">
                                         <Setter Property="Foreground" Value="Green"/>
                                         <Setter Property="FontWeight" Value="Bold"/>
                                     </Trigger>
-                                    <DataTrigger Binding="{Binding Estado, Converter={StaticResource ContainsConverter}, ConverterParameter='Modificar'}" Value="True">
+
+                                    <DataTrigger Binding="{Binding Estado, Converter={StaticResource ContainsConverter}, ConverterParameter='->'}" Value="True">
                                         <Setter Property="Foreground" Value="OrangeRed"/>
+                                        <Setter Property="FontWeight" Value="Bold"/>
                                     </DataTrigger>
-                                    <DataTrigger Binding="{Binding Estado, Converter={StaticResource ContainsConverter}, ConverterParameter='Nuevo'}" Value="True">
+
+                                    <Trigger Property="Text" Value="Nuevo">
                                         <Setter Property="Foreground" Value="DodgerBlue"/>
-                                    </DataTrigger>
+                                        <Setter Property="FontWeight" Value="Bold"/>
+                                    </Trigger>
                                 </Style.Triggers>
                             </Style>
                         </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-
                 </DataGrid.Columns>
             </DataGrid>
         </Grid>
