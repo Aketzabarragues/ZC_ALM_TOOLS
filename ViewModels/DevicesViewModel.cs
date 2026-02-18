@@ -26,10 +26,6 @@ namespace ZC_ALM_TOOLS.ViewModels
         private int _currentPlcNMax = 0; // Valor actual leído del PLC para la categoría seleccionada
 
 
-        // Evento unificado para notificar a la barra de estado principal
-        public Action<string, bool> StatusChanged { get; set; }
-
-
         // =================================================================================================================
         // 2. PUBLIC PROPERTIES (BINDING)
 
@@ -156,11 +152,14 @@ namespace ZC_ALM_TOOLS.ViewModels
 
             if (confirm != MessageBoxResult.Yes) return;
 
+            StatusService.SetBusy(true);
+            UpdateStatusFrame();
+
             bool okNMax = true, okConst = false, okComp = false, okDb = false;
 
             try
             {
-                StatusChanged?.Invoke($"--- INICIO SINCRONIZACIÓN: {SelectedCategory.Name} ---", false);
+                StatusService.Set($"--- INICIO SINCRONIZACIÓN: {SelectedCategory.Name} ---", false);
                 LogService.Write($"--- SYNC START: {SelectedCategory.Name} ---");
 
                 // ---------------------------------------------------------
@@ -170,6 +169,8 @@ namespace ZC_ALM_TOOLS.ViewModels
                 {
                     // Llamada a TiaService
                     okNMax = _tiaService.SyncGlobalConstant("000_Config_Dispositivos", SelectedCategory.PlcCountConstant, excelVal);
+
+                    UpdateStatusFrame();
 
                     SelectedCategory.NMaxStatus = okNMax ? SynchronizationStatus.Ok : SynchronizationStatus.Error;
 
@@ -192,6 +193,8 @@ namespace ZC_ALM_TOOLS.ViewModels
                               .Where(d => d.Estado != "Eliminar")
                               .ToList();
                 okConst = _tiaService.SyncUserConstants(SelectedCategory.TiaGroup, SelectedCategory.TiaTable, deviceList);
+
+                UpdateStatusFrame();
                 SelectedCategory.ConstantsStatus = okConst ? SynchronizationStatus.Ok : SynchronizationStatus.Error;
 
 
@@ -199,7 +202,7 @@ namespace ZC_ALM_TOOLS.ViewModels
                 // COMPILACIÓN DEL DB
                 // ---------------------------------------------------------
                 okComp = _tiaService.CompileBlock(SelectedCategory.TiaDbName);
-
+                UpdateStatusFrame();
 
                 // ---------------------------------------------------------
                 // CIRUGÍA XML (COMENTARIOS EN DB)
@@ -207,6 +210,7 @@ namespace ZC_ALM_TOOLS.ViewModels
                 if (okComp)
                 {
                     okDb = _tiaService.SyncDbComments(SelectedCategory.TiaDbName, SelectedCategory.TiaDbArrayName, deviceList);
+                    UpdateStatusFrame();
                     SelectedCategory.DbStatus = okDb ? SynchronizationStatus.Ok : SynchronizationStatus.Error;
                 }
                 else
@@ -221,7 +225,7 @@ namespace ZC_ALM_TOOLS.ViewModels
                 // Resumen final
                 if (okNMax && okConst && okComp && okDb)
                 {
-                    StatusChanged?.Invoke("Sincronización completada con éxito.", false);
+                    StatusService.Set("Sincronización completada con éxito.", false);
                     MessageBox.Show("Sincronización total completada.", "Éxito", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
                 else
@@ -231,7 +235,7 @@ namespace ZC_ALM_TOOLS.ViewModels
                     if (!okComp) msg += "- Fallo en compilación\n";
                     if (!okDb) msg += "- Fallo en comentarios DB\n";
 
-                    StatusChanged?.Invoke("Sincronización finalizada con errores.", true);
+                    StatusService.Set("Sincronización finalizada con errores.", true);
                     MessageBox.Show(msg, "Incompleto", MessageBoxButton.OK, MessageBoxImage.Warning);
                 }
 
@@ -239,8 +243,13 @@ namespace ZC_ALM_TOOLS.ViewModels
             catch (Exception ex)
             {
                 LogService.Write($"CRITICAL SYNC ERROR: {ex.Message}", true);
-                StatusChanged?.Invoke($"Error Crítico: {ex.Message}", true);
+                StatusService.Set($"Error Crítico: {ex.Message}", true);
                 SelectedCategory.DbStatus = SynchronizationStatus.Error;
+            }
+            finally
+            {
+                StatusService.SetBusy(false);
+                UpdateStatusFrame();
             }
         }
 
@@ -253,12 +262,16 @@ namespace ZC_ALM_TOOLS.ViewModels
         {
             if (SelectedCategory == null) return;
 
-            RefreshView();
+            
 
             try
             {
+
+                StatusService.SetBusy(true);
+                UpdateStatusFrame();
+
                 LogService.Write($"--- INICIANDO COMPARACIÓN: {SelectedCategory.Name} ---");
-                StatusChanged?.Invoke("Comparando datos con TIA Portal...", false);
+                StatusService.Set("Comparando datos con TIA Portal...", false);
 
                 // Reset de estados
                 SelectedCategory.NMaxStatus = SynchronizationStatus.Pending;
@@ -266,15 +279,20 @@ namespace ZC_ALM_TOOLS.ViewModels
                 if (!keepDbStatus) SelectedCategory.DbStatus = SynchronizationStatus.Pending;
 
                 // Sincronizar info de N_MAX
+                StatusService.Set("Comprobando dimensión N_MAX...");
                 UpdateDimensionInfo();
                 _globalConfigCache.TryGetValue(SelectedCategory.GlobalConfigKey, out int excelVal);
                 bool nMaxMatch = (excelVal == _currentPlcNMax);
                 SelectedCategory.NMaxStatus = nMaxMatch ? SynchronizationStatus.Ok : SynchronizationStatus.Error;
                 LogService.Write($"[COMPARE] N_MAX -> Excel: {excelVal} | PLC: {_currentPlcNMax} ({(nMaxMatch ? "OK" : "ERROR")})");
 
+                UpdateStatusFrame();
+
                 // Exportar y Parsear PLC
                 string tempXmlPath = Path.Combine(AppConfigManager.TempPath, "plc_export.xml");
+                StatusService.Set($"Exportando tabla '{SelectedCategory.TiaTable}' desde TIA...");
                 LogService.Write($"[COMPARE] Exportando tabla '{SelectedCategory.TiaTable}' a XML temporal...");
+                UpdateStatusFrame();
 
                 if (!_tiaService.ExportTagTable(SelectedCategory.TiaGroup, SelectedCategory.TiaTable, tempXmlPath))
                 {
@@ -282,10 +300,14 @@ namespace ZC_ALM_TOOLS.ViewModels
                     SelectedCategory.ConstantsStatus = SynchronizationStatus.Error;
                     return;
                 }
+                UpdateStatusFrame();
 
+                StatusService.Set("Analizando datos recibidos del PLC...");
                 var plcDict = ParsePlcXml(tempXmlPath);
+                UpdateStatusFrame();
 
                 // Obtenemos los dispositivos del Excel (los que ya están en la tabla)
+                StatusService.Set("Cruzando datos Excel vs PLC...");
                 var excelList = CurrentDevices.Cast<IDevice>().ToList();
                 bool allMatch = true;
                 int countMatch = 0, countMismatch = 0, countNew = 0;
@@ -348,13 +370,18 @@ namespace ZC_ALM_TOOLS.ViewModels
                 LogService.Write($"[COMPARE] RESUMEN: {countMatch} OK, {countMismatch} Diferentes, {countNew} Nuevos.");
                 LogService.Write("--- COMPARACIÓN FINALIZADA ---");
 
-                StatusChanged?.Invoke(allMatch ? "Comparación finalizada: Todo OK." : "Comparación finalizada: Se detectaron diferencias.", !allMatch);
+                StatusService.Set(allMatch ? "Comparación finalizada: Todo OK." : "Comparación finalizada: Se detectaron diferencias.", !allMatch);
             }
             catch (Exception ex)
             {
                 LogService.Write($"ERROR CRÍTICO EN COMPARACIÓN: {ex.Message}", true);
                 SelectedCategory.ConstantsStatus = SynchronizationStatus.Error;
-                StatusChanged?.Invoke("Error durante la comparación. Revisa el Log.", true);
+                StatusService.Set("Error durante la comparación. Revisa el Log.", true);
+            }
+            finally
+            {
+                StatusService.SetBusy(false);
+                UpdateStatusFrame();
             }
         }
 

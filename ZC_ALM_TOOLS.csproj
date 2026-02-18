@@ -90,6 +90,7 @@
     <Compile Include="Services\AppConfigManager.cs" />
     <Compile Include="Services\DataService.cs" />
     <Compile Include="Services\LogService.cs" />
+    <Compile Include="Services\StatusService.cs" />
     <Compile Include="Services\TiaService.cs" />
     <Compile Include="ViewModels\DevicesViewModel.cs" />
     <Compile Include="ViewModels\MainViewModel.cs" />

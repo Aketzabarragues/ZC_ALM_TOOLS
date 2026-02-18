@@ -18,9 +18,6 @@ namespace ZC_ALM_TOOLS.Core
     {
         private readonly PlcSoftware _plcSoftware;
 
-        // Evento unificado para notificar cambios de estado a la UI
-        public Action<string, bool> StatusChanged { get; set; }
-
         public TiaService(PlcSoftware plcSoftware)
         {
             _plcSoftware = plcSoftware;
@@ -310,7 +307,7 @@ namespace ZC_ALM_TOOLS.Core
 
         private void Report(string msg, bool error = false)
         {
-            StatusChanged?.Invoke(msg, error);
+            StatusService.Set(msg, error);
         }
 
         #endregion

@@ -30,6 +30,14 @@ namespace ZC_ALM_TOOLS.ViewModels
         public DevicesViewModel DevicesVM { get; set; }
         public List<DeviceCategory> Categories { get; set; }
 
+        // Variable que indica que esta ejecutandose algo
+        private bool _isBusy;
+        public bool IsBusy
+        {
+            get => _isBusy;
+            set { _isBusy = value; OnPropertyChanged(); }
+        }
+
         // Variable que indica si se ha cargado un Excel correctamente
         private bool _isDataLoaded;
         public bool IsDataLoaded
@@ -93,9 +101,9 @@ namespace ZC_ALM_TOOLS.ViewModels
             DevicesVM.Categories = Categories;
             DevicesVM.SetTiaService(_tiaService);
 
-            // Eventos para actualizar la barra de estado desde otros servicios
-            DevicesVM.StatusChanged = (msg, error) => UpdateStatus(msg, error); // Descomentar si existe
-            _tiaService.StatusChanged = (msg, error) => UpdateStatus(msg, error);
+            // Evento para actualizar el mensaje de estado
+            StatusService.OnStatusChanged += UpdateStatus;
+            StatusService.OnBusyChanged += (busy) => IsBusy = busy;
 
             // Seleccionamos una categoria en el viewmodel
             if (Categories.Count > 0)
@@ -127,6 +135,8 @@ namespace ZC_ALM_TOOLS.ViewModels
                 };
 
                 if (openFileDialog.ShowDialog() != true) return;
+
+                StatusService.SetBusy(true);
 
                 SelectedExcelFile = openFileDialog.FileName;
                 LogService.Write($"Archivo seleccionado: {SelectedExcelFile}");
@@ -168,17 +178,20 @@ namespace ZC_ALM_TOOLS.ViewModels
                 }
                 else
                 {
-                    IsDataLoaded = false;
                     UpdateStatus("Error: Tiempo de espera agotado.", true);
                 }
             }
             catch (Exception ex)
             {
                 LogService.Write($"CRASH EN CARGA: {ex.Message}", true);
-                IsDataLoaded = false;
                 UpdateStatus("Crash general en el proceso.", true);
                 MessageBox.Show($"{ex.Message}", "Error Crítico");
             }
+            finally 
+            {
+                StatusService.SetBusy(false);
+            }
+
         }
 
 
@@ -217,8 +230,10 @@ namespace ZC_ALM_TOOLS.ViewModels
 
                 if (i % 10 == 0) LogService.Write($"Esperando {missingFile}...");
 
+
                 Thread.Sleep(200);
-                UpdateStatusFrame(); // Mantiene la UI viva
+
+                UpdateStatusFrame();
             }
             return false;
         }
@@ -274,21 +289,10 @@ namespace ZC_ALM_TOOLS.ViewModels
         {
             StatusMessage = message;
             StatusColor = isError ? "Red" : "Black";
+            UpdateStatusFrame();
         }
 
-        // Hack para no congelar la UI durante el Thread.Sleep
-        private void UpdateStatusFrame()
-        {
-            System.Windows.Threading.DispatcherFrame frame = new System.Windows.Threading.DispatcherFrame();
-            System.Windows.Threading.Dispatcher.CurrentDispatcher.BeginInvoke(
-                System.Windows.Threading.DispatcherPriority.Background,
-                new System.Windows.Threading.DispatcherOperationCallback(delegate (object f)
-                {
-                    ((System.Windows.Threading.DispatcherFrame)f).Continue = false;
-                    return null;
-                }), frame);
-            System.Windows.Threading.Dispatcher.PushFrame(frame);
-        }
+
 
 
     }
