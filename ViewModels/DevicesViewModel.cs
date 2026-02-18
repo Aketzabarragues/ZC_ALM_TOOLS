@@ -164,7 +164,7 @@ namespace ZC_ALM_TOOLS.ViewModels
                 LogService.Write($"--- SYNC START: {SelectedCategory.Name} ---");
 
                 // ---------------------------------------------------------
-                // PASO A: N_MAX (Dimensión Global)
+                // N_MAX (Dimensión Global)
                 // ---------------------------------------------------------
                 if (_globalConfigCache.TryGetValue(SelectedCategory.GlobalConfigKey, out int excelVal))
                 {
@@ -185,25 +185,24 @@ namespace ZC_ALM_TOOLS.ViewModels
                     UpdateDimensionInfo();
                 }
 
-                // Convertimos la lista visual a lista de interfaces IDevice
-                var deviceList = CurrentDevices.Cast<IDevice>().ToList();
-
-
                 // ---------------------------------------------------------
-                // PASO B: CONSTANTES DE USUARIO (IDs)
+                // CONSTANTES DE USUARIO (DISPOSITIVOS)
                 // ---------------------------------------------------------
+                var deviceList = CurrentDevices.Cast<IDevice>()
+                              .Where(d => d.Estado != "Eliminar")
+                              .ToList();
                 okConst = _tiaService.SyncUserConstants(SelectedCategory.TiaGroup, SelectedCategory.TiaTable, deviceList);
                 SelectedCategory.ConstantsStatus = okConst ? SynchronizationStatus.Ok : SynchronizationStatus.Error;
 
 
                 // ---------------------------------------------------------
-                // PASO C: COMPILACIÓN DEL DB
+                // COMPILACIÓN DEL DB
                 // ---------------------------------------------------------
                 okComp = _tiaService.CompileBlock(SelectedCategory.TiaDbName);
 
 
                 // ---------------------------------------------------------
-                // PASO D: CIRUGÍA XML (COMENTARIOS EN DB)
+                // CIRUGÍA XML (COMENTARIOS EN DB)
                 // ---------------------------------------------------------
                 if (okComp)
                 {
@@ -247,13 +246,14 @@ namespace ZC_ALM_TOOLS.ViewModels
 
 
         // =================================================================================================================
-        // 6. COMPARISON LOGIC (COMPROBACIÓN)
-
+        //COMPARISON LOGIC (COMPROBACIÓN)
         private void ExecuteCompare() => ExecuteCompare(false);
 
         private void ExecuteCompare(bool keepDbStatus)
         {
             if (SelectedCategory == null) return;
+
+            RefreshView();
 
             try
             {

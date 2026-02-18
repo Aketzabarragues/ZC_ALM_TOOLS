@@ -150,6 +150,7 @@ namespace ZC_ALM_TOOLS.Core
                 {
                     LogService.Write($"[TIA] Compilando: {blockName}...");
                     CompilerResult result = compileService.Compile();
+                    LogService.Write($"[TIA] Resultado Compilación: {result.State} (Errores: {result.ErrorCount})");
                     return result.State != CompilerResultState.Error;
                 }
                 return false;
@@ -159,6 +160,7 @@ namespace ZC_ALM_TOOLS.Core
                 LogService.Write($"[TIA-ERROR] Fallo al compilar: {ex.Message}", true);
                 return false;
             }
+
         }
 
         // Inyecta comentarios en el DB mediante manipulación de XML
@@ -166,53 +168,89 @@ namespace ZC_ALM_TOOLS.Core
         {
             try
             {
+                LogService.Write($"[TIA-XML] === INICIANDO CIRUGÍA XML: {dbName} ===");
+
+                // 1. Localizar el bloque
                 var genericBlock = FindBlockRecursively(_plcSoftware.BlockGroup, dbName);
                 var db = genericBlock as GlobalDB;
 
-                if (db == null) throw new Exception($"No se pudo encontrar el DB: {dbName}");
+                if (db == null)
+                {
+                    LogService.Write($"[TIA-XML] ERROR: No se pudo encontrar o castear el bloque '{dbName}'.", true);
+                    return false;
+                }
 
+                // 2. Exportar a temporal
                 string xmlPath = Path.Combine(AppConfigManager.TempPath, $"{dbName}.xml");
                 if (File.Exists(xmlPath)) File.Delete(xmlPath);
 
+                LogService.Write($"[TIA-XML] Exportando bloque para edición: {xmlPath}");
                 db.Export(new FileInfo(xmlPath), ExportOptions.WithDefaults);
 
+                // 3. Cargar XML y buscar nodos
                 XDocument doc = XDocument.Load(xmlPath);
                 XNamespace ns = "http://www.siemens.com/automation/Openness/SW/Interface/v5";
 
                 var staticSection = doc.Descendants(ns + "Section").FirstOrDefault(s => s.Attribute("Name")?.Value == "Static");
-                var arrayMember = staticSection?.Elements(ns + "Member").FirstOrDefault(m => m.Attribute("Name")?.Value == arrayName);
-
-                if (arrayMember != null)
+                if (staticSection == null)
                 {
-                    foreach (var dev in devices)
-                    {
-                        var subelement = arrayMember.Elements(ns + "Subelement").FirstOrDefault(s => s.Attribute("Path")?.Value == dev.Numero.ToString());
-
-                        if (subelement == null)
-                        {
-                            subelement = new XElement(ns + "Subelement", new XAttribute("Path", dev.Numero.ToString()));
-                            arrayMember.Add(subelement);
-                        }
-
-                        subelement.Elements(ns + "Comment").Remove();
-                        subelement.Add(new XElement(ns + "Comment",
-                            new XElement(ns + "MultiLanguageText",
-                                new XAttribute("Lang", "es-ES"),
-                                dev.Tag + " - " + dev.Descripcion)));
-                    }
-                    doc.Save(xmlPath);
+                    LogService.Write("[TIA-XML] ERROR: No se encontró la sección 'Static' en el XML del DB.", true);
+                    return false;
                 }
 
-                // Re-importar el bloque modificado
-                var parent = genericBlock.Parent;
-                if (parent is PlcBlockUserGroup folder) folder.Blocks.Import(new FileInfo(xmlPath), ImportOptions.Override);
-                else if (parent is PlcBlockGroup root) root.Blocks.Import(new FileInfo(xmlPath), ImportOptions.Override);
+                var arrayMember = staticSection.Elements(ns + "Member").FirstOrDefault(m => m.Attribute("Name")?.Value == arrayName);
+                if (arrayMember == null)
+                {
+                    LogService.Write($"[TIA-XML] ERROR: No se encontró el array '{arrayName}' dentro de la sección Static.", true);
+                    return false;
+                }
 
+                // 4. Modificar comentarios
+                LogService.Write($"[TIA-XML] Actualizando comentarios para {devices.Count} dispositivos en el array '{arrayName}'...");
+                int updatedCount = 0;
+
+                foreach (var dev in devices)
+                {
+                    // Buscamos el subelemento por su índice (Path)
+                    var subelement = arrayMember.Elements(ns + "Subelement").FirstOrDefault(s => s.Attribute("Path")?.Value == dev.Numero.ToString());
+
+                    if (subelement == null)
+                    {
+                        // Si no existe el nodo de comentario para ese índice, lo creamos
+                        subelement = new XElement(ns + "Subelement", new XAttribute("Path", dev.Numero.ToString()));
+                        arrayMember.Add(subelement);
+                    }
+
+                    // Limpiar comentarios antiguos e inyectar el nuevo
+                    subelement.Elements(ns + "Comment").Remove();
+                    subelement.Add(new XElement(ns + "Comment",
+                        new XElement(ns + "MultiLanguageText",
+                            new XAttribute("Lang", "es-ES"),
+                            $"{dev.Tag} - {dev.Descripcion}")));
+                    updatedCount++;
+                }
+
+                LogService.Write($"[TIA-XML] Modificación completada. Guardando archivo temporal...");
+                doc.Save(xmlPath);
+
+                // 5. Re-importar el bloque a TIA Portal
+                LogService.Write($"[TIA-XML] Re-importando bloque '{dbName}' en TIA Portal (Override)...");
+                var parent = genericBlock.Parent;
+
+                if (parent is PlcBlockUserGroup folder)
+                    folder.Blocks.Import(new FileInfo(xmlPath), ImportOptions.Override);
+                else if (parent is PlcBlockGroup root)
+                    root.Blocks.Import(new FileInfo(xmlPath), ImportOptions.Override);
+
+                LogService.Write($"[TIA-XML] ¡ÉXITO! Bloque {dbName} actualizado correctamente.");
                 return true;
             }
             catch (Exception ex)
             {
-                LogService.Write($"[TIA-XML] Error en cirugía XML: {ex.Message}", true);
+                LogService.Write($"[TIA-XML] ERROR CRÍTICO en cirugía XML: {ex.Message}", true);
+                if (ex.InnerException != null)
+                    LogService.Write($"[TIA-XML] DETALLE: {ex.InnerException.Message}", true);
+
                 return false;
             }
         }
