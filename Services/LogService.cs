@@ -1,66 +1,41 @@
 ﻿using System;
-using System.Collections.ObjectModel;
 using System.IO;
-using System.Windows;
-using System.Windows.Threading;
 
 namespace ZC_ALM_TOOLS.Services
 {
     public static class LogService
     {
-
-        public static ObservableCollection<string> LogEntries { get; } = new ObservableCollection<string>();
-
-
-        public static void Write(string mensaje, bool esError = false)
+        // Escribe una línea en el archivo de log físico
+        public static void Write(string message, bool isError = false)
         {
-            string prefijo = esError ? "[ERROR]" : "[INFO] ";
-            string linea = $"{DateTime.Now:HH:mm:ss} {prefijo} {mensaje}";
+            string prefix = isError ? "[ERROR]" : "[INFO] ";
+            string line = $"{DateTime.Now:HH:mm:ss} {prefix} {message}";
 
             try
-            {    
-                // Escribe y añade una línea al archivo
-                File.AppendAllText(AppConfigManager.LogFile, linea + Environment.NewLine);
+            {
+                // Intentamos escribir en la ruta definida en el ConfigManager
+                File.AppendAllText(AppConfigManager.LogFile, line + Environment.NewLine);
             }
             catch
             {
-                // Si falla el log, no queremos que pete la app
+                // Si falla la escritura no lanzamos excepción para no detener el flujo principal de la aplicación
             }
-
-
-            // 2. Actualización de la UI con seguridad total
-            // TIA Portal Add-Ins a veces no tienen Application.Current inicializado
-            var dispatcher = Application.Current?.Dispatcher ?? Dispatcher.CurrentDispatcher;
-
-            if (dispatcher != null)
-            {
-                if (dispatcher.CheckAccess())
-                {
-                    AddEntry(linea);
-                }
-                else
-                {
-                    dispatcher.BeginInvoke(new Action(() => AddEntry(linea)));
-                }
-            }
-
         }
 
-        private static void AddEntry(string linea)
-        {
-            LogEntries.Add(linea);
-            if (LogEntries.Count > 300) LogEntries.RemoveAt(0);
-        }
-
+        // Borra el archivo actual para empezar uno nuevo
         public static void Clear()
         {
-
-            // Limpiamos la lista en el hilo correcto
-            var dispatcher = Application.Current?.Dispatcher ?? Dispatcher.CurrentDispatcher;
-            dispatcher?.Invoke(() => LogEntries.Clear());
-
-            if (File.Exists(AppConfigManager.LogFile))
-                File.Delete(AppConfigManager.LogFile);
+            try
+            {
+                if (File.Exists(AppConfigManager.LogFile))
+                {
+                    File.Delete(AppConfigManager.LogFile);
+                }
+            }
+            catch
+            {
+                // Error silencioso si el archivo está bloqueado
+            }
 
             Write("=== INICIO DE SESIÓN ===");
         }

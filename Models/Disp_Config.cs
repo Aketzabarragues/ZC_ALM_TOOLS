@@ -5,13 +5,13 @@ namespace ZC_ALM_TOOLS.Models
 {    
     public class Disp_Config
     {
-        public string Name { get; set; }
-        public int Value { get; set; }
+        public string Nombre { get; set; }
+        public int Valor { get; set; }
 
         public static Disp_Config FromXml(XElement x) => new Disp_Config
         {
-            Name = DataHelper.GetXmlVal(x, "Name"),
-            Value = DataHelper.GetXmlInt(x, "Value")
+            Nombre = DataHelper.GetXmlVal(x, "Name"),
+            Valor = DataHelper.GetXmlInt(x, "Value")
         };
     }
 }

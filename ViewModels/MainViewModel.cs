@@ -1,12 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Threading;
 using System.Windows;
-using System.Xml.Linq;
 using Microsoft.Win32;
 using Siemens.Engineering;
 using Siemens.Engineering.SW;
@@ -16,45 +12,65 @@ using ZC_ALM_TOOLS.Services;
 
 namespace ZC_ALM_TOOLS.ViewModels
 {
-    /// <summary>
-    /// ViewModel principal de la aplicación.
-    /// Gestiona la conexión con TIA Portal, la orquestación de la extracción de datos desde Excel 
-    /// mediante Python y la carga dinámica de modelos de dispositivos.
-    /// </summary>
+
     public class MainViewModel : ObservableObject
     {
-        // =================================================================================================================
-        // 1. PROPIEDADES Y SERVICIOS
 
+        // =================================================================================================================
+        // PROPIEDADES
         private TiaService _tiaService;
         private TiaPortal _tiaPortal;
         private PlcSoftware _plcSoftware;
 
-        private Dictionary<string, List<object>> _cacheIngenieria = new Dictionary<string, List<object>>();
-        private Dictionary<string, int> _cacheDispConfig = new Dictionary<string, int>();
+        // Caché de datos cargados
+        private Dictionary<string, List<object>> _engineeringCache = new Dictionary<string, List<object>>();
+        private Dictionary<string, int> _globalConfigCache = new Dictionary<string, int>();
 
-        public DispositivosViewModel DispositivosViewModel { get; set; }
-        public List<DeviceCategory> Categorias { get; set; }
+        // ViewModels y Configuración
+        public DevicesViewModel DevicesVM { get; set; }
+        public List<DeviceCategory> Categories { get; set; }
 
-        private bool _isBusy;
-        public bool IsBusy { get => _isBusy; set { _isBusy = value; OnPropertyChanged(); } }
+        // Variable que indica si se ha cargado un Excel correctamente
+        private bool _isDataLoaded;
+        public bool IsDataLoaded
+        {
+            get => _isDataLoaded;
+            set { _isDataLoaded = value; OnPropertyChanged(); }
+        }
 
-        private string _archivoExcelSeleccionado;
-        public string ArchivoExcelSeleccionado { get => _archivoExcelSeleccionado; set { _archivoExcelSeleccionado = value; OnPropertyChanged(); } }
+        // Ruta del excel seleccionado
+        private string _selectedExcelFile;
+        public string SelectedExcelFile
+        {
+            get => _selectedExcelFile;
+            set { _selectedExcelFile = value; OnPropertyChanged(); }
+        }
 
-        private string _mensajeEstado;
-        public string MensajeEstado { get => _mensajeEstado; set { _mensajeEstado = value; OnPropertyChanged(); } }
+        // Mensaje de estado
+        private string _statusMessage;
+        public string StatusMessage
+        {
+            get => _statusMessage;
+            set { _statusMessage = value; OnPropertyChanged(); }
+        }
 
-        private string _colorEstado = "Black";
-        public string ColorEstado { get => _colorEstado; set { _colorEstado = value; OnPropertyChanged(); } }
+        // Color de estado
+        private string _statusColor = "Black";
+        public string StatusColor
+        {
+            get => _statusColor;
+            set { _statusColor = value; OnPropertyChanged(); }
+        }
 
-        public RelayCommand CargarDatosCommand { get; set; }
-        public RelayCommand ConfigurarRutaExeCommand { get; set; }
-        public RelayCommand ConfigurarDispositivosCommand { get; set; }
+        // Comandos
+        public RelayCommand LoadDataCommand { get; set; }
+        public RelayCommand ConfigExtractorCommand { get; set; }
+        public RelayCommand ConfigDispCommand { get; set; }
 
-        // =================================================================================================================
-        // 2. CONSTRUCTOR
 
+
+        // ==================================================================================================================
+        // CONSTRUCTOR
         public MainViewModel(TiaPortal tiaPortal, PlcSoftware plcSoftware)
         {
             _tiaPortal = tiaPortal;
@@ -63,34 +79,42 @@ namespace ZC_ALM_TOOLS.ViewModels
             LogService.Clear();
             LogService.Write("Inicializando MainViewModel...");
 
-            AppConfigManager.InicializarEntorno();
-            Categorias = AppConfigManager.ObtenerMapaDispositivos();
+            // Inicializar estado
+            IsDataLoaded = false;
 
+            // Inicializamos configuración y cargamos categorías
+            AppConfigManager.InitializeEnvironment();
+            Categories = AppConfigManager.GetDeviceCategories();
+
+            // Inicializamos servicios y viewmodels
             _tiaService = new TiaService(plcSoftware);
-            DispositivosViewModel = new DispositivosViewModel();
+            DevicesVM = new DevicesViewModel();
 
-            DispositivosViewModel.Categorias = Categorias;
-            DispositivosViewModel.SetTiaService(_tiaService);
+            DevicesVM.Categories = Categories;
+            DevicesVM.SetTiaService(_tiaService);
 
-            // Suscripción de eventos para la barra de estado
-            DispositivosViewModel.StatusRequest = (msg, error) => ActualizarEstado(msg, error);
-            _tiaService.OnStatusChanged = (msg, error) => ActualizarEstado(msg, error);
+            // Eventos para actualizar la barra de estado desde otros servicios
+            DevicesVM.StatusChanged = (msg, error) => UpdateStatus(msg, error); // Descomentar si existe
+            _tiaService.StatusChanged = (msg, error) => UpdateStatus(msg, error);
 
-            if (Categorias.Count > 0)
-                DispositivosViewModel.CategoriaSeleccionada = Categorias[0];
+            // Seleccionamos una categoria en el viewmodel
+            if (Categories.Count > 0)
+                DevicesVM.SelectedCategory = Categories[0];
 
-            MensajeEstado = $"Conectado a PLC: {plcSoftware.Name}";
+            StatusMessage = $"Conectado a PLC: {plcSoftware.Name}";
             LogService.Write($"Conectado a PLC: {plcSoftware.Name}");
 
-            CargarDatosCommand = new RelayCommand(CargarExcelYGenerarJson);
-            ConfigurarRutaExeCommand = new RelayCommand(EjecutarConfiguracionRuta);
-            ConfigurarDispositivosCommand = new RelayCommand(EjecutarConfiguracionDispositivos);
+            // Mapeo de comandos
+            LoadDataCommand = new RelayCommand(LoadExcelAndGenerateJson);
+            ConfigExtractorCommand = new RelayCommand(OpenSettingsEditor);
+            ConfigDispCommand = new RelayCommand(OpenDeviceSettingEditor);
         }
 
-        // =================================================================================================================
-        // 3. LÓGICA DE EXTRACCIÓN Y CARGA
 
-        private void CargarExcelYGenerarJson()
+
+        // ==================================================================================================================
+        // LÓGICA DE EXTRACCIÓN Y CARGA
+        private void LoadExcelAndGenerateJson()
         {
             LogService.Write("Botón 'Cargar' pulsado.");
 
@@ -104,174 +128,156 @@ namespace ZC_ALM_TOOLS.ViewModels
 
                 if (openFileDialog.ShowDialog() != true) return;
 
-                ArchivoExcelSeleccionado = openFileDialog.FileName;
-                LogService.Write($"Archivo seleccionado: {ArchivoExcelSeleccionado}");
+                SelectedExcelFile = openFileDialog.FileName;
+                LogService.Write($"Archivo seleccionado: {SelectedExcelFile}");
 
-                string exePath = AppConfigManager.LeerExePath();
+                // Verificar ruta del extractor
+                string exePath = AppConfigManager.ReadExePath();
                 if (!File.Exists(exePath))
                 {
                     LogService.Write("ERROR: Extractor no encontrado", true);
-                    ActualizarEstado("Error: No se encuentra ZC_Extractor.exe", true);
+                    UpdateStatus("Error: No se encuentra ZC_Extractor.exe", true);
                     MessageBox.Show($"Extractor no encontrado en:\n{exePath}", "Error de configuración");
                     return;
                 }
 
-                IsBusy = true;
-                LimpiarCarpetaExportar(AppConfigManager.ExportPath);
+
+                ClearExportFolder(AppConfigManager.ExportPath);
 
                 LogService.Write("Lanzando proceso Python...");
-                ActualizarEstado("Ejecutando extractor Python...");
-                string argumentos = $"--path \"{ArchivoExcelSeleccionado}\"";
+                UpdateStatus("Ejecutando extractor Python...");
 
-                // Uso de la utilidad de proceso de Siemens Openness
-                Siemens.Engineering.AddIn.Utilities.Process.Start(exePath, argumentos);
+                string arguments = $"--path \"{SelectedExcelFile}\"";
 
-                if (EsperarArchivosPython())
+                // Ejecutar proceso externo
+                Siemens.Engineering.AddIn.Utilities.Process.Start(exePath, arguments);
+
+                // Esperar a que Python genere los XML
+                if (WaitForPythonFiles())
                 {
                     LogService.Write("Archivos XML detectados con éxito.");
-                    ActualizarEstado("Sincronizando base de datos interna...");
+                    UpdateStatus("Cargando datos en memoria...");
 
-                    CargarTodoDesdeCarpeta(AppConfigManager.ExportPath);
-                    DispositivosViewModel.SetDatos(_cacheIngenieria, _cacheDispConfig);
+                    LoadAllFromFolder(AppConfigManager.ExportPath);
 
-                    ActualizarEstado("Listo. Todos los módulos cargados.");
+                    // Pasar datos al ViewModel de dispositivos
+                    DevicesVM.LoadData(_engineeringCache, _globalConfigCache);
+
+                    IsDataLoaded = true;
+                    UpdateStatus("Listo. Todos los módulos cargados.");
                 }
                 else
                 {
-                    ActualizarEstado("Error: Tiempo de espera agotado.", true);
+                    IsDataLoaded = false;
+                    UpdateStatus("Error: Tiempo de espera agotado.", true);
                 }
             }
             catch (Exception ex)
             {
                 LogService.Write($"CRASH EN CARGA: {ex.Message}", true);
-                ActualizarEstado("Crash general en el proceso.", true);
+                IsDataLoaded = false;
+                UpdateStatus("Crash general en el proceso.", true);
                 MessageBox.Show($"{ex.Message}", "Error Crítico");
-            }
-            finally
-            {
-                IsBusy = false;
             }
         }
 
-        private bool EsperarArchivosPython()
+
+
+
+        // Metodo para esperar a que se encuentren todos los archivos esperados
+        private bool WaitForPythonFiles()
         {
             LogService.Write($"Iniciando espera en: {AppConfigManager.ExportPath}");
 
-            for (int i = 0; i < 150; i++)
+            for (int i = 0; i < 150; i++) // Timeout aprox 30s (150 * 200ms)
             {
-                bool faltan = false;
-                string archivoFaltante = "";
+                bool missing = false;
+                string missingFile = "";
 
-                foreach (var cat in Categorias)
+                // Comprobar XML de cada categoría
+                foreach (var cat in Categories)
                 {
-                    string rutaCheck = Path.Combine(AppConfigManager.ExportPath, cat.XmlFile);
-                    if (!File.Exists(rutaCheck))
+                    string checkPath = Path.Combine(AppConfigManager.ExportPath, cat.XmlFile);
+                    if (!File.Exists(checkPath))
                     {
-                        faltan = true;
-                        archivoFaltante = cat.XmlFile;
+                        missing = true;
+                        missingFile = cat.XmlFile;
                         break;
                     }
                 }
 
-                if (!faltan && !File.Exists(AppConfigManager.dispConfig))
+                // Comprobar XML de configuración global
+                if (!missing && !File.Exists(AppConfigManager.DeviceDataConfig))
                 {
-                    faltan = true;
-                    archivoFaltante = "disp_config.xml";
+                    missing = true;
+                    missingFile = "config_disp.xml";
                 }
 
-                if (!faltan) return true;
+                if (!missing) return true; // Todo encontrado
 
-                if (i % 10 == 0) LogService.Write($"Esperando {archivoFaltante}...");
+                if (i % 10 == 0) LogService.Write($"Esperando {missingFile}...");
 
                 Thread.Sleep(200);
-                ActualizarEstadoDuranteCiclo();
+                UpdateStatusFrame(); // Mantiene la UI viva
             }
             return false;
         }
 
-        private void CargarTodoDesdeCarpeta(string carpeta)
-        {
-            _cacheIngenieria.Clear();
-            _cacheDispConfig = LeerConfiguracionDispositivo(AppConfigManager.dispConfig);
 
-            foreach (var cat in Categorias)
+        // Metodo para cargar todos los archivos desde una carpeta
+        private void LoadAllFromFolder(string folderPath)
+        {
+            _engineeringCache.Clear();
+            _globalConfigCache.Clear();
+
+            // Cargar configuración global usando DataService
+            _globalConfigCache = DataService.LoadGlobalConfig(AppConfigManager.DeviceDataConfig);
+
+            // Cargar dispositivos de cada categoría
+            foreach (var cat in Categories)
             {
-                string ruta = Path.Combine(carpeta, cat.XmlFile);
-                if (File.Exists(ruta))
+                string filePath = Path.Combine(folderPath, cat.XmlFile);
+                if (File.Exists(filePath))
                 {
-                    _cacheIngenieria[cat.Name] = LeerArchivoEspecifico(ruta, cat);
+                    _engineeringCache[cat.Name] = DataService.LoadDispCategoryData(filePath, cat);
                 }
             }
         }
 
-        private Dictionary<string, int> LeerConfiguracionDispositivo(string ruta)
+
+        // Limpiar la carpeta de exportacion de archivos
+        private void ClearExportFolder(string path)
         {
-            var config = new Dictionary<string, int>();
-            if (!File.Exists(ruta)) return config;
-
-            try
-            {
-                XDocument doc = XDocument.Load(ruta);
-                config = doc.Descendants("Item")
-                            .Select(x => Disp_Config.FromXml(x))
-                            .ToDictionary(c => c.Name, c => c.Value);
-            }
-            catch (Exception ex) { LogService.Write($"Error config: {ex.Message}", true); }
-            return config;
-        }
-
-        private List<object> LeerArchivoEspecifico(string ruta, DeviceCategory cat)
-        {
-            var lista = new List<object>();
-            try
-            {
-                XDocument doc = XDocument.Load(ruta);
-                string nombreCompletoClase = $"ZC_ALM_TOOLS.Models.{cat.ModelClass}";
-                Type tipoClase = Type.GetType(nombreCompletoClase);
-
-                if (tipoClase == null) return lista;
-
-                var metodoFromXml = tipoClase.GetMethod("FromXml", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
-
-                foreach (var el in doc.Root.Elements())
-                {
-                    var objeto = metodoFromXml?.Invoke(null, new object[] { el });
-                    if (objeto != null) lista.Add(objeto);
-                }
-            }
-            catch (Exception ex) { LogService.Write($"Error {cat.ModelClass}: {ex.Message}", true); }
-            return lista;
-        }
-
-        private void LimpiarCarpetaExportar(string ruta)
-        {
-            if (!Directory.Exists(ruta)) return;
-            foreach (string f in Directory.GetFiles(ruta))
+            if (!Directory.Exists(path)) return;
+            foreach (string f in Directory.GetFiles(path))
             {
                 try { File.Delete(f); } catch { }
             }
         }
+              
 
-        // =================================================================================================================
-        // 4. CONFIGURACIÓN Y EDITORES
 
-        private void EjecutarConfiguracionRuta() => AbrirEditor(AppConfigManager.SettingsXmlFile, "Editando ajustes...");
-        private void EjecutarConfiguracionDispositivos() => AbrirEditor(AppConfigManager.DeviceXmlFile, "Editando mapa...");
+        // ==================================================================================================================
+        // CONFIGURACIÓN Y UTILIDADES UI
+        private void OpenSettingsEditor() => OpenEditor(AppConfigManager.SettingsFile, "Editando ajustes...");
+        private void OpenDeviceSettingEditor() => OpenEditor(AppConfigManager.DeviceSettingsFile, "Editando configuracion dispositivos...");
 
-        private void AbrirEditor(string ruta, string mensaje)
+        private void OpenEditor(string path, string message)
         {
-            if (!File.Exists(ruta)) return;
-            Siemens.Engineering.AddIn.Utilities.Process.Start("notepad.exe", $"\"{ruta}\"");
-            ActualizarEstado(mensaje);
+            if (!File.Exists(path)) return;
+            Siemens.Engineering.AddIn.Utilities.Process.Start("notepad.exe", $"\"{path}\"");
+            UpdateStatus(message);
         }
 
-        private void ActualizarEstado(string mensaje, bool esError = false)
+        // Metodo para actualizar la barra de estado
+        private void UpdateStatus(string message, bool isError = false)
         {
-            MensajeEstado = mensaje;
-            ColorEstado = esError ? "Red" : "Black";
+            StatusMessage = message;
+            StatusColor = isError ? "Red" : "Black";
         }
 
-        private void ActualizarEstadoDuranteCiclo()
+        // Hack para no congelar la UI durante el Thread.Sleep
+        private void UpdateStatusFrame()
         {
             System.Windows.Threading.DispatcherFrame frame = new System.Windows.Threading.DispatcherFrame();
             System.Windows.Threading.Dispatcher.CurrentDispatcher.BeginInvoke(
@@ -283,5 +289,7 @@ namespace ZC_ALM_TOOLS.ViewModels
                 }), frame);
             System.Windows.Threading.Dispatcher.PushFrame(frame);
         }
+
+
     }
 }

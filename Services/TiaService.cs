@@ -11,57 +11,35 @@ using Siemens.Engineering.SW.Tags;
 using ZC_ALM_TOOLS.Models;
 using ZC_ALM_TOOLS.Services;
 
-
 namespace ZC_ALM_TOOLS.Core
 {
-    /* * RESUMEN DE FUNCIONAMIENTO - TIA SERVICE:
-     * 1. INTERFAZ CON OPENNESS: Conexión directa con la API de Siemens.
-     * 2. GESTIÓN DE CONFIGURACIÓN: Sincroniza constantes globales (N_MAX) que definen tamaños de arrays.
-     * 3. COMPILACIÓN: Fuerza al PLC a regenerar bloques tras cambios estructurales.
-     * 4. SINCRONIZACIÓN QUIRÚRGICA: Gestión de constantes de dispositivos (ID -> Nombre).
-     */
-
-    /// <summary>
-    /// Servicio encargado de la comunicación directa con la API de Siemens Openness.
-    /// Proporciona métodos para leer/escribir constantes, compilar bloques, exportar tablas
-    /// y realizar modificaciones avanzadas en bloques de datos mediante XML.
-    /// </summary>
+    // Servicio para comunicación directa con Siemens Openness
     public class TiaService
     {
-        /// <summary>Referencia al software del PLC seleccionado en el proyecto de TIA Portal.</summary>
         private readonly PlcSoftware _plcSoftware;
 
-        /// <summary>Acción que se dispara para notificar cambios de estado o errores a la capa superior (UI).</summary>
-        public Action<string, bool> OnStatusChanged { get; set; }
+        // Evento unificado para notificar cambios de estado a la UI
+        public Action<string, bool> StatusChanged { get; set; }
 
-        /// <summary>
-        /// Inicializa una nueva instancia de <see cref="TiaService"/>.
-        /// </summary>
-        /// <param name="plcSoftware">Objeto PlcSoftware del PLC activo.</param>
         public TiaService(PlcSoftware plcSoftware)
         {
             _plcSoftware = plcSoftware;
         }
 
-        #region GESTIÓN DE CONSTANTES GLOBALES (DIMENSIONADO)
+        #region 1. GESTIÓN DE CONSTANTES (GLOBALES Y USUARIO)
 
-        /// <summary>
-        /// Busca una constante de usuario en una tabla específica y devuelve su valor entero.
-        /// </summary>
-        /// <param name="nombreTabla">Nombre de la tabla de variables donde buscar.</param>
-        /// <param name="nombreConstante">Nombre de la constante a leer.</param>
-        /// <returns>El valor de la constante como entero, o 0 si no se encuentra.</returns>
-        public int ObtenerValorConstante(string nombreTabla, string nombreConstante)
+        // Lee el valor de una constante global (ej. N_MAX)
+        public int ReadGlobalConstant(string tableName, string constantName)
         {
             try
             {
-                var tabla = BuscarTabla(nombreTabla);
-                if (tabla == null) return -1;
+                var table = FindTagTable(tableName);
+                if (table == null) return -1;
 
-                var constante = tabla.UserConstants.Find(nombreConstante);
-                if (constante != null && int.TryParse(constante.Value, out int valor))
+                var constant = table.UserConstants.Find(constantName);
+                if (constant != null && int.TryParse(constant.Value, out int value))
                 {
-                    return valor;
+                    return value;
                 }
                 return 0;
             }
@@ -71,285 +49,230 @@ namespace ZC_ALM_TOOLS.Core
             }
         }
 
-        /// <summary>
-        /// Sincroniza el valor de una constante de dimensión (ej. N_MAX) en el PLC.
-        /// Si el valor es diferente al actual, lo actualiza.
-        /// </summary>
-        public bool SincronizarDimensionGlobal(string nombreTabla, string nombreConstante, int nuevoValor)
+        // Sincroniza el valor de una constante global de dimensionado
+        public bool SyncGlobalConstant(string tableName, string constantName, int newValue)
         {
             try
             {
-                LogService.Write($"[TIA] Verificando constante de dimensionado: {nombreConstante}...");
+                LogService.Write($"[TIA] Verificando constante: {constantName}...");
+                var table = FindTagTable(tableName);
+                if (table == null) throw new Exception($"No se encontró la tabla '{tableName}'");
 
-                var tabla = BuscarTabla(nombreTabla);
-                if (tabla == null) throw new Exception($"No se encontró la tabla '{nombreTabla}'");
+                var constant = table.UserConstants.Find(constantName);
+                if (constant == null) throw new Exception($"No existe la constante '{constantName}'");
 
-                var constante = tabla.UserConstants.Find(nombreConstante);
-                if (constante == null) throw new Exception($"No existe la constante '{nombreConstante}' en el PLC.");
-
-                if (int.TryParse(constante.Value, out int valorActual))
+                if (int.TryParse(constant.Value, out int currentValue))
                 {
-                    if (valorActual != nuevoValor)
+                    if (currentValue != newValue)
                     {
-                        LogService.Write($"[TIA-CONFIG] Modificando {nombreConstante}: {valorActual} -> {nuevoValor}");
-                        constante.Value = nuevoValor.ToString();
-                        EnviarEstado($"{nombreConstante} actualizado a {nuevoValor}.");
-                    }
-                    else
-                    {
-                        LogService.Write($"[TIA] La dimensión {nombreConstante} ya coincide ({nuevoValor}).");
+                        LogService.Write($"[TIA-CONFIG] Modificando {constantName}: {currentValue} -> {newValue}");
+                        constant.Value = newValue.ToString();
+                        Report($"{constantName} actualizado a {newValue}.");
                     }
                 }
                 return true;
             }
             catch (Exception ex)
             {
-                LogService.Write($"[TIA-ERROR] Fallo en Sincronización Global: {ex.Message}", true);
+                LogService.Write($"[TIA-ERROR] Fallo en Sync Global: {ex.Message}", true);
                 return false;
             }
         }
 
-        #endregion
-
-        #region COMPILACIÓN (PASO B)
-
-        public void CompilarSoftware()
-        {
-            // Implementación futura
-        }
-
-
-        /// <summary>
-        /// Ejecuta la compilación de un bloque específico mediante el servicio ICompilable.
-        /// </summary>
-        public bool CompilarBloque(string nombreBloque)
+        // Sincroniza la lista de IDs (Constantes) desde el Excel
+        public bool SyncUserConstants(string folderName, string tableName, List<IDevice> excelDevices)
         {
             try
             {
-                LogService.Write($"[TIA] Buscando bloque '{nombreBloque}' para compilación...");
+                LogService.Write($"[TIA] === SINCRONIZANDO IDs: {tableName} ===");
+                var table = FindTableInFolder(folderName, tableName);
+                if (table == null) throw new Exception($"La tabla '{tableName}' no existe.");
 
-                var bloque = _plcSoftware.BlockGroup.Blocks.Find(nombreBloque)
-                             ?? _plcSoftware.BlockGroup.Groups.SelectMany(g => g.Blocks).FirstOrDefault(b => b.Name == nombreBloque);
+                // Eliminar las que sobran en TIA
+                var excelIds = new HashSet<int>(excelDevices.Select(d => d.Numero));
+                var constantsToDelete = table.UserConstants.Where(c => int.TryParse(c.Value, out int id) && !excelIds.Contains(id)).ToList();
 
-                if (bloque == null)
-                {
-                    LogService.Write($"[TIA-ERROR] No se encontró el bloque '{nombreBloque}' para compilar.", true);
-                    return false;
-                }
-
-                ICompilable compileService = bloque.GetService<ICompilable>();
-
-                if (compileService != null)
-                {
-                    LogService.Write($"[TIA] Iniciando compilación de: {nombreBloque}...");
-                    CompilerResult result = compileService.Compile();
-
-                    LogService.Write($"[TIA] Resultado: {result.State}. Errores: {result.ErrorCount}, Avisos: {result.WarningCount}");
-
-                    return result.State != CompilerResultState.Error;
-                }
-                else
-                {
-                    LogService.Write($"[TIA-ERROR] El bloque '{nombreBloque}' no permite compilación.", true);
-                    return false;
-                }
-            }
-            catch (Exception ex)
-            {
-                LogService.Write($"[TIA-ERROR] Fallo al compilar bloque: {ex.Message}", true);
-                return false;
-            }
-        }
-
-
-        #endregion
-
-        #region MÉTODOS DE TABLAS Y EXPORTACIÓN
-
-        /// <summary>
-        /// Exporta una tabla de variables de TIA Portal a un archivo XML.
-        /// </summary>
-        public bool ExportarTablaVariables(string nombreCarpeta, string nombreTabla, string rutaXml)
-        {
-            try
-            {
-                LogService.Write($"[TIA] Exportando tabla '{nombreTabla}'...");
-
-                if (File.Exists(rutaXml)) File.Delete(rutaXml);
-
-                var tabla = BuscarTablaEnCarpeta(nombreCarpeta, nombreTabla);
-                if (tabla == null) throw new Exception($"No se encuentra la tabla '{nombreTabla}' en '{nombreCarpeta}'");
-
-                tabla.Export(new FileInfo(rutaXml), Siemens.Engineering.ExportOptions.WithDefaults);
-                LogService.Write($"[TIA] Exportación exitosa.");
-                return true;
-            }
-            catch (Exception ex)
-            {
-                LogService.Write($"[TIA-ERROR] Error exportando: {ex.Message}", true);
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// Crea, renombra o elimina constantes de usuario en el PLC basándose en la lista del Excel.
-        /// </summary>
-        public bool SincronizarConstantesConExcel(string nombreCarpeta, string nombreTabla, List<IDevice> listaExcel)
-        {
-            try
-            {
-                LogService.Write($"[TIA] === SINCRONIZANDO DISPOSITIVOS: {nombreTabla} ===");
-                var tabla = BuscarTablaEnCarpeta(nombreCarpeta, nombreTabla);
-                if (tabla == null) throw new Exception($"La tabla '{nombreTabla}' no existe.");
-
-                var idsEnExcel = new HashSet<int>(listaExcel.Select(d => d.Numero));
-                var constantesAEliminar = tabla.UserConstants.Where(c => int.TryParse(c.Value, out int id) && !idsEnExcel.Contains(id)).ToList();
-
-                foreach (var c in constantesAEliminar)
+                foreach (var c in constantsToDelete)
                 {
                     LogService.Write($"[TIA-DELETE] Borrando ID {c.Value}: {c.Name}");
                     c.Delete();
                 }
 
-                foreach (var disp in listaExcel)
+                // Crear o Renombrar según Excel
+                foreach (var dev in excelDevices)
                 {
-                    PlcUserConstant constanteTIA = tabla.UserConstants.FirstOrDefault(c => c.Value == disp.Numero.ToString());
+                    var tiaConst = table.UserConstants.FirstOrDefault(c => c.Value == dev.Numero.ToString());
 
-                    if (constanteTIA == null)
+                    if (tiaConst == null)
                     {
-                        LogService.Write($"[TIA-CREATE] Creando ID {disp.Numero}: {disp.CPTag}");
-                        constanteTIA = tabla.UserConstants.Create(disp.CPTag, "Int", disp.Numero.ToString());
+                        LogService.Write($"[TIA-CREATE] Creando ID {dev.Numero}: {dev.CPTag}");
+                        tiaConst = table.UserConstants.Create(dev.CPTag, "Int", dev.Numero.ToString());
                     }
 
-                    if (constanteTIA.Name != disp.CPTag)
+                    if (tiaConst.Name != dev.CPTag)
                     {
-                        LogService.Write($"[TIA-RENAME] ID {disp.Numero}: {constanteTIA.Name} -> {disp.CPTag}");
-                        constanteTIA.Name = disp.CPTag;
+                        LogService.Write($"[TIA-RENAME] ID {dev.Numero}: {tiaConst.Name} -> {dev.CPTag}");
+                        tiaConst.Name = dev.CPTag;
                     }
 
-                    ActualizarComentarios(constanteTIA, disp.CPComentario);
+                    UpdatePlcComment(tiaConst, dev.CPComentario);
                 }
-                EnviarEstado("Sincronización de dispositivos finalizada.");
+                Report("Sincronización de constantes finalizada.");
                 return true;
             }
             catch (Exception ex)
             {
-                LogService.Write($"[TIA-FATAL] Error en Sync: {ex.Message}", true);
+                LogService.Write($"[TIA-FATAL] Error en Sync Constants: {ex.Message}", true);
                 return false;
             }
         }
 
-        /// <summary>
-        /// Realiza una cirugía XML sobre un Bloque de Datos (DB) para inyectar descripciones.
-        /// </summary>
-        public bool SincronizarComentariosDB(string nombreDb, string nombreArray, List<IDevice> dispositivos)
+        #endregion
+
+        #region 2. COMPILACIÓN Y BLOQUES
+
+        // Compila un bloque específico (necesario antes de la cirugía XML)
+        public bool CompileBlock(string blockName)
         {
             try
             {
-                var bloqueGenerico = _plcSoftware.BlockGroup.Blocks.Find(nombreDb)
-                                     ?? _plcSoftware.BlockGroup.Groups.SelectMany(g => g.Blocks).FirstOrDefault(b => b.Name == nombreDb);
+                LogService.Write($"[TIA] Buscando bloque '{blockName}' para compilar...");
+                var block = FindBlockRecursively(_plcSoftware.BlockGroup, blockName);
 
-                var db = bloqueGenerico as GlobalDB;
-                if (db == null)
+                if (block == null)
                 {
-                    LogService.Write($"[TIA-ERROR] No se pudo encontrar o castear el bloque: {nombreDb}", true);
+                    LogService.Write($"[TIA-ERROR] No se encontró el bloque '{blockName}'", true);
                     return false;
                 }
 
-                string rutaXml = Path.Combine(AppConfigManager.TempPath, $"{nombreDb}.xml");
-                if (File.Exists(rutaXml)) File.Delete(rutaXml);
+                ICompilable compileService = block.GetService<ICompilable>();
+                if (compileService != null)
+                {
+                    LogService.Write($"[TIA] Compilando: {blockName}...");
+                    CompilerResult result = compileService.Compile();
+                    return result.State != CompilerResultState.Error;
+                }
+                return false;
+            }
+            catch (Exception ex)
+            {
+                LogService.Write($"[TIA-ERROR] Fallo al compilar: {ex.Message}", true);
+                return false;
+            }
+        }
 
-                LogService.Write($"[TIA-XML] Exportando {nombreDb} para cirugía...");
-                db.Export(new FileInfo(rutaXml), ExportOptions.WithDefaults);
+        // Inyecta comentarios en el DB mediante manipulación de XML
+        public bool SyncDbComments(string dbName, string arrayName, List<IDevice> devices)
+        {
+            try
+            {
+                var genericBlock = FindBlockRecursively(_plcSoftware.BlockGroup, dbName);
+                var db = genericBlock as GlobalDB;
 
-                XDocument doc = XDocument.Load(rutaXml);
+                if (db == null) throw new Exception($"No se pudo encontrar el DB: {dbName}");
+
+                string xmlPath = Path.Combine(AppConfigManager.TempPath, $"{dbName}.xml");
+                if (File.Exists(xmlPath)) File.Delete(xmlPath);
+
+                db.Export(new FileInfo(xmlPath), ExportOptions.WithDefaults);
+
+                XDocument doc = XDocument.Load(xmlPath);
                 XNamespace ns = "http://www.siemens.com/automation/Openness/SW/Interface/v5";
 
-                var sectionStatic = doc.Descendants(ns + "Section").FirstOrDefault(s => s.Attribute("Name")?.Value == "Static");
-                if (sectionStatic == null) throw new Exception("No se encontró la sección 'Static' en el DB.");
+                var staticSection = doc.Descendants(ns + "Section").FirstOrDefault(s => s.Attribute("Name")?.Value == "Static");
+                var arrayMember = staticSection?.Elements(ns + "Member").FirstOrDefault(m => m.Attribute("Name")?.Value == arrayName);
 
-                var miembroArray = sectionStatic.Elements(ns + "Member").FirstOrDefault(m => m.Attribute("Name")?.Value == nombreArray);
-
-                if (miembroArray != null)
+                if (arrayMember != null)
                 {
-                    foreach (var disp in dispositivos)
+                    foreach (var dev in devices)
                     {
-                        var subelement = miembroArray.Elements(ns + "Subelement").FirstOrDefault(s => s.Attribute("Path")?.Value == disp.Numero.ToString());
+                        var subelement = arrayMember.Elements(ns + "Subelement").FirstOrDefault(s => s.Attribute("Path")?.Value == dev.Numero.ToString());
 
                         if (subelement == null)
                         {
-                            subelement = new XElement(ns + "Subelement", new XAttribute("Path", disp.Numero.ToString()));
-                            miembroArray.Add(subelement);
+                            subelement = new XElement(ns + "Subelement", new XAttribute("Path", dev.Numero.ToString()));
+                            arrayMember.Add(subelement);
                         }
 
                         subelement.Elements(ns + "Comment").Remove();
                         subelement.Add(new XElement(ns + "Comment",
                             new XElement(ns + "MultiLanguageText",
                                 new XAttribute("Lang", "es-ES"),
-                                disp.Tag + " - " + disp.Descripcion)));
+                                dev.Tag + " - " + dev.Descripcion)));
                     }
-                    doc.Save(rutaXml);
+                    doc.Save(xmlPath);
                 }
 
-                LogService.Write($"[TIA-XML] Re-importando {nombreDb}...");
-                var padre = bloqueGenerico.Parent;
-                if (padre is PlcBlockUserGroup carpeta)
-                    carpeta.Blocks.Import(new FileInfo(rutaXml), ImportOptions.Override);
-                else if (padre is PlcBlockGroup raiz)
-                    raiz.Blocks.Import(new FileInfo(rutaXml), ImportOptions.Override);
+                // Re-importar el bloque modificado
+                var parent = genericBlock.Parent;
+                if (parent is PlcBlockUserGroup folder) folder.Blocks.Import(new FileInfo(xmlPath), ImportOptions.Override);
+                else if (parent is PlcBlockGroup root) root.Blocks.Import(new FileInfo(xmlPath), ImportOptions.Override);
 
                 return true;
             }
             catch (Exception ex)
             {
-                LogService.Write($"[TIA-ERROR] Error en cirugía XML: {ex.Message}", true);
+                LogService.Write($"[TIA-XML] Error en cirugía XML: {ex.Message}", true);
                 return false;
             }
         }
 
         #endregion
 
-        #region HELPERS INTERNOS
+        #region 3. HELPERS DE EXPORTACIÓN Y BÚSQUEDA
 
-        private PlcTagTable BuscarTabla(string nombre)
+        public bool ExportTagTable(string folderName, string tableName, string xmlPath)
         {
-            var tablaRaiz = _plcSoftware.TagTableGroup.TagTables.Find(nombre);
-            if (tablaRaiz != null) return tablaRaiz;
-
-            return _plcSoftware.TagTableGroup.Groups.SelectMany(g => g.TagTables).FirstOrDefault(t => t.Name == nombre);
-        }
-
-        private PlcTagTable BuscarTablaEnCarpeta(string carpeta, string tabla)
-        {
-            var grupo = _plcSoftware.TagTableGroup.Groups.Find(carpeta);
-            return grupo?.TagTables.Find(tabla);
-        }
-
-        private void ActualizarComentarios(PlcUserConstant constante, string comentario)
-        {
-            foreach (var item in constante.Comment.Items)
+            try
             {
-                try { item.Text = comentario; }
-                catch { item.SetAttribute("Text", comentario); }
+                if (File.Exists(xmlPath)) File.Delete(xmlPath);
+                var table = FindTableInFolder(folderName, tableName);
+                if (table == null) return false;
+
+                table.Export(new FileInfo(xmlPath), ExportOptions.WithDefaults);
+                return true;
+            }
+            catch { return false; }
+        }
+
+        private PlcTagTable FindTagTable(string name)
+        {
+            var rootTable = _plcSoftware.TagTableGroup.TagTables.Find(name);
+            if (rootTable != null) return rootTable;
+            return _plcSoftware.TagTableGroup.Groups.SelectMany(g => g.TagTables).FirstOrDefault(t => t.Name == name);
+        }
+
+        private PlcTagTable FindTableInFolder(string folder, string table)
+        {
+            var group = _plcSoftware.TagTableGroup.Groups.Find(folder);
+            return group?.TagTables.Find(table);
+        }
+
+        private void UpdatePlcComment(PlcUserConstant constant, string comment)
+        {
+            foreach (var item in constant.Comment.Items)
+            {
+                try { item.Text = comment; }
+                catch { item.SetAttribute("Text", comment); }
             }
         }
 
-        private void EnviarEstado(string msg, bool esError = false)
+        private PlcBlock FindBlockRecursively(PlcBlockGroup group, string name)
         {
-            OnStatusChanged?.Invoke(msg, esError);
-        }
+            var block = group.Blocks.Find(name);
+            if (block != null) return block;
 
-        private PlcBlock BuscarBloqueRecursivo(PlcBlockUserGroup group, string nombre)
-        {
-            var bloque = group.Blocks.Find(nombre);
-            if (bloque != null) return bloque;
-
-            foreach (var subCarpeta in group.Groups)
+            foreach (var subFolder in group.Groups)
             {
-                var encontrado = BuscarBloqueRecursivo(subCarpeta, nombre);
-                if (encontrado != null) return encontrado;
+                var found = FindBlockRecursively(subFolder, name);
+                if (found != null) return found;
             }
             return null;
+        }
+
+        private void Report(string msg, bool error = false)
+        {
+            StatusChanged?.Invoke(msg, error);
         }
 
         #endregion

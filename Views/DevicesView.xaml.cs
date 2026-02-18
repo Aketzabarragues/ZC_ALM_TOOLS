@@ -3,13 +3,13 @@ using ZC_ALM_TOOLS.ViewModels; // Importante
 
 namespace ZC_ALM_TOOLS.Views
 {
-    public partial class ViewDispositivos : UserControl
+    public partial class DevicesView : UserControl
     {
-        public ViewDispositivos()
+        public DevicesView()
         {
             InitializeComponent();
             // Asignamos el ViewModel como contexto de datos
-            this.DataContext = new DispositivosViewModel();
+            this.DataContext = new DevicesViewModel();
         }
     }
 }

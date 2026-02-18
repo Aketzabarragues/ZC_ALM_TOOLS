@@ -5,8 +5,57 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:views="clr-namespace:ZC_ALM_TOOLS.Views"
         mc:Ignorable="d"
-        Title="ZC Tools - TIA Portal Add-In" Height="600" Width="1000"
+        Title="ZC Tools - TIA Portal Add-In" Height="650" Width="1050"
         WindowStartupLocation="CenterScreen" Background="#F0F0F0">
+
+    <Window.Resources>
+        <Style x:Key="SettingsButtonStyle" TargetType="Button">
+            <Setter Property="Foreground" Value="#555555"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontSize" Value="18"/>
+            <Setter Property="Width" Value="35"/>
+            <Setter Property="Height" Value="35"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Foreground" Value="Black"/>
+                    <Setter Property="Background" Value="#E5E5E5"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="PrimaryButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#007ACC"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="15,0"/>
+            <Setter Property="Height" Value="35"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                CornerRadius="4" 
+                                BorderThickness="{TemplateBinding BorderThickness}" 
+                                BorderBrush="{TemplateBinding BorderBrush}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#005B96"/>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Background" Value="#CCCCCC"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -14,68 +63,98 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" Padding="10" Background="#F5F6F7" BorderBrush="#E1E1E1" BorderThickness="0,0,0,1">
+        <Border Grid.Row="0" Padding="15,10" Background="#F5F6F7" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1">
             <Grid>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                    <Button Content="📂 Cargar Excel Definicion programacion" 
-                    Command="{Binding CargarDatosCommand}" 
-                    Width="250" Height="30" Margin="0,0,10,0"/>
+                    <Button Content="📂 Cargar Excel Definición" 
+                            Command="{Binding LoadDataCommand}" 
+                            Style="{StaticResource PrimaryButtonStyle}"
+                            Width="260" Margin="0,0,15,0"/>
 
-                    <TextBlock Text="{Binding ArchivoExcelSeleccionado, TargetNullValue='Ningún archivo seleccionado'}" 
-                       VerticalAlignment="Center" Foreground="Gray" FontStyle="Italic"/>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="Archivo seleccionado:" FontSize="10" Foreground="#888"/>
+                        <TextBlock Text="{Binding SelectedExcelFile, TargetNullValue='Ningún archivo seleccionado'}" 
+                                   Foreground="#555" FontWeight="Medium" FontStyle="Italic"/>
+                    </StackPanel>
                 </StackPanel>
 
-                <Button Command="{Binding ConfigurarRutaExeCommand}"
-                HorizontalAlignment="Right"
-                Width="30" Height="30"
-                ToolTip="Configurar ruta del Extractor"
-                Background="Transparent"
-                BorderThickness="0"
-                FontSize="16"
-                Content="⚙️">
-                    <Button.Style>
-                        <Style TargetType="Button">
-                            <Setter Property="Foreground" Value="#555555"/>
-                            <Style.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter Property="Foreground" Value="Black"/>
-                                    <Setter Property="Background" Value="#E5E5E5"/>
-                                </Trigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Button.Style>
-                </Button>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+
+                    <Button Command="{Binding ConfigDispCommand}"
+                    Style="{StaticResource SettingsButtonStyle}"
+                    ToolTip="Editar Mapa de Dispositivos (Categorías)"
+                    Content="🛠️" 
+                    Margin="0,0,5,0"/>
+
+                    <Button Command="{Binding ConfigExtractorCommand}"
+                    Style="{StaticResource SettingsButtonStyle}"
+                    ToolTip="Configurar ruta del Extractor Python"
+                    Content="⚙️"/>
+
+                </StackPanel>
             </Grid>
         </Border>
 
-        <TabControl Grid.Row="1" Margin="5">
+        <TabControl Grid.Row="1" Margin="10" 
+                    IsEnabled="{Binding IsDataLoaded}"
+                    Background="White" BorderBrush="#D0D0D0">
+
+            <TabControl.Resources>
+                <Style TargetType="TabItem">
+                    <Setter Property="HeaderTemplate">
+                        <Setter.Value>
+                            <DataTemplate>
+                                <ContentPresenter Content="{Binding}" Margin="10,4"/>
+                            </DataTemplate>
+                        </Setter.Value>
+                    </Setter>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                </Style>
+            </TabControl.Resources>
 
             <TabItem Header="🔧 Dispositivos">
-                <views:ViewDispositivos DataContext="{Binding DispositivosViewModel}"/>
+                <views:DevicesView DataContext="{Binding DevicesVM}"/>
             </TabItem>
 
             <TabItem Header="🏭 Procesos">
                 <Grid Background="#FAFAFA">
-                    <TextBlock Text="Módulo de Procesos (Pendiente)" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                        <TextBlock Text="🏭" FontSize="48" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                        <TextBlock Text="Módulo de Procesos (Próximamente)" Foreground="#AAA" FontSize="14"/>
+                    </StackPanel>
                 </Grid>
             </TabItem>
 
             <TabItem Header="🚨 Alarmas">
                 <Grid Background="#FAFAFA">
-                    <TextBlock Text="Módulo de Alarmas (Pendiente)" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                        <TextBlock Text="🚨" FontSize="48" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                        <TextBlock Text="Módulo de Alarmas (Próximamente)" Foreground="#AAA" FontSize="14"/>
+                    </StackPanel>
                 </Grid>
-            </TabItem>
-
-            <TabItem Header="Log de Sistema">
-                <views:ViewLog DataContext="{Binding LogViewModel}"/>
             </TabItem>
         </TabControl>
 
-        <StatusBar Grid.Row="2">
+        <StatusBar Grid.Row="2" Background="#E9ECEF" BorderBrush="#CED4DA" BorderThickness="0,1,0,0" Padding="5,2">
             <StatusBarItem>
-                <TextBlock Text="{Binding MensajeEstado}" 
-                   Foreground="{Binding ColorEstado}" 
-                   FontWeight="SemiBold"/>
+                <StackPanel Orientation="Horizontal">
+                    <Ellipse Width="8" Height="8" Margin="5,0,8,0">
+                        <Ellipse.Style>
+                            <Style TargetType="Ellipse">
+                                <Setter Property="Fill" Value="#4CAF50"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding StatusColor}" Value="Red">
+                                        <Setter Property="Fill" Value="#F44336"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Ellipse.Style>
+                    </Ellipse>
+                    <TextBlock Text="{Binding StatusMessage}" 
+                               Foreground="{Binding StatusColor}" 
+                               FontWeight="SemiBold"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
             </StatusBarItem>
         </StatusBar>
     </Grid>

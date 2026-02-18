@@ -3,6 +3,7 @@ using System.Windows.Input;
 
 namespace ZC_ALM_TOOLS.Core
 {
+    // Clase para gestionar los comandos de los botones desde el ViewModel
     public class RelayCommand : ICommand
     {
         private readonly Action _execute;
@@ -14,8 +15,13 @@ namespace ZC_ALM_TOOLS.Core
             _canExecute = canExecute;
         }
 
+        // Verifica si el comando puede ejecutarse en este momento
         public bool CanExecute(object parameter) => _canExecute == null || _canExecute();
+
+        // Ejecuta la acción vinculada al comando
         public void Execute(object parameter) => _execute();
+
+        // Se dispara cuando cambian las condiciones que afectan a si el comando puede ejecutarse
         public event EventHandler CanExecuteChanged
         {
             add { CommandManager.RequerySuggested += value; }

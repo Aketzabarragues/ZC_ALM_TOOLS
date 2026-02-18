@@ -1,16 +1,18 @@
-﻿<UserControl x:Class="ZC_ALM_TOOLS.Views.ViewDispositivos"
+﻿<UserControl x:Class="ZC_ALM_TOOLS.Views.DevicesView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:core="clr-namespace:ZC_ALM_TOOLS.Core"
+             xmlns:core="clr-namespace:ZC_ALM_TOOLS.Core" 
+             xmlns:viewmodels="clr-namespace:ZC_ALM_TOOLS.ViewModels" 
+             d:DataContext="{d:DesignInstance Type=viewmodels:DevicesViewModel}"
              mc:Ignorable="d" 
              d:DesignHeight="600" d:DesignWidth="1000">
 
     <UserControl.Resources>
         <core:ContainsConverter x:Key="ContainsConverter" />
 
-        <Style x:Key="EstadoIndicatorStyle" TargetType="Border">
+        <Style x:Key="StatusIndicatorStyle" TargetType="Border">
             <Setter Property="Padding" Value="12,6"/>
             <Setter Property="CornerRadius" Value="6"/>
             <Setter Property="Margin" Value="0,0,10,0"/>
@@ -33,7 +35,7 @@
             </Style.Triggers>
         </Style>
 
-        <Style x:Key="EstadoTextStyle" TargetType="TextBlock">
+        <Style x:Key="StatusTextStyle" TargetType="TextBlock">
             <Setter Property="Text" Value="PENDIENTE"/>
             <Setter Property="Margin" Value="5,0,0,0"/>
             <Style.Triggers>
@@ -57,28 +59,42 @@
             <StackPanel>
                 <TextBlock Text="FILTROS" FontWeight="Bold" Foreground="#333333" Margin="0,0,0,5"/>
                 <TextBlock Text="Familia de Dispositivos:" Margin="0,0,0,2" Foreground="#555"/>
-                <ComboBox ItemsSource="{Binding Categorias}" 
-                          SelectedItem="{Binding CategoriaSeleccionada}"
-                          IsEnabled="{Binding ProyectoCargado}"
+
+                <ComboBox ItemsSource="{Binding Categories}" 
+                          SelectedItem="{Binding SelectedCategory}"
                           DisplayMemberPath="Name" 
                           Height="30" Margin="0,0,0,20"
-                          VerticalContentAlignment="Center"/>
+                          VerticalContentAlignment="Center">
+                    <ComboBox.Resources>
+                        <Style TargetType="Border">
+                            <Setter Property="CornerRadius" Value="4"/>
+                        </Style>
+                    </ComboBox.Resources>
+                </ComboBox>
 
-                <Separator Margin="0,0,0,20" Background="#DDD"/>
+                    <Separator Margin="0,0,0,20" Background="#DDD"/>
 
                 <TextBlock Text="WORKFLOW DE SINCRONIZACIÓN" FontWeight="Bold" Foreground="#005B96" Margin="0,0,0,10"/>
 
                 <TextBlock Text="Paso 1: Comprobaciones" FontWeight="SemiBold" Margin="0,5,0,2" Foreground="#444"/>
-                <Button Command="{Binding ComparacionCommand}"                          
-                        Content="🔍 Comparar con TIA Portal" 
-                        Height="40" Margin="0,0,0,15"
-                        Background="White" BorderBrush="#5CB85C" BorderThickness="1" Foreground="#5CB85C" FontWeight="Bold"/>
-
+                <Button Command="{Binding CompareCommand}" 
+                        Content="🔍 Comparar con TIA Portal"
+                        Height="40" Margin="0,0,0,10"
+                        Background="#007ACC" BorderThickness="0" Foreground="White" FontWeight="Bold"
+                        Cursor="Hand">
+                    <Button.Resources>
+                        <Style TargetType="Border">
+                            <Setter Property="CornerRadius" Value="4"/>
+                        </Style>
+                    </Button.Resources>
+                </Button>
+                
                 <TextBlock Text="Paso 2: Actualización" FontWeight="SemiBold" Margin="0,5,0,2" Foreground="#444"/>
-                <Button Command="{Binding SyncConstantesCommand}" 
+                <Button Command="{Binding SyncCommand}" 
                         Content="🔄 Sincronizar Todo" 
                         Height="40" Margin="0,0,0,10"
-                        Background="#007ACC" BorderThickness="0" Foreground="White" FontWeight="Bold">
+                        Background="#007ACC" BorderThickness="0" Foreground="White" FontWeight="Bold"
+                        Cursor="Hand">
                     <Button.Resources>
                         <Style TargetType="Border">
                             <Setter Property="CornerRadius" Value="4"/>
@@ -97,28 +113,28 @@
             </Grid.RowDefinitions>
 
             <StackPanel Grid.Row="0" Margin="0,0,0,20">
-                <TextBlock Text="{Binding CategoriaSeleccionada.Name, StringFormat='Estado de Sincronización: {0}'}" 
+                <TextBlock Text="{Binding SelectedCategory.Name, StringFormat='Estado de Sincronización: {0}'}" 
                            FontSize="18" FontWeight="Light" Foreground="#333" Margin="0,0,0,10"/>
 
                 <StackPanel Orientation="Horizontal">
-                    <Border Style="{StaticResource EstadoIndicatorStyle}" Tag="{Binding CategoriaSeleccionada.EstadoNMax}">
+                    <Border Style="{StaticResource StatusIndicatorStyle}" Tag="{Binding SelectedCategory.NMaxStatus}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="N_MAX:"/>
-                            <TextBlock Style="{StaticResource EstadoTextStyle}"/>
+                            <TextBlock Style="{StaticResource StatusTextStyle}"/>
                         </StackPanel>
                     </Border>
 
-                    <Border Style="{StaticResource EstadoIndicatorStyle}" Tag="{Binding CategoriaSeleccionada.EstadoConstantes}">
+                    <Border Style="{StaticResource StatusIndicatorStyle}" Tag="{Binding SelectedCategory.ConstantsStatus}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="Constantes:"/>
-                            <TextBlock Style="{StaticResource EstadoTextStyle}"/>
+                            <TextBlock Style="{StaticResource StatusTextStyle}"/>
                         </StackPanel>
                     </Border>
 
-                    <Border Style="{StaticResource EstadoIndicatorStyle}" Tag="{Binding CategoriaSeleccionada.EstadoDB}">
+                    <Border Style="{StaticResource StatusIndicatorStyle}" Tag="{Binding SelectedCategory.DbStatus}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="DB &amp; Comentarios:"/>
-                            <TextBlock Style="{StaticResource EstadoTextStyle}"/>
+                            <TextBlock Style="{StaticResource StatusTextStyle}"/>
                         </StackPanel>
                     </Border>
                 </StackPanel>
@@ -126,19 +142,19 @@
 
             <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,15">
                 <TextBlock Text="Detalle de Dimensionado:" VerticalAlignment="Center" Foreground="#666" Margin="0,0,10,0"/>
-                <Border Background="{Binding NMaxColor}" CornerRadius="4" Padding="10,4">
-                    <TextBlock Text="{Binding NMaxInfo}" FontSize="12" FontWeight="Bold" Foreground="#333"/>
+                <Border Background="{Binding DimensionColor}" CornerRadius="4" Padding="10,4">
+                    <TextBlock Text="{Binding DimensionInfo}" FontSize="12" FontWeight="Bold" Foreground="#333"/>
                 </Border>
             </StackPanel>
 
-            <DataGrid Grid.Row="2" ItemsSource="{Binding ListaDispositivos}"
-                      AutoGenerateColumns="False"
+            <DataGrid Grid.Row="2" 
+                      ItemsSource="{Binding CurrentDevices}"
+                      AutoGenerateColumns="False" 
                       CanUserAddRows="False" 
                       GridLinesVisibility="Horizontal"
                       HorizontalGridLinesBrush="#EEE"
                       HeadersVisibility="Column"
-                      Background="White"
-                      RowHeaderWidth="0">
+                      Background="White">
 
                 <DataGrid.Resources>
                     <Style TargetType="DataGridColumnHeader">
@@ -159,17 +175,16 @@
                         <DataGridTextColumn.ElementStyle>
                             <Style TargetType="TextBlock">
                                 <Setter Property="Padding" Value="5,0"/>
+                                <Setter Property="VerticalAlignment" Value="Center"/>
                                 <Style.Triggers>
                                     <Trigger Property="Text" Value="Sincronizado">
                                         <Setter Property="Foreground" Value="Green"/>
                                         <Setter Property="FontWeight" Value="Bold"/>
                                     </Trigger>
-
                                     <DataTrigger Binding="{Binding Estado, Converter={StaticResource ContainsConverter}, ConverterParameter='->'}" Value="True">
                                         <Setter Property="Foreground" Value="OrangeRed"/>
                                         <Setter Property="FontWeight" Value="Bold"/>
                                     </DataTrigger>
-
                                     <Trigger Property="Text" Value="Nuevo">
                                         <Setter Property="Foreground" Value="DodgerBlue"/>
                                         <Setter Property="FontWeight" Value="Bold"/>

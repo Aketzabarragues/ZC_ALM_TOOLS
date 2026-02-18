@@ -74,8 +74,7 @@
     <Compile Include="AddInProvider.cs" />
     <Compile Include="Core\ContainsConverter.cs" />
     <Compile Include="Core\DataHelper.cs" />
-    <Compile Include="Core\INotifyPropertyChanged.cs" />
-    <Compile Include="Core\ListBoxBehavior.cs" />
+    <Compile Include="Core\ObservableObject.cs" />
     <Compile Include="Core\RelayCommand.cs" />
     <Compile Include="Models\DeviceCategory.cs" />
     <Compile Include="Models\Disp_Config.cs" />
@@ -89,17 +88,18 @@
     <Compile Include="Models\ParameterConfig.cs" />
     <Compile Include="Models\SynchronizationStatus.cs" />
     <Compile Include="Services\AppConfigManager.cs" />
+    <Compile Include="Services\DataService.cs" />
     <Compile Include="Services\LogService.cs" />
     <Compile Include="Services\TiaService.cs" />
-    <Compile Include="ViewModels\DispositivosViewModel.cs" />
+    <Compile Include="ViewModels\DevicesViewModel.cs" />
     <Compile Include="ViewModels\MainViewModel.cs" />
     <Compile Include="Views\MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="Models\ProcessConfig.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Views\ViewDispositivos.xaml.cs">
-      <DependentUpon>ViewDispositivos.xaml</DependentUpon>
+    <Compile Include="Views\DevicesView.xaml.cs">
+      <DependentUpon>DevicesView.xaml</DependentUpon>
     </Compile>
   </ItemGroup>
   <ItemGroup>
@@ -114,7 +114,7 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Views\ViewDispositivos.xaml">
+    <Page Include="Views\DevicesView.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
