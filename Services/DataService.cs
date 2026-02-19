@@ -8,39 +8,115 @@ using ZC_ALM_TOOLS.Models;
 
 namespace ZC_ALM_TOOLS.Services
 {
+
+
+
+    // ==================================================================================================================
     // Servicio encargado exclusivamente de leer los XML generados por Python
     // y convertirlos en objetos C# usando los Modelos definidos.
     public static class DataService
     {
-        // Carga la configuración global (N_MAX) desde config_disp.xml
-        public static Dictionary<string, int> LoadGlobalConfig(string path)
+
+
+
+        // ==================================================================================================================
+        // Carga la lista de procesos (el índice) desde procesos.xml
+        public static List<Process> LoadProcess(string path)
         {
-            var config = new Dictionary<string, int>();
+            var list = new List<Process>();
 
             if (!File.Exists(path))
             {
-                LogService.Write($"[DATA] No se encuentra config global: {path}", true);
-                return config;
+                LogService.Write($"[DATA] No se encuentra procesos.xml: {path}", true);
+                return list;
             }
 
             try
             {
                 XDocument doc = XDocument.Load(path);
-                // Usamos Nombre y Valor porque así lo definimos en el modelo Disp_Config
-                config = doc.Descendants("Item")
-                            .Select(x => Disp_Config.FromXml(x))
-                            .ToDictionary(c => c.Nombre, c => c.Valor);
+                // Buscamos los nodos <Proceso> y usamos el método FromXml del modelo
+                list = doc.Descendants("Proceso")
+                          .Select(x => Process.FromXml(x))
+                          .ToList();
+
+                LogService.Write($"[DATA] Cargados {list.Count} procesos desde el índice.");
             }
             catch (Exception ex)
             {
-                LogService.Write($"[DATA] Error leyendo config global: {ex.Message}", true);
+                LogService.Write($"[DATA] Error leyendo procesos.xml: {ex.Message}", true);
             }
 
-            return config;
+            return list;
         }
 
+
+
+        // ==================================================================================================================
+        // Carga una lista de parámetros (ya sean Reales o Enteros)
+        public static List<Parameter> LoadParameters(string path)
+        {
+            var list = new List<Parameter>();
+
+            if (!File.Exists(path))
+            {
+                LogService.Write($"[DATA] No se encuentra archivo de parámetros: {path}", true);
+                return list;
+            }
+
+            try
+            {
+                XDocument doc = XDocument.Load(path);
+                // Buscamos los nodos <Parametro> y usamos el método FromXml del modelo
+                list = doc.Descendants("Parametro")
+                          .Select(x => Parameter.FromXml(x))
+                          .ToList();
+
+                LogService.Write($"[DATA] Cargados {list.Count} parámetros desde {Path.GetFileName(path)}.");
+            }
+            catch (Exception ex)
+            {
+                LogService.Write($"[DATA] Error leyendo parámetros en {Path.GetFileName(path)}: {ex.Message}", true);
+            }
+
+            return list;
+        }
+
+
+
+        // ==================================================================================================================
+        // Carga la lista de numero maximo de dispositivos
+        public static List<Disp_Config> LoadDeviceNMax(string path)
+        {
+            var list = new List<Disp_Config>();
+
+            if (!File.Exists(path))
+            {
+                LogService.Write($"[DATA] No se encuentra el archivo de límites: {path}", true);
+                return list;
+            }
+
+            try
+            {
+                XDocument doc = XDocument.Load(path);
+                list = doc.Descendants("Item")
+                          .Select(x => Disp_Config.FromXml(x))
+                          .ToList();
+
+                LogService.Write($"[DATA] Cargados {list.Count} límites de dimensionado.");
+            }
+            catch (Exception ex)
+            {
+                LogService.Write($"[DATA] Error leyendo límites de dispositivos: {ex.Message}", true);
+            }
+
+            return list;
+        }
+
+
+
+        // ==================================================================================================================
         // Carga una lista de dispositivos usando Reflexión para instanciar la clase correcta (Disp_V, Disp_M, etc.)
-        public static List<object> LoadDispCategoryData(string path, DeviceCategory category)
+        public static List<object> LoadDispCategoryData(string path, ConfigDeviceCategory category)
         {
             var list = new List<object>();
 
@@ -87,8 +163,11 @@ namespace ZC_ALM_TOOLS.Services
             return list;
         }
 
+
+
+        // ==================================================================================================================
         // Crea una instancia vacía de un modelo (Disp_ED, Disp_V, etc.) basado en su categoría
-        public static IDevice CreateEmptyDispData(DeviceCategory category)
+        public static IDevice CreateEmptyDispData(ConfigDeviceCategory category)
         {
             try
             {
@@ -112,7 +191,7 @@ namespace ZC_ALM_TOOLS.Services
             {
                 LogService.Write($"[DATA] Error creando instancia de {category.ModelClass}: {ex.Message}", true);
                 // Devolvemos un objeto básico para no romper la ejecución
-                return new ZC_ALM_TOOLS.Models.Disp_ED();
+                return new Disp_ED();
             }
         }
     }

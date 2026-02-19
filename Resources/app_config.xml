@@ -1,0 +1,84 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<AppConfig>
+	<GlobalSettings>
+		<ExtractorExePath>C:\Program Files\Siemens\Automation\Portal V18\AddIns\ZC_ALM_TOOLS\ZC_Extractor.exe</ExtractorExePath>
+	</GlobalSettings>
+	<Devices>
+		<DeviceCategory Name="Entrada Digital">
+			<ExcelSheet>DISP_ED</ExcelSheet>
+			<TiaGroup>002_Dispositivos</TiaGroup>
+			<TiaTable>002_Disp_ED</TiaTable>
+			<ModelClass>Disp_ED</ModelClass>
+			<XmlFile>disp_ed.xml</XmlFile>
+			<GlobalConfigKey>Num_Disp_ED</GlobalConfigKey>
+			<PlcCountConstant>N_MAX_DISP_ED</PlcCountConstant>
+			<TiaDbName>DB2000_ED</TiaDbName>
+			<TiaDbArrayName>ED</TiaDbArrayName>
+		</DeviceCategory>
+		<DeviceCategory Name="Entrada Analogica">
+			<ExcelSheet>DISP_EA</ExcelSheet>
+			<TiaGroup>002_Dispositivos</TiaGroup>
+			<TiaTable>002_Disp_EA</TiaTable>
+			<ModelClass>Disp_EA</ModelClass>
+			<XmlFile>disp_ea.xml</XmlFile>
+			<GlobalConfigKey>Num_Disp_EA</GlobalConfigKey>
+			<PlcCountConstant>N_MAX_DISP_EA</PlcCountConstant>
+			<TiaDbName>DB2001_EA</TiaDbName>
+			<TiaDbArrayName>EA</TiaDbArrayName>
+		</DeviceCategory>
+		<DeviceCategory Name="Salida Analogica">
+			<ExcelSheet>DISP_SA</ExcelSheet>
+			<TiaGroup>002_Dispositivos</TiaGroup>
+			<TiaTable>002_Disp_SA</TiaTable>
+			<ModelClass>Disp_SA</ModelClass>
+			<XmlFile>disp_sa.xml</XmlFile>
+			<GlobalConfigKey>Num_Disp_SA</GlobalConfigKey>
+			<PlcCountConstant>N_MAX_DISP_SA</PlcCountConstant>
+			<TiaDbName>DB2006_SA</TiaDbName>
+			<TiaDbArrayName>SA</TiaDbArrayName>
+		</DeviceCategory>
+		<DeviceCategory Name="Válvula">
+			<ExcelSheet>DISP_V</ExcelSheet>
+			<TiaGroup>002_Dispositivos</TiaGroup>
+			<TiaTable>002_Disp_V</TiaTable>
+			<ModelClass>Disp_V</ModelClass>
+			<XmlFile>disp_v.xml</XmlFile>
+			<GlobalConfigKey>Num_Disp_V</GlobalConfigKey>
+			<PlcCountConstant>N_MAX_DISP_V</PlcCountConstant>
+			<TiaDbName>DB2010_V</TiaDbName>
+			<TiaDbArrayName>V</TiaDbArrayName>
+		</DeviceCategory>
+		<DeviceCategory Name="Motor">
+			<ExcelSheet>DISP_M</ExcelSheet>
+			<TiaGroup>002_Dispositivos</TiaGroup>
+			<TiaTable>002_Disp_M</TiaTable>
+			<ModelClass>Disp_M</ModelClass>
+			<XmlFile>disp_m.xml</XmlFile>
+			<GlobalConfigKey>Num_Disp_M</GlobalConfigKey>
+			<PlcCountConstant>N_MAX_DISP_M</PlcCountConstant>
+			<TiaDbName>DB2015_M</TiaDbName>
+			<TiaDbArrayName>M</TiaDbArrayName>
+		</DeviceCategory>
+		<DeviceCategory Name="Motor variador">
+			<ExcelSheet>DISP_M_VF</ExcelSheet>
+			<TiaGroup>002_Dispositivos</TiaGroup>
+			<TiaTable>002_Disp_M_VF</TiaTable>
+			<ModelClass>Disp_M_VF</ModelClass>
+			<XmlFile>disp_m_vf.xml</XmlFile>
+			<GlobalConfigKey>Num_Disp_M_VF</GlobalConfigKey>
+			<PlcCountConstant>N_MAX_DISP_M_VF</PlcCountConstant>
+			<TiaDbName>DB2016_M_VF</TiaDbName>
+			<TiaDbArrayName>M_VF</TiaDbArrayName>
+		</DeviceCategory>
+	</Devices>
+	<DeviceSettings>
+		<ConfigTableName>000_Config_Dispositivos</ConfigTableName>
+		<DeviceDataConfigXml>config_disp.xml</DeviceDataConfigXml>
+	</DeviceSettings>
+	<ProcessSettings>
+		<ProcessXml>procesos.xml</ProcessXml>
+		<PRealXml>preal.xml</PRealXml>
+		<PIntXml>pint.xml</PIntXml>
+		<AlarmXml>alarmas.xml</AlarmXml>
+	</ProcessSettings>
+</AppConfig>

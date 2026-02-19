@@ -3,7 +3,7 @@ using ZC_ALM_TOOLS.Core;
 
 namespace ZC_ALM_TOOLS.Models
 {
-    public class ParameterConfig
+    public class Parameter
     {
         public string Uid { get; set; }
         public int Numero { get; set; }
@@ -15,7 +15,7 @@ namespace ZC_ALM_TOOLS.Models
         public string ComentarioDB { get; set; }
         public string Visibilidad { get; set; }
 
-        public static ParameterConfig FromXml(XElement x) => new ParameterConfig
+        public static Parameter FromXml(XElement x) => new Parameter
         {
             Uid = DataHelper.GetXmlVal(x, "UID"),
             Numero = DataHelper.GetXmlInt(x, "Numero"),

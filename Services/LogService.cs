@@ -5,6 +5,10 @@ namespace ZC_ALM_TOOLS.Services
 {
     public static class LogService
     {
+
+
+
+        // ==================================================================================================================
         // Escribe una línea en el archivo de log físico
         public static void Write(string message, bool isError = false)
         {
@@ -22,6 +26,9 @@ namespace ZC_ALM_TOOLS.Services
             }
         }
 
+
+
+        // ==================================================================================================================
         // Borra el archivo actual para empezar uno nuevo
         public static void Clear()
         {

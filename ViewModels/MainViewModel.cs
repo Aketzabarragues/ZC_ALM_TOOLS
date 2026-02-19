@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Net.NetworkInformation;
 using System.Threading;
 using System.Windows;
 using Microsoft.Win32;
@@ -19,16 +21,19 @@ namespace ZC_ALM_TOOLS.ViewModels
         // =================================================================================================================
         // PROPIEDADES
         private TiaService _tiaService;
-        private TiaPortal _tiaPortal;
-        private PlcSoftware _plcSoftware;
-
+                
         // Caché de datos cargados
         private Dictionary<string, List<object>> _engineeringCache = new Dictionary<string, List<object>>();
-        private Dictionary<string, int> _globalConfigCache = new Dictionary<string, int>();
+
+        // Cache de configuracion xml
+        private ConfigProcessSettings _configProcessesSettings;
+        private ConfigDeviceSettings _configDeviceSettings;
+        private ConfigGlobalSettings _configGlobalSettings;        
+        private List<ConfigDeviceCategory> _configDeviceCategory { get; set; }
 
         // ViewModels y Configuración
         public DevicesViewModel DevicesVM { get; set; }
-        public List<DeviceCategory> Categories { get; set; }
+        public ProcessViewModel ProcessesVM { get; set; }
 
         // Variable que indica que esta ejecutandose algo
         private bool _isBusy;
@@ -72,8 +77,7 @@ namespace ZC_ALM_TOOLS.ViewModels
 
         // Comandos
         public RelayCommand LoadDataCommand { get; set; }
-        public RelayCommand ConfigExtractorCommand { get; set; }
-        public RelayCommand ConfigDispCommand { get; set; }
+        public RelayCommand ConfigSettingsCommand { get; set; }
 
 
 
@@ -81,9 +85,6 @@ namespace ZC_ALM_TOOLS.ViewModels
         // CONSTRUCTOR
         public MainViewModel(TiaPortal tiaPortal, PlcSoftware plcSoftware)
         {
-            _tiaPortal = tiaPortal;
-            _plcSoftware = plcSoftware;
-
             LogService.Clear();
             LogService.Write("Inicializando MainViewModel...");
 
@@ -92,30 +93,35 @@ namespace ZC_ALM_TOOLS.ViewModels
 
             // Inicializamos configuración y cargamos categorías
             AppConfigManager.InitializeEnvironment();
-            Categories = AppConfigManager.GetDeviceCategories();
+            _configProcessesSettings = AppConfigManager.GetProcessConfig();
+            _configDeviceSettings = AppConfigManager.GetDeviceSettings();
+            _configGlobalSettings = AppConfigManager.GetGlobalSettings();
+            _configDeviceCategory = AppConfigManager.GetDeviceCategories();
 
             // Inicializamos servicios y viewmodels
             _tiaService = new TiaService(plcSoftware);
-            DevicesVM = new DevicesViewModel();
 
-            DevicesVM.Categories = Categories;
+            DevicesVM = new DevicesViewModel();
+            DevicesVM.Category = _configDeviceCategory;
             DevicesVM.SetTiaService(_tiaService);
+
+            ProcessesVM = new ProcessViewModel();
+            ProcessesVM.SetTiaService(_tiaService);
 
             // Evento para actualizar el mensaje de estado
             StatusService.OnStatusChanged += UpdateStatus;
             StatusService.OnBusyChanged += (busy) => IsBusy = busy;
 
             // Seleccionamos una categoria en el viewmodel
-            if (Categories.Count > 0)
-                DevicesVM.SelectedCategory = Categories[0];
+            if (_configDeviceCategory.Count > 0)
+                DevicesVM.SelectedCategory = _configDeviceCategory[0];
 
             StatusMessage = $"Conectado a PLC: {plcSoftware.Name}";
             LogService.Write($"Conectado a PLC: {plcSoftware.Name}");
 
             // Mapeo de comandos
             LoadDataCommand = new RelayCommand(LoadExcelAndGenerateJson);
-            ConfigExtractorCommand = new RelayCommand(OpenSettingsEditor);
-            ConfigDispCommand = new RelayCommand(OpenDeviceSettingEditor);
+            ConfigSettingsCommand = new RelayCommand(OpenSettingsEditor);
         }
 
 
@@ -142,12 +148,11 @@ namespace ZC_ALM_TOOLS.ViewModels
                 LogService.Write($"Archivo seleccionado: {SelectedExcelFile}");
 
                 // Verificar ruta del extractor
-                string exePath = AppConfigManager.ReadExePath();
-                if (!File.Exists(exePath))
+                if (!File.Exists(_configGlobalSettings.ExtractorExePath))
                 {
                     LogService.Write("ERROR: Extractor no encontrado", true);
                     UpdateStatus("Error: No se encuentra ZC_Extractor.exe", true);
-                    MessageBox.Show($"Extractor no encontrado en:\n{exePath}", "Error de configuración");
+                    MessageBox.Show($"Extractor no encontrado en:\n{_configGlobalSettings.ExtractorExePath}", "Error de configuración");
                     return;
                 }
 
@@ -160,7 +165,7 @@ namespace ZC_ALM_TOOLS.ViewModels
                 string arguments = $"--path \"{SelectedExcelFile}\"";
 
                 // Ejecutar proceso externo
-                Siemens.Engineering.AddIn.Utilities.Process.Start(exePath, arguments);
+                Siemens.Engineering.AddIn.Utilities.Process.Start(_configGlobalSettings.ExtractorExePath, arguments);
 
                 // Esperar a que Python genere los XML
                 if (WaitForPythonFiles())
@@ -171,7 +176,8 @@ namespace ZC_ALM_TOOLS.ViewModels
                     LoadAllFromFolder(AppConfigManager.ExportPath);
 
                     // Pasar datos al ViewModel de dispositivos
-                    DevicesVM.LoadData(_engineeringCache, _globalConfigCache);
+                    DevicesVM.LoadData(_engineeringCache);
+                    ProcessesVM.LoadData(_engineeringCache);
 
                     IsDataLoaded = true;
                     UpdateStatus("Listo. Todos los módulos cargados.");
@@ -202,37 +208,30 @@ namespace ZC_ALM_TOOLS.ViewModels
         {
             LogService.Write($"Iniciando espera en: {AppConfigManager.ExportPath}");
 
-            for (int i = 0; i < 150; i++) // Timeout aprox 30s (150 * 200ms)
-            {
-                bool missing = false;
-                string missingFile = "";
+            // Creamos la lista de archivos que esperamos basándonos en la configuración
+            List<string> expectedFiles = new List<string>();
+            expectedFiles.AddRange(_configDeviceCategory.Select(c => c.XmlFile));
+            expectedFiles.Add(_configProcessesSettings.ProcessXml);
+            expectedFiles.Add(_configProcessesSettings.PRealXml);
+            expectedFiles.Add(_configProcessesSettings.PIntXml);
+            expectedFiles.Add(_configDeviceSettings.DeviceDataConfigXml);
 
-                // Comprobar XML de cada categoría
-                foreach (var cat in Categories)
+            for (int i = 0; i < 150; i++)
+            {
+                bool allFound = true;
+                foreach (var file in expectedFiles)
                 {
-                    string checkPath = Path.Combine(AppConfigManager.ExportPath, cat.XmlFile);
-                    if (!File.Exists(checkPath))
+                    if (string.IsNullOrEmpty(file)) continue;
+                    if (!File.Exists(Path.Combine(AppConfigManager.ExportPath, file)))
                     {
-                        missing = true;
-                        missingFile = cat.XmlFile;
+                        allFound = false;
                         break;
                     }
                 }
 
-                // Comprobar XML de configuración global
-                if (!missing && !File.Exists(AppConfigManager.DeviceDataConfig))
-                {
-                    missing = true;
-                    missingFile = "config_disp.xml";
-                }
-
-                if (!missing) return true; // Todo encontrado
-
-                if (i % 10 == 0) LogService.Write($"Esperando {missingFile}...");
-
+                if (allFound) return true;
 
                 Thread.Sleep(200);
-
                 UpdateStatusFrame();
             }
             return false;
@@ -243,13 +242,9 @@ namespace ZC_ALM_TOOLS.ViewModels
         private void LoadAllFromFolder(string folderPath)
         {
             _engineeringCache.Clear();
-            _globalConfigCache.Clear();
-
-            // Cargar configuración global usando DataService
-            _globalConfigCache = DataService.LoadGlobalConfig(AppConfigManager.DeviceDataConfig);
 
             // Cargar dispositivos de cada categoría
-            foreach (var cat in Categories)
+            foreach (var cat in _configDeviceCategory)
             {
                 string filePath = Path.Combine(folderPath, cat.XmlFile);
                 if (File.Exists(filePath))
@@ -257,6 +252,55 @@ namespace ZC_ALM_TOOLS.ViewModels
                     _engineeringCache[cat.Name] = DataService.LoadDispCategoryData(filePath, cat);
                 }
             }
+
+            // Cargar numero maximo de dispositivos
+            if (_configDeviceSettings != null)
+            {
+                string path = Path.Combine(folderPath, _configDeviceSettings.DeviceDataConfigXml);
+                if (File.Exists(path))
+                {
+                    // Cargamos como lista de objetos Disp_Config
+                    var data = DataService.LoadDeviceNMax(path);
+                    _engineeringCache[_configDeviceSettings.Disp_N_Max] = data.Cast<object>().ToList();
+                }
+            }
+
+            // Cargar configuracion de procesos
+            if (_configProcessesSettings != null)
+            {
+                // Lista de procesos
+                string pathProcess = Path.Combine(folderPath, _configProcessesSettings.ProcessXml);
+                if (File.Exists(pathProcess))
+                {
+                    var data = DataService.LoadProcess(pathProcess);
+                    _engineeringCache[_configProcessesSettings.ProcessName] = data.Cast<object>().ToList();
+                }
+
+                // Parámetros Reales
+                string pathPReal = Path.Combine(folderPath, _configProcessesSettings.PRealXml);
+                if (File.Exists(pathPReal))
+                {
+                    var data = DataService.LoadParameters(pathPReal);
+                    _engineeringCache[_configProcessesSettings.PRealName] = data.Cast<object>().ToList();
+                }
+
+                // Parámetros Enteros
+                string pathPInt = Path.Combine(folderPath, _configProcessesSettings.PIntXml);
+                if (File.Exists(pathPInt))
+                {
+                    var data = DataService.LoadParameters(pathPInt);
+                    _engineeringCache[_configProcessesSettings.PIntName] = data.Cast<object>().ToList();
+                }
+
+                // Alarmas
+                string pathAlm = Path.Combine(folderPath, _configProcessesSettings.AlarmXml);
+                if (File.Exists(pathAlm))
+                {
+                    var data = DataService.LoadParameters(pathAlm);
+                    _engineeringCache[_configProcessesSettings.AlarmName] = data.Cast<object>().ToList();
+                }
+            }           
+
         }
 
 
@@ -269,13 +313,12 @@ namespace ZC_ALM_TOOLS.ViewModels
                 try { File.Delete(f); } catch { }
             }
         }
-              
+
 
 
         // ==================================================================================================================
         // CONFIGURACIÓN Y UTILIDADES UI
-        private void OpenSettingsEditor() => OpenEditor(AppConfigManager.SettingsFile, "Editando ajustes...");
-        private void OpenDeviceSettingEditor() => OpenEditor(AppConfigManager.DeviceSettingsFile, "Editando configuracion dispositivos...");
+        private void OpenSettingsEditor() => OpenEditor(AppConfigManager.AppConfigFile, "Editando ajustes...");
 
         private void OpenEditor(string path, string message)
         {

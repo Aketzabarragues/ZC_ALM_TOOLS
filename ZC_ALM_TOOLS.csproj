@@ -76,7 +76,9 @@
     <Compile Include="Core\DataHelper.cs" />
     <Compile Include="Core\ObservableObject.cs" />
     <Compile Include="Core\RelayCommand.cs" />
-    <Compile Include="Models\DeviceCategory.cs" />
+    <Compile Include="Models\ConfigDeviceCategory.cs" />
+    <Compile Include="Models\ConfigDeviceSettings.cs" />
+    <Compile Include="Models\ConfigGlobalSettings.cs" />
     <Compile Include="Models\Disp_Config.cs" />
     <Compile Include="Models\Disp_M_VF.cs" />
     <Compile Include="Models\Disp_SA.cs" />
@@ -85,7 +87,8 @@
     <Compile Include="Models\Disp_M.cs" />
     <Compile Include="Models\Disp_V.cs" />
     <Compile Include="Models\IDevice.cs" />
-    <Compile Include="Models\ParameterConfig.cs" />
+    <Compile Include="Models\Parameter.cs" />
+    <Compile Include="Models\ConfigProcessSettings.cs" />
     <Compile Include="Models\SynchronizationStatus.cs" />
     <Compile Include="Services\AppConfigManager.cs" />
     <Compile Include="Services\DataService.cs" />
@@ -94,10 +97,11 @@
     <Compile Include="Services\TiaService.cs" />
     <Compile Include="ViewModels\DevicesViewModel.cs" />
     <Compile Include="ViewModels\MainViewModel.cs" />
+    <Compile Include="ViewModels\ProcessViewModel.cs" />
     <Compile Include="Views\MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Models\ProcessConfig.cs" />
+    <Compile Include="Models\Process.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Views\DevicesView.xaml.cs">
       <DependentUpon>DevicesView.xaml</DependentUpon>
@@ -105,6 +109,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="Config.xml" />
+    <EmbeddedResource Include="Resources\app_config.xml" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ABH.snk" />
@@ -120,9 +125,7 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Resources\" />
-  </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>"C:\Program Files\Siemens\Automation\Portal V18\PublicAPI\V18.AddIn\Siemens.Engineering.AddIn.Publisher.exe" -f "$(SolutionDir)\Config.xml" -v -c</PostBuildEvent>

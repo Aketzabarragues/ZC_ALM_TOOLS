@@ -1,10 +1,11 @@
-﻿using ZC_ALM_TOOLS.Core;
+﻿using System.Xml.Linq;
+using ZC_ALM_TOOLS.Core;
 
 namespace ZC_ALM_TOOLS.Models
 {
 
     // Representa una categoría de dispositivos y su configuración de ingeniería
-    public class DeviceCategory : ObservableObject
+    public class ConfigDeviceCategory : ObservableObject
     {
 
         // ==================================================================================================================
@@ -51,5 +52,22 @@ namespace ZC_ALM_TOOLS.Models
             get => _dbStatus;
             set { _dbStatus = value; OnPropertyChanged(); }
         }
+
+
+
+        public static ConfigDeviceCategory FromXml(XElement x) => new ConfigDeviceCategory
+        {
+            Name = x.Attribute("Name")?.Value,
+            ExcelSheet = DataHelper.GetXmlVal(x, "ExcelSheet"),
+            TiaGroup = DataHelper.GetXmlVal(x, "TiaGroup"),
+            TiaTable = DataHelper.GetXmlVal(x, "TiaTable"),
+            TiaDbName = DataHelper.GetXmlVal(x, "TiaDbName"),
+            TiaDbArrayName = DataHelper.GetXmlVal(x, "TiaDbArrayName"),
+            ModelClass = DataHelper.GetXmlVal(x, "ModelClass"),
+            XmlFile = DataHelper.GetXmlVal(x, "XmlFile"),
+            GlobalConfigKey = DataHelper.GetXmlVal(x, "GlobalConfigKey"),
+            PlcCountConstant = DataHelper.GetXmlVal(x, "PlcCountConstant")
+        };
+
     }
 }

@@ -1,5 +1,9 @@
 ﻿namespace ZC_ALM_TOOLS.Models
 {
+
+
+
+    // ==================================================================================================================
     // Estados para los indicadores visuales de la interfaz
     public enum SynchronizationStatus
     {

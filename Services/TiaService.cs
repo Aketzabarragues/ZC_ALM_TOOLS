@@ -13,6 +13,10 @@ using ZC_ALM_TOOLS.Services;
 
 namespace ZC_ALM_TOOLS.Core
 {
+
+
+
+    // ==================================================================================================================
     // Servicio para comunicación directa con Siemens Openness
     public class TiaService
     {
@@ -23,8 +27,9 @@ namespace ZC_ALM_TOOLS.Core
             _plcSoftware = plcSoftware;
         }
 
-        #region 1. GESTIÓN DE CONSTANTES (GLOBALES Y USUARIO)
 
+
+        // ==================================================================================================================
         // Lee el valor de una constante global (ej. N_MAX)
         public int ReadGlobalConstant(string tableName, string constantName)
         {
@@ -46,6 +51,9 @@ namespace ZC_ALM_TOOLS.Core
             }
         }
 
+
+
+        // ==================================================================================================================
         // Sincroniza el valor de una constante global de dimensionado
         public bool SyncGlobalConstant(string tableName, string constantName, int newValue)
         {
@@ -76,6 +84,9 @@ namespace ZC_ALM_TOOLS.Core
             }
         }
 
+
+
+        // ==================================================================================================================
         // Sincroniza la lista de IDs (Constantes) desde el Excel
         public bool SyncUserConstants(string folderName, string tableName, List<IDevice> excelDevices)
         {
@@ -124,10 +135,9 @@ namespace ZC_ALM_TOOLS.Core
             }
         }
 
-        #endregion
 
-        #region 2. COMPILACIÓN Y BLOQUES
 
+        // ==================================================================================================================
         // Compila un bloque específico (necesario antes de la cirugía XML)
         public bool CompileBlock(string blockName)
         {
@@ -160,6 +170,9 @@ namespace ZC_ALM_TOOLS.Core
 
         }
 
+
+
+        // ==================================================================================================================
         // Inyecta comentarios en el DB mediante manipulación de XML
         public bool SyncDbComments(string dbName, string arrayName, List<IDevice> devices)
         {
@@ -252,10 +265,10 @@ namespace ZC_ALM_TOOLS.Core
             }
         }
 
-        #endregion
 
-        #region 3. HELPERS DE EXPORTACIÓN Y BÚSQUEDA
 
+        // ==================================================================================================================
+        // Exportar tabla de variables
         public bool ExportTagTable(string folderName, string tableName, string xmlPath)
         {
             try
@@ -270,6 +283,11 @@ namespace ZC_ALM_TOOLS.Core
             catch { return false; }
         }
 
+
+
+
+        // ==================================================================================================================
+        // Encontrar tag en una tabla de variables
         private PlcTagTable FindTagTable(string name)
         {
             var rootTable = _plcSoftware.TagTableGroup.TagTables.Find(name);
@@ -277,12 +295,22 @@ namespace ZC_ALM_TOOLS.Core
             return _plcSoftware.TagTableGroup.Groups.SelectMany(g => g.TagTables).FirstOrDefault(t => t.Name == name);
         }
 
+
+
+
+        // ==================================================================================================================
+        // Buscar tabla dentro de una carpeta
         private PlcTagTable FindTableInFolder(string folder, string table)
         {
             var group = _plcSoftware.TagTableGroup.Groups.Find(folder);
             return group?.TagTables.Find(table);
         }
 
+
+
+
+        // ==================================================================================================================
+        // Actualizar comentario de PLC
         private void UpdatePlcComment(PlcUserConstant constant, string comment)
         {
             foreach (var item in constant.Comment.Items)
@@ -292,6 +320,11 @@ namespace ZC_ALM_TOOLS.Core
             }
         }
 
+
+
+
+        // ==================================================================================================================
+        // Buscar bloque recursivamente
         private PlcBlock FindBlockRecursively(PlcBlockGroup group, string name)
         {
             var block = group.Blocks.Find(name);
@@ -305,11 +338,15 @@ namespace ZC_ALM_TOOLS.Core
             return null;
         }
 
+
+
+
+
+        // ==================================================================================================================
         private void Report(string msg, bool error = false)
         {
             StatusService.Set(msg, error);
         }
 
-        #endregion
     }
 }

@@ -81,15 +81,9 @@
 
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
 
-                    <Button Command="{Binding ConfigDispCommand}"
+                    <Button Command="{Binding ConfigSettingsCommand}"
                     Style="{StaticResource SettingsButtonStyle}"
-                    ToolTip="Editar Mapa de Dispositivos (Categorías)"
-                    Content="🛠️" 
-                    Margin="0,0,5,0"/>
-
-                    <Button Command="{Binding ConfigExtractorCommand}"
-                    Style="{StaticResource SettingsButtonStyle}"
-                    ToolTip="Configurar ruta del Extractor Python"
+                    ToolTip="Editar configuracion"
                     Content="⚙️"/>
 
                 </StackPanel>

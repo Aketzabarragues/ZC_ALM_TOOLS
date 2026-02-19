@@ -15,12 +15,11 @@ namespace ZC_ALM_TOOLS.ViewModels
     public class DevicesViewModel : ObservableObject
     {
         // =================================================================================================================
-        // 1. PRIVATE FIELDS & SERVICES
+        // PRIVATE FIELDS & SERVICES
         private TiaService _tiaService;
 
         // Cachés de datos
         private Dictionary<string, List<object>> _engineeringCache; // Datos crudos del Excel
-        private Dictionary<string, int> _globalConfigCache;         // Datos de configuración global (N_MAX Excel)
         private Dictionary<string, int> _plcCache = new Dictionary<string, int>(); // Caché de valores leídos del PLC
 
         private int _currentPlcNMax = 0; // Valor actual leído del PLC para la categoría seleccionada
@@ -33,16 +32,16 @@ namespace ZC_ALM_TOOLS.ViewModels
         public ObservableCollection<object> CurrentDevices { get; set; } = new ObservableCollection<object>();
 
         // Lista de categorías (ComboBox)
-        private List<DeviceCategory> _categories;
-        public List<DeviceCategory> Categories
+        private List<ConfigDeviceCategory> _deviceCategory;
+        public List<ConfigDeviceCategory> Category
         {
-            get => _categories;
-            set { _categories = value; OnPropertyChanged(); }
+            get => _deviceCategory;
+            set { _deviceCategory = value; OnPropertyChanged(); }
         }
 
         // Categoría seleccionada
-        private DeviceCategory _selectedCategory;
-        public DeviceCategory SelectedCategory
+        private ConfigDeviceCategory _selectedCategory;
+        public ConfigDeviceCategory SelectedCategory
         {
             get => _selectedCategory;
             set
@@ -91,12 +90,10 @@ namespace ZC_ALM_TOOLS.ViewModels
             _tiaService = service;
         }
 
-        public void LoadData(Dictionary<string, List<object>> devices, Dictionary<string, int> config)
+        public void LoadData(Dictionary<string, List<object>> devices)
         {
             _engineeringCache = devices;
-            _globalConfigCache = config;
 
-            // Forzar refresco si ya hay selección
             if (SelectedCategory != null) RefreshView();
         }
 
@@ -121,7 +118,7 @@ namespace ZC_ALM_TOOLS.ViewModels
 
         private void UpdateDimensionInfo()
         {
-            if (SelectedCategory == null || _globalConfigCache == null) return;
+            if (SelectedCategory == null) return;
 
             // Obtener valor del Excel
             _globalConfigCache.TryGetValue(SelectedCategory.GlobalConfigKey, out int excelVal);
@@ -297,6 +294,7 @@ namespace ZC_ALM_TOOLS.ViewModels
                 if (!_tiaService.ExportTagTable(SelectedCategory.TiaGroup, SelectedCategory.TiaTable, tempXmlPath))
                 {
                     LogService.Write("[COMPARE] ERROR: No se pudo exportar la tabla desde TIA Portal.", true);
+                    StatusService.Set($"No se pudo exportar la tabla '{SelectedCategory.TiaTable}' desde TIA Portal.");
                     SelectedCategory.ConstantsStatus = SynchronizationStatus.Error;
                     return;
                 }
@@ -326,7 +324,7 @@ namespace ZC_ALM_TOOLS.ViewModels
                         else
                         {
                             device.Estado = $"{plcTagName} -> {device.CPTag}";
-                            LogService.Write($"[COMPARE] Desviación ID {device.Numero}: PLC '{plcTagName}' != Excel '{device.CPTag}'", true);
+                            LogService.Write($"[COMPARE] Diferencia en ID {device.Numero}: PLC '{plcTagName}' != Excel '{device.CPTag}'", true);
                             allMatch = false;
                             countMismatch++;
                         }

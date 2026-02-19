@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Windows.Controls;
 using System.Xml.Linq;
 using ZC_ALM_TOOLS.Models;
@@ -25,10 +26,8 @@ namespace ZC_ALM_TOOLS.Services
 
 
         // ==================================================================================================================
-        // Archivos de configuración y datos
-        public static string SettingsFile => Path.Combine(ConfigPath, "main_settings.xml");
-        public static string DeviceSettingsFile => Path.Combine(ConfigPath, "disp_settings.xml");
-        public static string DeviceDataConfig => Path.Combine(ExportPath, "config_disp.xml");
+        // Archivo de configuración
+        public static string AppConfigFile => Path.Combine(ConfigPath, "app_config.xml");
 
 
 
@@ -41,99 +40,124 @@ namespace ZC_ALM_TOOLS.Services
             if (!Directory.Exists(ExportPath)) Directory.CreateDirectory(ExportPath);
             if (!Directory.Exists(TempPath)) Directory.CreateDirectory(TempPath);
 
-            // Crear configuración general por defecto
-            if (!File.Exists(SettingsFile))
+            // Crear configuración general por defecto si no existe en la carpeta
+            if (!File.Exists(AppConfigFile))
             {
-                var doc = new XDocument(new XElement("Settings",
-                    new XElement("ExePath", @"C:\Program Files\Siemens\Automation\Portal V18\AddIns\ZC_ALM_TOOLS\ZC_Extractor.exe"),
-                    new XElement("UltimoUsuario", Environment.UserName)
-                ));
-                doc.Save(SettingsFile);
-            }
-
-            // Crear configuración de dispositivos por defecto
-            if (!File.Exists(DeviceSettingsFile))
-            {
-                CreateDefaultDeviceSettings();            
+                CreateAppConfigFile(AppConfigFile);
             }
         }
 
 
 
         // ==================================================================================================================
-        // Lee el archivo XML y devuelve la lista de categorías configuradas
-        public static List<DeviceCategory> GetDeviceCategories()
+        // Crear el archivo de configuracion si no existe
+        private static void CreateAppConfigFile(string targetPath)
         {
-            if (!File.Exists(DeviceSettingsFile)) return new List<DeviceCategory>();
+            // El nombre del recurso suele ser: NombreProyecto.NombreArchivo.xml
+            // Puedes ver el nombre exacto usando: Assembly.GetExecutingAssembly().GetManifestResourceNames()
+            var assembly = Assembly.GetExecutingAssembly();
+            string resourceName = "ZC_ALM_TOOLS.Resources.app_config.xml";
+
+            var names = Assembly.GetExecutingAssembly().GetManifestResourceNames();
+            foreach (var name in names) { LogService.Write("Recurso encontrado: " + name); }
+
+            using (Stream stream = assembly.GetManifestResourceStream(resourceName))
+            {
+                if (stream == null)
+                {
+                    LogService.Write("ERROR: No se encontró el recurso embebido " + resourceName, true);
+                    return;
+                }
+
+                using (FileStream fileStream = new FileStream(targetPath, FileMode.Create))
+                {
+                    stream.CopyTo(fileStream);
+                }
+            }
+            LogService.Write("Configuración maestra extraída correctamente de los recursos del Add-In.");
+        }
+
+
+
+        // ==================================================================================================================
+        // Lectura de ajustes globales
+        public static ConfigGlobalSettings GetGlobalSettings()
+        {
+            try
+            {
+                if (!File.Exists(AppConfigFile)) return new ConfigGlobalSettings();
+                var doc = XDocument.Load(AppConfigFile);
+                return ConfigGlobalSettings.FromXml(doc.Root?.Element("GlobalSettings"));
+            }
+            catch (Exception ex)
+            {
+                LogService.Write($"[CONFIG] Error en GetGlobalSettings: {ex.Message}", true);
+                return new ConfigGlobalSettings(); // Devuelve objeto vacío para evitar nulos
+            }
+        }
+
+
+
+        // ==================================================================================================================
+        // Lectura de Ajuste de dispositivos
+        public static ConfigDeviceSettings GetDeviceSettings()
+        {
+            try
+            {
+                if (!File.Exists(AppConfigFile)) return new ConfigDeviceSettings();
+                var doc = XDocument.Load(AppConfigFile);
+                return ConfigDeviceSettings.FromXml(doc.Root?.Element("DeviceSettings"));
+            }
+            catch (Exception ex)
+            {
+                LogService.Write($"[CONFIG] Error en GetDeviceSettings: {ex.Message}", true);
+                return new ConfigDeviceSettings();
+            }
+        }
+
+
+
+        // ==================================================================================================================
+        // Lectura de caterogia de dispositvos (lista de tipos de dispositivos)
+        public static List<ConfigDeviceCategory> GetDeviceCategories()
+        {
+            if (!File.Exists(AppConfigFile)) return new List<ConfigDeviceCategory>();
 
             try
             {
-                var doc = XDocument.Load(DeviceSettingsFile);
-                return doc.Descendants("DeviceCategory").Select(x => new DeviceCategory
-                {
-                    Name = x.Attribute("Name")?.Value,
-                    ExcelSheet = x.Element("ExcelSheet")?.Value,
-                    TiaGroup = x.Element("TiaGroup")?.Value,
-                    TiaTable = x.Element("TiaTable")?.Value,
-                    ModelClass = x.Element("ModelClass")?.Value,
-                    XmlFile = x.Element("XmlFile")?.Value,
-                    GlobalConfigKey = x.Element("GlobalConfigKey")?.Value,
-                    PlcCountConstant = x.Element("PlcCountConstant")?.Value,
-                    TiaDbName = x.Element("TiaDbName")?.Value,
-                    TiaDbArrayName = x.Element("TiaDbArrayName")?.Value
-                }).ToList();
+                var doc = XDocument.Load(AppConfigFile);
+
+                // Buscamos todos los nodos <DeviceCategory> y dejamos que el modelo haga el trabajo
+                return doc.Descendants("DeviceCategory")
+                          .Select(x => ConfigDeviceCategory.FromXml(x))
+                          .ToList();
             }
-            catch
+            catch (Exception ex)
             {
-                return new List<DeviceCategory>();
+                LogService.Write($"[CONFIG] Error cargando categorías de dispositivos: {ex.Message}", true);
+                return new List<ConfigDeviceCategory>();
             }
         }
 
 
 
         // ==================================================================================================================
-        // Obtiene la ruta del ejecutor Python desde los settings
-        public static string ReadExePath()
+        // Lectura de configuracion de procesos
+        public static ConfigProcessSettings GetProcessConfig()
         {
-            if (!File.Exists(SettingsFile)) return string.Empty;
-            return XDocument.Load(SettingsFile).Root?.Element("ExePath")?.Value ?? string.Empty;
+            try
+            {
+                if (!File.Exists(AppConfigFile)) return new ConfigProcessSettings();
+                var doc = XDocument.Load(AppConfigFile);
+                return ConfigProcessSettings.FromXml(doc.Root?.Element("ProcessSettings"));
+            }
+            catch (Exception ex)
+            {
+                LogService.Write($"[CONFIG] Error en GetProcessConfig: {ex.Message}", true);
+                return new ConfigProcessSettings();
+            }
         }
 
-
-
-        // ==================================================================================================================
-        // Genera el archivo disp_settings.xml con los valores iniciales
-        private static void CreateDefaultDeviceSettings()
-        {
-            var doc = new XDocument(new XElement("DeviceSettings",
-                CreateCategoryElement("Entrada Digital", "DISP_ED", "Disp_ED", "disp_ed.xml", "Num_Disp_ED", "N_MAX_DISP_ED", "DB2000_ED", "ED"),
-                CreateCategoryElement("Entrada Analogica", "DISP_EA", "Disp_EA", "disp_ea.xml", "Num_Disp_EA", "N_MAX_DISP_EA", "DB2001_EA", "EA"),
-                CreateCategoryElement("Salida Analogica", "DISP_SA", "Disp_SA", "disp_sa.xml", "Num_Disp_SA", "N_MAX_DISP_SA", "DB2006_SA", "SA"),
-                CreateCategoryElement("Válvula", "DISP_V", "Disp_V", "disp_v.xml", "Num_Disp_V", "N_MAX_DISP_V", "DB2010_V", "V"),
-                CreateCategoryElement("Motor", "DISP_M", "Disp_M", "disp_m.xml", "Num_Disp_M", "N_MAX_DISP_M", "DB2015_M", "M"),
-                CreateCategoryElement("Motor variador", "DISP_M_VF", "Disp_M_VF", "disp_m_vf.xml", "Num_Disp_M_VF", "N_MAX_DISP_M_VF", "DB2016_M_VF", "M_VF")
-            ));
-            doc.Save(DeviceSettingsFile);
-        }
-
-
-
-        // ==================================================================================================================
-        // Helper para no repetir código al crear el XML por defecto
-        private static XElement CreateCategoryElement(string name, string sheet, string model, string file, string configKey, string plcConst, string db, string array)
-        {
-            return new XElement("DeviceCategory", new XAttribute("Name", name),
-                new XElement("ExcelSheet", sheet),
-                new XElement("TiaGroup", "002_Dispositivos"),
-                new XElement("TiaTable", "002_Disp_" + sheet.Replace("DISP_", "")),
-                new XElement("ModelClass", model),
-                new XElement("XmlFile", file),
-                new XElement("GlobalConfigKey", configKey),
-                new XElement("PlcCountConstant", plcConst),
-                new XElement("TiaDbName", db),
-                new XElement("TiaDbArrayName", array)
-            );
-        }
 
     }
 }

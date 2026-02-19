@@ -2,7 +2,7 @@
 using ZC_ALM_TOOLS.Core;
 
 namespace ZC_ALM_TOOLS.Models
-{    
+{
     public class Disp_Config
     {
         public string Nombre { get; set; }

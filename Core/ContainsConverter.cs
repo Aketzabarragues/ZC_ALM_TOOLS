@@ -4,10 +4,18 @@ using System.Windows.Data;
 
 namespace ZC_ALM_TOOLS.Core
 {
+
+
+
+    // ==================================================================================================================
     // Convertidor para comprobar si un texto contiene una cadena específica
     // Se usa en la interfaz para detectar cambios (buscando el símbolo '->')
     public class ContainsConverter : IValueConverter
     {
+
+
+
+        // ==================================================================================================================
         // Evalúa si el valor recibido contiene el texto pasado como parámetro
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {

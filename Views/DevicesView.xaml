@@ -47,6 +47,70 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
+
+        <Style x:Key="ModernComboBoxStyle" TargetType="ComboBox">
+            <Setter Property="Height" Value="35"/>
+            <Setter Property="Padding" Value="10,0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="#D0D0D0"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Foreground" Value="#333333"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <Border x:Name="MainBorder" 
+                            Background="{TemplateBinding Background}" 
+                            BorderBrush="{TemplateBinding BorderBrush}" 
+                            BorderThickness="{TemplateBinding BorderThickness}" 
+                            CornerRadius="4"/>
+
+                            <Grid Margin="{TemplateBinding Padding}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <ContentPresenter IsHitTestVisible="False" 
+                                          Content="{TemplateBinding SelectionBoxItem}"
+                                          ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                          ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}"
+                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                          HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"/>
+
+                                <Path x:Name="Arrow" Grid.Column="1" 
+                              Data="M0,0 L4,4 L8,0" 
+                              Stroke="#666" StrokeThickness="2" 
+                              VerticalAlignment="Center" Margin="5,0,0,0"/>
+                            </Grid>
+
+                            <ToggleButton Background="Transparent" BorderThickness="0" 
+                                  IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"/>
+
+                            <Popup x:Name="PART_Popup" AllowsTransparency="True" 
+                           IsOpen="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}}" 
+                           Placement="Bottom" PopupAnimation="Slide">
+                                <Border Background="White" BorderBrush="#D0D0D0" BorderThickness="1" 
+                                CornerRadius="4" MinWidth="{TemplateBinding ActualWidth}" MaxHeight="300">
+                                    <ScrollViewer>
+                                        <ItemsPresenter SnapsToDevicePixels="True"/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="MainBorder" Property="BorderBrush" Value="#007ACC"/>
+                            </Trigger>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="MainBorder" Property="BorderBrush" Value="#007ACC"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
 
     <Grid Background="White">
@@ -60,11 +124,17 @@
                 <TextBlock Text="FILTROS" FontWeight="Bold" Foreground="#333333" Margin="0,0,0,5"/>
                 <TextBlock Text="Familia de Dispositivos:" Margin="0,0,0,2" Foreground="#555"/>
 
-                <ComboBox ItemsSource="{Binding Categories}" 
+                <ComboBox ItemsSource="{Binding Categories}"
                           SelectedItem="{Binding SelectedCategory}"
-                          DisplayMemberPath="Name" 
+                          Style="{StaticResource ModernComboBoxStyle}"
                           Height="30" Margin="0,0,0,20"
                           VerticalContentAlignment="Center">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+
                     <ComboBox.Resources>
                         <Style TargetType="Border">
                             <Setter Property="CornerRadius" Value="4"/>
@@ -72,13 +142,13 @@
                     </ComboBox.Resources>
                 </ComboBox>
 
-                    <Separator Margin="0,0,0,20" Background="#DDD"/>
+                <Separator Margin="0,0,0,20" Background="#DDD"/>
 
                 <TextBlock Text="WORKFLOW DE SINCRONIZACIÓN" FontWeight="Bold" Foreground="#005B96" Margin="0,0,0,10"/>
 
                 <TextBlock Text="Paso 1: Comprobaciones" FontWeight="SemiBold" Margin="0,5,0,2" Foreground="#444"/>
                 <Button Command="{Binding CompareCommand}" 
-                        Content="🔍 Comparar con TIA Portal"
+                        Content="Comparar con TIA Portal"
                         Height="40" Margin="0,0,0,10"
                         Background="#007ACC" BorderThickness="0" Foreground="White" FontWeight="Bold"
                         Cursor="Hand">
@@ -91,7 +161,7 @@
                 
                 <TextBlock Text="Paso 2: Actualización" FontWeight="SemiBold" Margin="0,5,0,2" Foreground="#444"/>
                 <Button Command="{Binding SyncCommand}" 
-                        Content="🔄 Sincronizar Todo" 
+                        Content="Sincronizar Todo" 
                         Height="40" Margin="0,0,0,10"
                         Background="#007ACC" BorderThickness="0" Foreground="White" FontWeight="Bold"
                         Cursor="Hand">
