@@ -46,7 +46,7 @@ namespace ZC_ALM_TOOLS.ViewModels
 
                 if (_selectedProcess != null)
                 {
-                    LogService.Write($"[UI] Proceso seleccionado: {_selectedProcess.Nombre}");
+                    LogService.Write($"[PROCESS-VM] [SelectedProcess] Proceso seleccionado: {_selectedProcess.Nombre}");
                 }
 
                 RefreshView();
@@ -75,12 +75,12 @@ namespace ZC_ALM_TOOLS.ViewModels
         private void ExecuteDumpProcesses()
         {
 
-            LogService.Write("[UI] >>> BOTÓN DUMP PROCESOS PULSADO <<<");
+            LogService.Write("[PROCESS-VM] [ExecuteDumpProcesses] >>> BOTÓN DUMP PROCESOS PULSADO <<<");
 
             try
             {
                 // Usamos la ruta base tal y como has pedido
-                string filePath = Path.Combine(AppConfigManager.BasePath, "ZC_Process_Dump.txt");
+                string filePath = Path.Combine(AppConfigService.BasePath, "ZC_Process_Dump.txt");
 
                 using (StreamWriter writer = new StreamWriter(filePath))
                 {
@@ -119,7 +119,7 @@ namespace ZC_ALM_TOOLS.ViewModels
             }
             catch (Exception ex)
             {
-                LogService.Write($"ERROR generando dump de procesos: {ex.Message}", true);
+                LogService.Write($"[PROCESS-VM] [ExecuteDumpProcesses] ERROR generando dump de procesos: {ex.Message}", true);
                 MessageBox.Show($"Error generando el archivo: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
@@ -218,7 +218,7 @@ namespace ZC_ALM_TOOLS.ViewModels
                 foreach (var a in filtradasAlarmas) CurrentAlarms.Add(a);
             }
 
-            LogService.Write($"[UI] Tablas actualizadas. PReal: {CurrentRealParams.Count} | PInt: {CurrentIntParams.Count} | Alarmas: {CurrentAlarms.Count}");
+            LogService.Write($"[PROCESS-VM] [RefreshView] Tablas actualizadas. PReal: {CurrentRealParams.Count} | PInt: {CurrentIntParams.Count} | Alarmas: {CurrentAlarms.Count}");
         }
 
 

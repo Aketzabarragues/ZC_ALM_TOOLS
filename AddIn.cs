@@ -1,9 +1,6 @@
-﻿using System.Collections.Generic;
-using System.Linq;
+﻿using System.Linq;
 using Siemens.Engineering;
 using Siemens.Engineering.AddIn.Menu;
-using Siemens.Engineering.HW.Features;
-using Siemens.Engineering.MC.Drives;
 using Siemens.Engineering.SW;
 using ZC_ALM_TOOLS.Views;
 
@@ -34,38 +31,24 @@ namespace ZC_ALM_TOOLS
 
         private MenuStatus OnCheckIfContextIsValid(MenuSelectionProvider<IEngineeringObject> selectionProvider)
         {
-            object rawSelection = selectionProvider.GetSelection().FirstOrDefault();
-            if (rawSelection == null || !(rawSelection is IEngineeringObject))
-                return MenuStatus.Hidden;
-
-            if (FindPlcSoftware((IEngineeringObject)rawSelection) != null)
-                return MenuStatus.Enabled;
-
-            return MenuStatus.Hidden;
+            return _tiaPortal.Projects.Any() ? MenuStatus.Enabled : MenuStatus.Hidden;
         }
 
         private void StartApplication(MenuSelectionProvider<IEngineeringObject> selectionProvider)
         {
-            var selection = (IEngineeringObject)selectionProvider.GetSelection().FirstOrDefault();
-            var plcSoftware = FindPlcSoftware(selection);
+            // 1. Obtenemos el proyecto activo
+            var project = _tiaPortal.Projects.FirstOrDefault();
+            if (project == null) return;
 
-            if (plcSoftware != null)
-            {
-                MainWindow window = new MainWindow(_tiaPortal, plcSoftware);
-                window.ShowDialog();
-            }
+            // 2. Opcional: Obtenemos lo que el usuario tenía seleccionado 
+            // por si queremos usarlo como "favorito" más tarde.
+            var selection = selectionProvider.GetSelection().FirstOrDefault();
+
+            // 3. Lanzamos la MainWindow pasando el PROYECTO completo
+            // Nota: Esto te dará error de compilación hasta que ajustemos el constructor de MainWindow en la Fase 3/4.
+            MainWindow window = new MainWindow(_tiaPortal, project);
+            window.ShowDialog();
         }
-
-        private PlcSoftware FindPlcSoftware(IEngineeringObject obj)
-        {
-            if (obj == null) return null;
-            if (obj is PlcSoftware software) return software;
-            if (obj.Parent != null && obj.Parent is IEngineeringObject parentObj)
-                return FindPlcSoftware(parentObj);
-
-            return null;
-        }
-
 
 
     }

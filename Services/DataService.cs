@@ -27,7 +27,7 @@ namespace ZC_ALM_TOOLS.Services
 
             if (!File.Exists(path))
             {
-                LogService.Write($"[DATA] No se encuentra procesos.xml: {path}", true);
+                LogService.Write($"[DATA-SERVICE] [LoadProcess] No se encuentra procesos.xml: {path}", true);
                 return list;
             }
 
@@ -39,11 +39,11 @@ namespace ZC_ALM_TOOLS.Services
                           .Select(x => Process.FromXml(x))
                           .ToList();
 
-                LogService.Write($"[DATA] Cargados {list.Count} procesos desde el índice.");
+                LogService.Write($"[DATA-SERVICE] [LoadProcess] Cargados {list.Count} procesos desde el índice.");
             }
             catch (Exception ex)
             {
-                LogService.Write($"[DATA] Error leyendo procesos.xml: {ex.Message}", true);
+                LogService.Write($"[DATA-SERVICE] [LoadProcess] Error leyendo procesos.xml: {ex.Message}", true);
             }
 
             return list;
@@ -59,7 +59,7 @@ namespace ZC_ALM_TOOLS.Services
 
             if (!File.Exists(path))
             {
-                LogService.Write($"[DATA] No se encuentra archivo de parámetros: {path}", true);
+                LogService.Write($"[DATA-SERVICE] [LoadParameters] No se encuentra archivo de parámetros: {path}", true);
                 return list;
             }
 
@@ -71,11 +71,11 @@ namespace ZC_ALM_TOOLS.Services
                           .Select(x => Parameter.FromXml(x))
                           .ToList();
 
-                LogService.Write($"[DATA] Cargados {list.Count} parámetros desde {Path.GetFileName(path)}.");
+                LogService.Write($"[DATA-SERVICE] [LoadParameters] Cargados {list.Count} parámetros desde {Path.GetFileName(path)}.");
             }
             catch (Exception ex)
             {
-                LogService.Write($"[DATA] Error leyendo parámetros en {Path.GetFileName(path)}: {ex.Message}", true);
+                LogService.Write($"[DATA-SERVICE] [LoadParameters] Error leyendo parámetros en {Path.GetFileName(path)}: {ex.Message}", true);
             }
 
             return list;
@@ -91,7 +91,7 @@ namespace ZC_ALM_TOOLS.Services
 
             if (!File.Exists(path))
             {
-                LogService.Write($"[DATA] No se encuentra archivo de alarmas: {path}", true);
+                LogService.Write($"[DATA-SERVICE] [LoadAlarms] No se encuentra archivo de alarmas: {path}", true);
                 return list;
             }
 
@@ -103,11 +103,11 @@ namespace ZC_ALM_TOOLS.Services
                           .Select(x => Alarms.FromXml(x))
                           .ToList();
 
-                LogService.Write($"[DATA] Cargadas {list.Count} alarmas desde {Path.GetFileName(path)}.");
+                LogService.Write($"[DATA-SERVICE] [LoadAlarms] Cargadas {list.Count} alarmas desde {Path.GetFileName(path)}.");
             }
             catch (Exception ex)
             {
-                LogService.Write($"[DATA] Error leyendo alarmas en {Path.GetFileName(path)}: {ex.Message}", true);
+                LogService.Write($"[DATA-SERVICE] [LoadAlarms] Error leyendo alarmas en {Path.GetFileName(path)}: {ex.Message}", true);
             }
 
             return list;
@@ -123,7 +123,7 @@ namespace ZC_ALM_TOOLS.Services
 
             if (!File.Exists(path))
             {
-                LogService.Write($"[DATA] No se encuentra el archivo de límites: {path}", true);
+                LogService.Write($"[DATA-SERVICE] [LoadDeviceNMax] No se encuentra el archivo de límites: {path}", true);
                 return list;
             }
 
@@ -134,11 +134,11 @@ namespace ZC_ALM_TOOLS.Services
                           .Select(x => Disp_Config.FromXml(x))
                           .ToList();
 
-                LogService.Write($"[DATA] Cargados {list.Count} límites de dimensionado.");
+                LogService.Write($"[DATA-SERVICE] [LoadDeviceNMax] Cargados {list.Count} límites de dimensionado.");
             }
             catch (Exception ex)
             {
-                LogService.Write($"[DATA] Error leyendo límites de dispositivos: {ex.Message}", true);
+                LogService.Write($"[DATA-SERVICE] [LoadDeviceNMax] Error leyendo límites de dispositivos: {ex.Message}", true);
             }
 
             return list;
@@ -164,7 +164,7 @@ namespace ZC_ALM_TOOLS.Services
 
                 if (modelType == null)
                 {
-                    LogService.Write($"[DATA] Error: No se encuentra la clase {className}", true);
+                    LogService.Write($"[DATA-SERVICE] [LoadDispCategoryData] Error: No se encuentra la clase {className}", true);
                     return list;
                 }
 
@@ -173,7 +173,7 @@ namespace ZC_ALM_TOOLS.Services
 
                 if (method == null)
                 {
-                    LogService.Write($"[DATA] Error: La clase {category.ModelClass} no tiene método FromXml", true);
+                    LogService.Write($"[DATA-SERVICE] [LoadDispCategoryData] Error: La clase {category.ModelClass} no tiene método FromXml", true);
                     return list;
                 }
 
@@ -186,10 +186,13 @@ namespace ZC_ALM_TOOLS.Services
                         list.Add(instance);
                     }
                 }
+
+                string fileName = Path.GetFileName(path).ToLower();
+                LogService.Write($"[DATA-SERVICE] [LoadDispCategoryData] Cargados {list.Count} dispositivos de tipo '{category.Name}' desde {fileName}.");
             }
             catch (Exception ex)
             {
-                LogService.Write($"[DATA] Error cargando {category.ModelClass}: {ex.Message}", true);
+                LogService.Write($"[DATA-SERVICE] [LoadDispCategoryData] Error cargando {category.ModelClass}: {ex.Message}", true);
             }
 
             return list;
@@ -221,7 +224,7 @@ namespace ZC_ALM_TOOLS.Services
             }
             catch (Exception ex)
             {
-                LogService.Write($"[DATA] Error creando instancia de {category.ModelClass}: {ex.Message}", true);
+                LogService.Write($"[DATA-SERVICE] [CreateEmptyDispData] Error creando instancia de {category.ModelClass}: {ex.Message}", true);
                 // Devolvemos un objeto básico para no romper la ejecución
                 return new Disp_ED();
             }

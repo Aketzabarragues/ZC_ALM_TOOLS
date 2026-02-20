@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Net.NetworkInformation;
@@ -19,9 +20,29 @@ namespace ZC_ALM_TOOLS.ViewModels
     {
 
         // =================================================================================================================
-        // PROPIEDADES
+        // Tia portal
+        private readonly Project _tiaproject;
+        private readonly TiaPortal _tiaPortal;
         private TiaPlcService _tiaPlcService;
-                
+
+        public ObservableCollection<TiaTarget> PlcTargets { get; set; }
+        public ObservableCollection<TiaTarget> HmiTargets { get; set; }
+        
+
+
+
+        private TiaTarget _selectedTarget;
+        public TiaTarget SelectedTarget
+        {
+            get => _selectedTarget;
+            set
+            {
+                _selectedTarget = value;
+                OnPropertyChanged();
+                UpdateActiveService(); // Al cambiar el target en la lista, actualizamos el servicio
+            }
+        }
+
         // Caché de datos cargados
         private Dictionary<string, List<object>> _engineeringCache = new Dictionary<string, List<object>>();
 
@@ -37,43 +58,23 @@ namespace ZC_ALM_TOOLS.ViewModels
 
         // Variable que indica que esta ejecutandose algo
         private bool _isBusy;
-        public bool IsBusy
-        {
-            get => _isBusy;
-            set { _isBusy = value; OnPropertyChanged(); }
-        }
+        public bool IsBusy { get => _isBusy; set { _isBusy = value; OnPropertyChanged(); } }
 
         // Variable que indica si se ha cargado un Excel correctamente
         private bool _isDataLoaded;
-        public bool IsDataLoaded
-        {
-            get => _isDataLoaded;
-            set { _isDataLoaded = value; OnPropertyChanged(); }
-        }
+        public bool IsDataLoaded { get => _isDataLoaded; set { _isDataLoaded = value; OnPropertyChanged(); } }
 
         // Ruta del excel seleccionado
         private string _selectedExcelFile;
-        public string SelectedExcelFile
-        {
-            get => _selectedExcelFile;
-            set { _selectedExcelFile = value; OnPropertyChanged(); }
-        }
+        public string SelectedExcelFile { get => _selectedExcelFile; set { _selectedExcelFile = value; OnPropertyChanged(); } }
 
         // Mensaje de estado
         private string _statusMessage;
-        public string StatusMessage
-        {
-            get => _statusMessage;
-            set { _statusMessage = value; OnPropertyChanged(); }
-        }
+        public string StatusMessage { get => _statusMessage; set { _statusMessage = value; OnPropertyChanged(); } }
 
         // Color de estado
         private string _statusColor = "Black";
-        public string StatusColor
-        {
-            get => _statusColor;
-            set { _statusColor = value; OnPropertyChanged(); }
-        }
+        public string StatusColor { get => _statusColor; set { _statusColor = value; OnPropertyChanged(); } }
 
         // Comandos
         public RelayCommand LoadDataCommand { get; set; }
@@ -83,24 +84,34 @@ namespace ZC_ALM_TOOLS.ViewModels
 
         // ==================================================================================================================
         // CONSTRUCTOR
-        public MainViewModel(TiaPortal tiaPortal, PlcSoftware plcSoftware)
+        public MainViewModel(TiaPortal tiaPortal, Project project)
         {
             LogService.Clear();
-            LogService.Write("Inicializando MainViewModel...");
+            LogService.Write("[MAIN-VM] [MainViewModel] Inicializando MainViewModel...");
 
-            // Inicializar estado
-            IsDataLoaded = false;
+            // Inicializamos Tia portal y buscamos todos los dispositivos
+            _tiaPortal = tiaPortal;
+            _tiaproject = project;
+
+            // Buscamos todos los dispositivos del proyecto
+            var scannedDevices = TiaDeviceScanner.ScanProject(_tiaproject);
+            PlcTargets = new ObservableCollection<TiaTarget>(scannedDevices.Where(t => t.Type == TargetType.PLC));
+            HmiTargets = new ObservableCollection<TiaTarget>(scannedDevices.Where(t => t.Type != TargetType.PLC));
+
+            // Inicializamos servicios de Tia portal
+            _tiaPlcService = new TiaPlcService();
+
+            // Seleccionamos el primer PLC por defecto para la comparación
+            SelectedTarget = PlcTargets.FirstOrDefault(t => t.Type == TargetType.PLC);            
 
             // Inicializamos configuración y cargamos categorías
-            AppConfigManager.InitializeEnvironment();
-            _configProcessesSettings = AppConfigManager.GetProcessConfig();
-            _configDeviceSettings = AppConfigManager.GetDeviceSettings();
-            _configGlobalSettings = AppConfigManager.GetGlobalSettings();
-            _configDeviceCategory = AppConfigManager.GetDeviceCategories();
+            AppConfigService.InitializeEnvironment();
+            _configProcessesSettings = AppConfigService.GetProcessConfig();
+            _configDeviceSettings = AppConfigService.GetDeviceSettings();
+            _configGlobalSettings = AppConfigService.GetGlobalSettings();
+            _configDeviceCategory = AppConfigService.GetDeviceCategories();            
 
-            // Inicializamos servicios y viewmodels
-            _tiaPlcService = new TiaPlcService(plcSoftware);
-
+            // Inicializamos viewmodels
             DevicesVM = new DevicesViewModel();
             DevicesVM.Categories = _configDeviceCategory;
             DevicesVM.SetTiaService(_tiaPlcService);
@@ -116,13 +127,29 @@ namespace ZC_ALM_TOOLS.ViewModels
             if (_configDeviceCategory.Count > 0)
                 DevicesVM.SelectedCategory = _configDeviceCategory[0];
 
-            StatusMessage = $"Conectado a PLC: {plcSoftware.Name}";
-            LogService.Write($"Conectado a PLC: {plcSoftware.Name}");
-
             // Mapeo de comandos
             LoadDataCommand = new RelayCommand(LoadExcelAndGenerateJson);
             ConfigSettingsCommand = new RelayCommand(OpenSettingsEditor);
 
+            // Inicializar estado
+            IsDataLoaded = false;
+        }
+
+
+
+        // ==================================================================================================================
+        // Método para actualizar el PLC de trabajo cuando el usuario cambia la selección
+        private void UpdateActiveService()
+        {
+            if (SelectedTarget != null && SelectedTarget.SoftwareObject is PlcSoftware plc)
+            {
+
+                _tiaPlcService.UpdatePlc(plc);
+                DevicesVM?.NotifyPlcChanged();
+// PENDIENTE PONER EL DE PROCESOS
+
+                UpdateStatus($"Objetivo cambiado a: {SelectedTarget.Name}");
+            }
         }
 
 
@@ -131,7 +158,7 @@ namespace ZC_ALM_TOOLS.ViewModels
         // LÓGICA DE EXTRACCIÓN Y CARGA
         private void LoadExcelAndGenerateJson()
         {
-            LogService.Write("Botón 'Cargar' pulsado.");
+            LogService.Write("[MAIN-VM] [LoadExcelAndGenerateJson] Botón 'Cargar' pulsado.");
 
             try
             {
@@ -146,21 +173,21 @@ namespace ZC_ALM_TOOLS.ViewModels
                 StatusService.SetBusy(true);
 
                 SelectedExcelFile = openFileDialog.FileName;
-                LogService.Write($"Archivo seleccionado: {SelectedExcelFile}");
+                LogService.Write($"[MAIN-VM] [LoadExcelAndGenerateJson] Archivo seleccionado: {SelectedExcelFile}");
 
                 // Verificar ruta del extractor
                 if (!File.Exists(_configGlobalSettings.ExtractorExePath))
                 {
-                    LogService.Write("ERROR: Extractor no encontrado", true);
+                    LogService.Write("[MAIN-VM] [LoadExcelAndGenerateJson] ERROR: Extractor no encontrado", true);
                     UpdateStatus("Error: No se encuentra ZC_Extractor.exe", true);
                     MessageBox.Show($"Extractor no encontrado en:\n{_configGlobalSettings.ExtractorExePath}", "Error de configuración");
                     return;
                 }
 
 
-                ClearExportFolder(AppConfigManager.ExportPath);
+                ClearExportFolder(AppConfigService.ExportPath);
 
-                LogService.Write("Lanzando proceso Python...");
+                LogService.Write("[MAIN-VM] [LoadExcelAndGenerateJson] Lanzando proceso Python...");
                 UpdateStatus("Ejecutando extractor Python...");
 
 
@@ -171,10 +198,10 @@ namespace ZC_ALM_TOOLS.ViewModels
                     // 2. Si Python terminó bien, comprobamos que los archivos estén ahí
                     if (WaitForPythonFiles())
                     {
-                        LogService.Write("Archivos XML detectados con éxito.");
+                        LogService.Write("[MAIN-VM] [LoadExcelAndGenerateJson] Archivos XML detectados con éxito.");
                         UpdateStatus("Cargando datos en memoria...");
 
-                        LoadAllFromFolder(AppConfigManager.ExportPath);
+                        LoadAllFromFolder(AppConfigService.ExportPath);
 
                         // Actualizar ViewModels
                         DevicesVM.LoadData(_engineeringCache, _configDeviceSettings);
@@ -200,8 +227,8 @@ namespace ZC_ALM_TOOLS.ViewModels
             }
             catch (Exception ex)
             {
-                LogService.Write($"CRASH EN CARGA: {ex.Message}", true);
-                LogService.Write($"CRASH EN CARGA:\n{ex.ToString()}", true);
+                LogService.Write($"[MAIN-VM] [LoadExcelAndGenerateJson] CRASH EN CARGA: {ex.Message}", true);
+                LogService.Write($"[MAIN-VM] [LoadExcelAndGenerateJson] CRASH EN CARGA:\n{ex.ToString()}", true);
                 UpdateStatus("Crash general en el proceso.", true);
                 MessageBox.Show($"{ex.Message}", "Error Crítico");
             }
@@ -242,11 +269,11 @@ namespace ZC_ALM_TOOLS.ViewModels
 
                 // 3. Suscribirse a los eventos ANTES de empezar
                 myProcess.OutputDataReceived += (s, e) => {
-                    if (!string.IsNullOrEmpty(e.Data)) LogService.Write($"[PYTHON] {e.Data}");
+                    if (!string.IsNullOrEmpty(e.Data)) LogService.Write($"[MAIN-VM] [StartExtractor] {e.Data}");
                 };
 
                 myProcess.ErrorDataReceived += (s, e) => {
-                    if (!string.IsNullOrEmpty(e.Data)) LogService.Write($"[PYTHON-ERR] {e.Data}", true);
+                    if (!string.IsNullOrEmpty(e.Data)) LogService.Write($"[MAIN-VM] [StartExtractor] {e.Data}", true);
                 };
 
                 // 4. LANZAR E INICIAR LECTURA
@@ -255,17 +282,26 @@ namespace ZC_ALM_TOOLS.ViewModels
                     myProcess.BeginOutputReadLine();
                     myProcess.BeginErrorReadLine();
 
-                    LogService.Write("Extractor ejecutándose en segundo plano...");
-                    myProcess.WaitForExit();
+                    LogService.Write("[MAIN-VM] [StartExtractor] Extractor ejecutándose en segundo plano...");
+                    //myProcess.WaitForExit();
 
-                    // Devolvemos true solo si terminó sin errores (ExitCode 0)
+                    while (!myProcess.HasExited)
+                    {
+                        // Dejamos que TIA Portal procese sus eventos (repintar ventana, mensajes, etc.)
+                        UpdateStatusFrame();
+
+                        // Dormimos un tiempo mínimo para no saturar la CPU
+                        Thread.Sleep(100);
+                    }
+
+                    LogService.Write($"[MAIN-VM] [StartExtractor] Extractor finalizado con código: {myProcess.ExitCode}");
                     return myProcess.ExitCode == 0;
                 }
                 return false;
             }
             catch (Exception ex)
             {
-                LogService.Write($"Error crítico lanzando Python: {ex.Message}", true);
+                LogService.Write($"[MAIN-VM] [StartExtractor] Error crítico lanzando Python: {ex.Message}", true);
                 return false;
             }
         }
@@ -277,7 +313,7 @@ namespace ZC_ALM_TOOLS.ViewModels
         private bool WaitForPythonFiles()
         {        
 
-            LogService.Write($"Iniciando espera en: {AppConfigManager.ExportPath}");
+            LogService.Write($"[MAIN-VM] [WaitForPythonFiles] Iniciando espera en: {AppConfigService.ExportPath}");
 
             // Creamos la lista de archivos que esperamos basándonos en la configuración
             List<string> expectedFiles = new List<string>();
@@ -293,7 +329,7 @@ namespace ZC_ALM_TOOLS.ViewModels
                 foreach (var file in expectedFiles)
                 {
                     if (string.IsNullOrEmpty(file)) continue;
-                    if (!File.Exists(Path.Combine(AppConfigManager.ExportPath, file)))
+                    if (!File.Exists(Path.Combine(AppConfigService.ExportPath, file)))
                     {
                         allFound = false;
                         break;
@@ -393,7 +429,7 @@ namespace ZC_ALM_TOOLS.ViewModels
 
         // ==================================================================================================================
         // CONFIGURACIÓN Y UTILIDADES UI
-        private void OpenSettingsEditor() => OpenEditor(AppConfigManager.AppConfigFile, "Editando ajustes...");
+        private void OpenSettingsEditor() => OpenEditor(AppConfigService.AppConfigFile, "Editando ajustes...");
 
         private void OpenEditor(string path, string message)
         {

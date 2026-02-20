@@ -14,8 +14,12 @@ namespace ZC_ALM_TOOLS.ViewModels
     // ViewModel que gestiona la pestaña de detalles (tabla de dispositivos, comparaciones y sincronización)
     public class DevicesViewModel : ObservableObject
     {
-        // =================================================================================================================
-        // PRIVATE FIELDS & SERVICES
+
+
+
+
+        // ==================================================================================================================
+        // Tia portal
         private TiaPlcService _tiaPlcService;
 
         // Cachés de datos
@@ -25,60 +29,35 @@ namespace ZC_ALM_TOOLS.ViewModels
 
         private int _currentPlcNMax = 0;
 
-        // =================================================================================================================
-        // 2. PUBLIC PROPERTIES (BINDING)
 
         // Colección visual para el DataGrid. Usamos 'object' para admitir cualquier modelo (Disp_V, Disp_M, etc.)
         public ObservableCollection<object> CurrentDevices { get; set; } = new ObservableCollection<object>();
 
         // Lista de categorías (ComboBox)
         private List<ConfigDeviceCategory> _categories;
-        public List<ConfigDeviceCategory> Categories
-        {
-            get => _categories;
-            set { _categories = value; OnPropertyChanged(); }
-        }
+        public List<ConfigDeviceCategory> Categories { get => _categories; set { _categories = value; OnPropertyChanged(); } }
+
 
         // Categoría seleccionada
         private ConfigDeviceCategory _selectedCategory;
-        public ConfigDeviceCategory SelectedCategory
-        {
-            get => _selectedCategory;
-            set
-            {
-                _selectedCategory = value;
-                OnPropertyChanged();
-                if (_selectedCategory != null)
-                {
-                    LogService.Write($"[UI] Cambio de categoría: {_selectedCategory.Name}");
-                }
-                RefreshView(); // Al cambiar, recargamos la tabla y comparamos
-            }
-        }
+        public ConfigDeviceCategory SelectedCategory { get => _selectedCategory; set { _selectedCategory = value; OnPropertyChanged(); if (_selectedCategory != null) { LogService.Write($"[DEVICE-VM] [SelectedCategory] Cambio de categoría: {_selectedCategory.Name}"); } RefreshView(); } }
 
         // Texto informativo del label de dimensiones
         private string _dimensionInfo;
-        public string DimensionInfo
-        {
-            get => _dimensionInfo;
-            set { _dimensionInfo = value; OnPropertyChanged(); }
-        }
+        public string DimensionInfo{ get => _dimensionInfo; set { _dimensionInfo = value; OnPropertyChanged(); } }
 
         // Color del label de dimensiones (Verde/Rojo)
         private string _dimensionColor = "Transparent";
-        public string DimensionColor
-        {
-            get => _dimensionColor;
-            set { _dimensionColor = value; OnPropertyChanged(); }
-        }
+        public string DimensionColor { get => _dimensionColor; set { _dimensionColor = value; OnPropertyChanged(); } }
 
         // Comandos
-        public RelayCommand SyncCommand { get; set; }      // Antes: SyncConstantesCommand
-        public RelayCommand CompareCommand { get; set; }   // Antes: ComparacionCommand
+        public RelayCommand SyncCommand { get; set; }
+        public RelayCommand CompareCommand { get; set; }
 
 
-        // =================================================================================================================
-        // 3. CONSTRUCTOR
+
+        // ==================================================================================================================
+        // Constructor
         public DevicesViewModel()
         {
 
@@ -88,12 +67,18 @@ namespace ZC_ALM_TOOLS.ViewModels
         }
 
 
-        // Carga los datos provenientes del MainViewModel
+
+        // ==================================================================================================================
+        // Asigna la instancia de Tia Portal
         public void SetTiaService(TiaPlcService service)
         {
             _tiaPlcService = service;
         }
 
+
+
+        // ==================================================================================================================
+        // Carga los datos provenientes del MainViewModel
         public void LoadData(Dictionary<string, List<object>> cache, ConfigDeviceSettings settings)
         {
             _engineeringCache = cache;
@@ -103,9 +88,9 @@ namespace ZC_ALM_TOOLS.ViewModels
         }
 
 
-        // =================================================================================================================
-        // 4. INTERNAL LOGIC: VIEW REFRESH & DIMENSIONS
 
+        // ==================================================================================================================
+        // Actualizar la vista del datagrid
         private void RefreshView()
         {
             if (SelectedCategory == null || _engineeringCache == null) return;
@@ -115,18 +100,64 @@ namespace ZC_ALM_TOOLS.ViewModels
             if (_engineeringCache.TryGetValue(SelectedCategory.Name, out var list))
             {
                 foreach (var item in list) CurrentDevices.Add(item);
-                LogService.Write($"[UI] Mostrando {list.Count} dispositivos de tipo '{SelectedCategory.Name}'.");
+                LogService.Write($"[DEVICE-VM] [RefreshView] Mostrando {list.Count} dispositivos de tipo '{SelectedCategory.Name}'.");
             }
             else
             {
-                LogService.Write($"[UI] No hay datos en caché para la categoría '{SelectedCategory.Name}'.");
+                LogService.Write($"[DEVICE-VM] [RefreshView] No hay datos en caché para la categoría '{SelectedCategory.Name}'.");
             }
-
+            UpdateDimensionInfo();
         }
 
+
+
+        // ==================================================================================================================
+        // Metodo para actualizar que la seleccion del PLC ha cambiado
+        public void NotifyPlcChanged()
+        {
+            LogService.Write($"[DEVICE-VM] [NotifyPlcChanged] El PLC de origen ha cambiado. Reiniciando estados de comparación...");
+                        
+            _plcCache.Clear();
+
+            if (Categories != null)
+            {
+                foreach (var cat in Categories)
+                {
+                    cat.NMaxStatus = SynchronizationStatus.Pending;
+                    cat.ConstantsStatus = SynchronizationStatus.Pending;
+                    cat.DbStatus = SynchronizationStatus.Pending;
+                }
+            }
+
+            if (_engineeringCache != null)
+            {
+                foreach (var categoryList in _engineeringCache.Values)
+                {
+                    foreach (var item in categoryList)
+                    {
+                        if (item is IDevice device)
+                        {
+                            device.Estado = "Pendiente";
+                        }
+                    }
+                }
+            }
+
+            UpdateDimensionInfo();
+        }
+
+
+
+        // ==================================================================================================================
+        // Actualizar el numero maximo de dispositivos
         private void UpdateDimensionInfo()
         {
-            if (SelectedCategory == null) return;
+            if (SelectedCategory == null || _tiaPlcService == null)
+            {
+                DimensionColor = "Transparent";
+                DimensionInfo = "Seleccione un PLC y Categoría";
+                return;
+            }
 
             // Obtener valor del Excel
             int excelVal = 0;
@@ -150,8 +181,9 @@ namespace ZC_ALM_TOOLS.ViewModels
         }
 
 
-        // =================================================================================================================
-        // 
+
+        // ==================================================================================================================
+        // Metodo para ejecutar la sincronizacion
         private void ExecuteSync()
         {
             if (SelectedCategory == null) return;
@@ -168,8 +200,8 @@ namespace ZC_ALM_TOOLS.ViewModels
 
             try
             {
-                StatusService.Set($"--- INICIO SINCRONIZACIÓN: {SelectedCategory.Name} ---", false);
-                LogService.Write($"--- SYNC START: {SelectedCategory.Name} ---");
+                StatusService.Set($"Inicio sincronización: {SelectedCategory.Name} ---", false);
+                LogService.Write($"[DEVICE-VM] [ExecuteSync] Inicio sincronización: {SelectedCategory.Name} ---");
 
                 // N_MAX. Buscamos la carpeta de límites ("Disp_N_Max")
                 if (_engineeringCache.TryGetValue(_deviceSettings.Disp_N_Max, out var limits))
@@ -200,9 +232,7 @@ namespace ZC_ALM_TOOLS.ViewModels
                     }
                 }
 
-                // ---------------------------------------------------------
-                // CONSTANTES DE USUARIO (DISPOSITIVOS)
-                // ---------------------------------------------------------
+                // CONSTANTES DE USUARIO
                 var deviceList = CurrentDevices.Cast<IDevice>()
                                       .Where(d => d.Estado != "Eliminar")
                                       .ToList();
@@ -210,10 +240,7 @@ namespace ZC_ALM_TOOLS.ViewModels
                 okConst = _tiaPlcService.SyncUserConstants(SelectedCategory.TiaGroup, SelectedCategory.TiaTable, deviceList);
                 SelectedCategory.ConstantsStatus = okConst ? SynchronizationStatus.Ok : SynchronizationStatus.Error;
 
-
-                // ---------------------------------------------------------
                 // COMPILACIÓN DEL DB
-                // ---------------------------------------------------------
                 okComp = _tiaPlcService.CompileBlock(SelectedCategory.TiaDbName);
                 UpdateStatusFrame();
 
@@ -226,7 +253,7 @@ namespace ZC_ALM_TOOLS.ViewModels
                 else
                 {
                     SelectedCategory.DbStatus = SynchronizationStatus.Error;
-                    LogService.Write("Fallo en compilación: no se pueden sincronizar comentarios.", true);
+                    LogService.Write("[DEVICE-VM] [ExecuteSync] Fallo en compilación: no se pueden sincronizar comentarios.", true);
                 }
 
                 // Tras sincronizar, ejecutamos la comparación para verificar que todo ha quedado bien
@@ -236,7 +263,6 @@ namespace ZC_ALM_TOOLS.ViewModels
                 if (okNMax && okConst && okComp && okDb)
                 {
                     StatusService.Set("Sincronización completada con éxito.", false);
-                    MessageBox.Show("Sincronización total completada.", "Éxito", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
                 else
                 {
@@ -246,13 +272,12 @@ namespace ZC_ALM_TOOLS.ViewModels
                     if (!okDb) msg += "- Fallo en comentarios DB\n";
 
                     StatusService.Set("Sincronización finalizada con errores.", true);
-                    MessageBox.Show(msg, "Incompleto", MessageBoxButton.OK, MessageBoxImage.Warning);
                 }
 
             }
             catch (Exception ex)
             {
-                LogService.Write($"CRITICAL SYNC ERROR: {ex.Message}", true);
+                LogService.Write($"[DEVICE-VM] [ExecuteSync] Error Crítico: {ex.Message}", true);
                 StatusService.Set($"Error Crítico: {ex.Message}", true);
                 SelectedCategory.DbStatus = SynchronizationStatus.Error;
             }
@@ -264,10 +289,9 @@ namespace ZC_ALM_TOOLS.ViewModels
         }
 
 
-        // =================================================================================================================
-        //COMPARISON LOGIC (COMPROBACIÓN)
-        private void ExecuteCompare() => ExecuteCompare(false);
 
+        // ==================================================================================================================
+        // Metodo para comparar el dispositivo seleccionado con el PLC
         private void ExecuteCompare(bool keepDbStatus)
         {
             if (SelectedCategory == null || _deviceSettings == null || _engineeringCache == null) return;
@@ -279,7 +303,9 @@ namespace ZC_ALM_TOOLS.ViewModels
                 StatusService.SetBusy(true);
                 UpdateStatusFrame();
 
-                LogService.Write($"--- INICIANDO COMPARACIÓN: {SelectedCategory.Name} ---");
+                RefreshView();
+
+                LogService.Write($"[DEVICE-VM] [ExecuteCompare] Iniciando comparación: {SelectedCategory.Name} ---");
                 StatusService.Set("Comparando datos con TIA Portal...", false);
 
                 // Reset de estados
@@ -304,20 +330,20 @@ namespace ZC_ALM_TOOLS.ViewModels
 
                 bool nMaxMatch = (excelVal == _currentPlcNMax);
                 SelectedCategory.NMaxStatus = nMaxMatch ? SynchronizationStatus.Ok : SynchronizationStatus.Error;
-                LogService.Write($"[COMPARE] N_MAX -> Excel: {excelVal} | PLC: {_currentPlcNMax} ({(nMaxMatch ? "OK" : "ERROR")})");
+                LogService.Write($"[DEVICE-VM] [ExecuteCompare] N_MAX -> Excel: {excelVal} | PLC: {_currentPlcNMax} ({(nMaxMatch ? "OK" : "ERROR")})");
 
                 UpdateStatusFrame();
 
 
                 // Exportar y Parsear PLC
-                string tempXmlPath = Path.Combine(AppConfigManager.TempPath, "plc_export.xml");
+                string tempXmlPath = Path.Combine(AppConfigService.TempPath, "plc_export.xml");
                 StatusService.Set($"Exportando tabla '{SelectedCategory.TiaTable}' desde TIA...");
-                LogService.Write($"[COMPARE] Exportando tabla '{SelectedCategory.TiaTable}' a XML temporal...");
+                LogService.Write($"[DEVICE-VM] [ExecuteCompare] Exportando tabla '{SelectedCategory.TiaTable}' a XML temporal...");
                 UpdateStatusFrame();
 
                 if (!_tiaPlcService.ExportTagTable(SelectedCategory.TiaGroup, SelectedCategory.TiaTable, tempXmlPath))
                 {
-                    LogService.Write("[COMPARE] ERROR: No se pudo exportar la tabla desde TIA Portal.", true);
+                    LogService.Write("[DEVICE-VM] [ExecuteCompare] ERROR: No se pudo exportar la tabla desde TIA Portal.", true);
                     StatusService.Set($"No se pudo exportar la tabla '{SelectedCategory.TiaTable}' desde TIA Portal.");
                     SelectedCategory.ConstantsStatus = SynchronizationStatus.Error;
                     return;
@@ -348,7 +374,7 @@ namespace ZC_ALM_TOOLS.ViewModels
                         else
                         {
                             device.Estado = $"{plcTagName} -> {device.CPTag}";
-                            LogService.Write($"[COMPARE] Diferencia en ID {device.Numero}: PLC '{plcTagName}' != Excel '{device.CPTag}'", true);
+                            LogService.Write($"[DEVICE-VM] [ExecuteCompare] Diferencia en ID {device.Numero}: PLC '{plcTagName}' != Excel '{device.CPTag}'", true);
                             allMatch = false;
                             countMismatch++;
                         }
@@ -359,7 +385,7 @@ namespace ZC_ALM_TOOLS.ViewModels
                         if (device.Estado != "Eliminar")
                         {
                             device.Estado = "Nuevo";
-                            LogService.Write($"[COMPARE] ID {device.Numero} no existe en PLC (Nuevo)");
+                            LogService.Write($"[DEVICE-VM] [ExecuteCompare] ID {device.Numero} no existe en PLC (Nuevo)");
                             allMatch = false;
                             countNew++;
                         }
@@ -370,7 +396,7 @@ namespace ZC_ALM_TOOLS.ViewModels
                 if (plcDict.Count > 0)
                 {
                     allMatch = false;
-                    LogService.Write($"[COMPARE] Se han detectado {plcDict.Count} constantes en el PLC que no están en el Excel.", true);
+                    LogService.Write($"[DEVICE-VM] [ExecuteCompare] Se han detectado {plcDict.Count} constantes en el PLC que no están en el Excel.", true);
                     
                     foreach (var extra in plcDict)
                     {
@@ -385,21 +411,21 @@ namespace ZC_ALM_TOOLS.ViewModels
 
                         // Lo inyectamos en la lista visual
                         CurrentDevices.Add(ghost);
-                        LogService.Write($"[COMPARE] Sobrante en PLC -> ID {extra.Key}: {extra.Value}", true);
+                        LogService.Write($"[DEVICE-VM] [ExecuteCompare] Sobrante en PLC -> ID {extra.Key}: {extra.Value}", true);
                     }
                 }
 
                 // 5. Resultado final
                 SelectedCategory.ConstantsStatus = allMatch ? SynchronizationStatus.Ok : SynchronizationStatus.Error;
 
-                LogService.Write($"[COMPARE] RESUMEN: {countMatch} OK, {countMismatch} Diferentes, {countNew} Nuevos.");
-                LogService.Write("--- COMPARACIÓN FINALIZADA ---");
+                LogService.Write($"[DEVICE-VM] [ExecuteCompare] RESUMEN: {countMatch} OK, {countMismatch} Diferentes, {countNew} Nuevos.");
+                LogService.Write("[DEVICE-VM] [ExecuteCompare] COMPARACIÓN FINALIZADA");
 
                 StatusService.Set(allMatch ? "Comparación finalizada: Todo OK." : "Comparación finalizada: Se detectaron diferencias.", !allMatch);
             }
             catch (Exception ex)
             {
-                LogService.Write($"ERROR CRÍTICO EN COMPARACIÓN: {ex.Message}", true);
+                LogService.Write($"[DEVICE-VM] [ExecuteCompare] ERROR CRÍTICO EN COMPARACIÓN: {ex.Message}", true);
                 SelectedCategory.ConstantsStatus = SynchronizationStatus.Error;
                 StatusService.Set("Error durante la comparación. Revisa el Log.", true);
             }
@@ -411,6 +437,8 @@ namespace ZC_ALM_TOOLS.ViewModels
         }
 
 
+
+        // ==================================================================================================================
         // Método auxiliar para parsear el XML exportado por TIA Portal
         private Dictionary<int, string> ParsePlcXml(string path)
         {
@@ -438,12 +466,12 @@ namespace ZC_ALM_TOOLS.ViewModels
                     }
                 }
 
-                LogService.Write($"[XML-PARSE] Se han cargado {dic.Count} constantes desde el PLC.");
+                LogService.Write($"[DEVICE-VM] [ParsePlcXml] Se han cargado {dic.Count} constantes desde el PLC.");
 
             }
             catch (Exception ex)
             {
-                LogService.Write($"XML PARSE ERROR: {ex.Message}", true);
+                LogService.Write($"[DEVICE-VM] [ParsePlcXml] XML PARSE ERROR: {ex.Message}", true);
             }
 
             return dic;
@@ -451,6 +479,8 @@ namespace ZC_ALM_TOOLS.ViewModels
 
 
 
+        // ==================================================================================================================
+        // Metodo para habilitar botones
         private bool CanExecuteAction()
         {
             // Solo habilitamos si:

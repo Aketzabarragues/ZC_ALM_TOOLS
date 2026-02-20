@@ -4,12 +4,14 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:views="clr-namespace:ZC_ALM_TOOLS.Views"
+        xmlns:models="clr-namespace:ZC_ALM_TOOLS.Models"
         mc:Ignorable="d"
-        Title="ZC Tools - TIA Portal Add-In" Height="650" Width="1050"
+        Title="ZC Tools - TIA Portal Add-In" Height="800" Width="1400"
         WindowStartupLocation="CenterScreen" Background="#F0F0F0">
 
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
+
         <Style x:Key="SettingsButtonStyle" TargetType="Button">
             <Setter Property="Foreground" Value="#555555"/>
             <Setter Property="Background" Value="Transparent"/>
@@ -55,79 +57,152 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
+        
+        <Style x:Key="DeviceItemStyle" TargetType="ListBoxItem">
+            <Setter Property="Padding" Value="8,5"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+            <Setter Property="BorderBrush" Value="#F0F0F0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}" 
+                                BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Background" Value="#E0EEF9"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
     </Window.Resources>
 
     <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="250"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" Padding="15,10" Background="#F5F6F7" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1">
+        <Border Grid.Column="0" Grid.Row="0" Background="White" BorderBrush="#E0E0E0" BorderThickness="0,0,1,0">
             <Grid>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                    <Button Content="📂 Cargar Excel Definición" 
-                            Command="{Binding LoadDataCommand}" 
-                            Style="{StaticResource PrimaryButtonStyle}"
-                            Width="260" Margin="0,0,15,0"/>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
 
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="Archivo seleccionado:" FontSize="10" Foreground="#888"/>
-                        <TextBlock Text="{Binding SelectedExcelFile, TargetNullValue='Ningún archivo seleccionado'}" 
-                                   Foreground="#555" FontWeight="Medium" FontStyle="Italic"/>
-                    </StackPanel>
+                <Border Padding="10" Background="#F8F9FA" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1">
+                    <TextBlock Text="PROYECTO TIA PORTAL" FontWeight="Bold" Foreground="#444"/>
+                </Border>
+
+                <StackPanel>
+                    <Border Padding="10" Background="#F8F9FA" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1">
+                        <TextBlock Text="PLC" FontWeight="Bold" Foreground="#444" FontSize="10"/>
+                    </Border>
+
+                    <ListBox ItemsSource="{Binding PlcTargets}" 
+                             SelectedItem="{Binding SelectedTarget}"
+                             ItemContainerStyle="{StaticResource DeviceItemStyle}"
+                             BorderThickness="0">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal" Margin="2">
+                                    <TextBlock Text="💻" Margin="0,0,10,0"/>
+                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <Border Padding="10" Background="#F8F9FA" BorderBrush="#E0E0E0" BorderThickness="0,1,0,1" Margin="0,15,0,0">
+                        <TextBlock Text="HMI / SCADA" FontWeight="Bold" Foreground="#444" FontSize="10"/>
+                    </Border>
+
+                    <ListBox ItemsSource="{Binding HmiTargets}" 
+                             ItemContainerStyle="{StaticResource DeviceItemStyle}"
+                             BorderThickness="0">
+                        
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <CheckBox IsChecked="{Binding IsChecked}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <TextBlock Grid.Column="1" Text="🖥️" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding Name}" VerticalAlignment="Center"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
                 </StackPanel>
+                
+                
 
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">                    
-                    
-                    <Button Command="{Binding ConfigSettingsCommand}"
-                            Style="{StaticResource SettingsButtonStyle}"
-                            ToolTip="Editar configuracion"
-                            Content="⚙️"/>
-
-                </StackPanel>
+                
             </Grid>
         </Border>
 
-        <TabControl Grid.Row="1" Margin="10" 
-                    IsEnabled="{Binding IsDataLoaded}"
-                    Background="White" BorderBrush="#D0D0D0">
+        <Grid Grid.Column="1"  Grid.Row="0" >
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
 
-            
-            
-            <TabControl.Resources>
-                <Style TargetType="TabItem">
-                    <Setter Property="HeaderTemplate">
-                        <Setter.Value>
-                            <DataTemplate>
-                                <ContentPresenter Content="{Binding}" Margin="10,4"/>
-                            </DataTemplate>
-                        </Setter.Value>
-                    </Setter>
-                    <Setter Property="FontWeight" Value="SemiBold"/>
-                </Style>
-            </TabControl.Resources>
+            <Border Grid.Row="0" Padding="15,10" Background="#F5F6F7" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1">
+                <Grid>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                        <Button Content="📂 Cargar Excel Definición" 
+                                Command="{Binding LoadDataCommand}" 
+                                Style="{StaticResource PrimaryButtonStyle}"
+                                Width="260" Margin="0,0,15,0"/>
 
-            <TabItem Header="🔧 Dispositivos">
-                <views:DevicesView DataContext="{Binding DevicesVM}"/>
-            </TabItem>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="Archivo seleccionado:" FontSize="10" Foreground="#888"/>
+                            <TextBlock Text="{Binding SelectedExcelFile, TargetNullValue='Ningún archivo seleccionado'}" 
+                                       Foreground="#555" FontWeight="Medium" FontStyle="Italic"/>
+                        </StackPanel>
+                    </StackPanel>
 
-            <TabItem Header="🏭 Procesos">
-                <views:ProcessView DataContext="{Binding ProcessVM}"/>
-            </TabItem>
-
-            <TabItem Header="🚨 Alarmas">
-                <Grid Background="#FAFAFA">
-                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                        <TextBlock Text="🚨" FontSize="48" HorizontalAlignment="Center" Margin="0,0,0,10"/>
-                        <TextBlock Text="Módulo de Alarmas (Próximamente)" Foreground="#AAA" FontSize="14"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <Button Command="{Binding ConfigSettingsCommand}"
+                                Style="{StaticResource SettingsButtonStyle}"
+                                ToolTip="Editar configuracion"
+                                Content="⚙️"/>
                     </StackPanel>
                 </Grid>
-            </TabItem>
-        </TabControl>
+            </Border>
 
-        <StatusBar Grid.Row="2" Background="#E9ECEF" BorderBrush="#CED4DA" BorderThickness="0,1,0,0" Padding="5,2">
+            <TabControl Grid.Row="1" Margin="10" 
+                        IsEnabled="{Binding IsDataLoaded}"
+                        Background="White" BorderBrush="#D0D0D0">
+                <TabItem Header="🔧 Dispositivos">
+                    <views:DevicesView DataContext="{Binding DevicesVM}"/>
+                </TabItem>
+                <TabItem Header="🏭 Procesos">
+                    <views:ProcessView DataContext="{Binding ProcessVM}"/>
+                </TabItem>
+                <TabItem Header="🚨 Alarmas">
+                    <TextBlock Text="Módulo de Alarmas" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </TabItem>
+            </TabControl>            
+        </Grid>
+
+        <StatusBar Grid.Row="1" Grid.ColumnSpan="2" Background="#E9ECEF" BorderBrush="#CED4DA" BorderThickness="0,1,0,0" Padding="5,2">
             <StatusBar.ItemsPanel>
                 <ItemsPanelTemplate>
                     <Grid>
@@ -185,5 +260,6 @@
                 </StackPanel>
             </StatusBarItem>
         </StatusBar>
+
     </Grid>
 </Window>

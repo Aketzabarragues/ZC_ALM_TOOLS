@@ -18,7 +18,7 @@ namespace ZC_ALM_TOOLS.Services
             try
             {
                 // Intentamos escribir en la ruta definida en el ConfigManager
-                File.AppendAllText(AppConfigManager.LogFile, line + Environment.NewLine);
+                File.AppendAllText(AppConfigService.LogFile, line + Environment.NewLine);
             }
             catch
             {
@@ -34,9 +34,9 @@ namespace ZC_ALM_TOOLS.Services
         {
             try
             {
-                if (File.Exists(AppConfigManager.LogFile))
+                if (File.Exists(AppConfigService.LogFile))
                 {
-                    File.Delete(AppConfigManager.LogFile);
+                    File.Delete(AppConfigService.LogFile);
                 }
             }
             catch

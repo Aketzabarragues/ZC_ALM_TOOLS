@@ -10,7 +10,7 @@ using static System.Windows.Forms.VisualStyles.VisualStyleElement.TextBox;
 
 namespace ZC_ALM_TOOLS.Services
 {
-    public static class AppConfigManager
+    public static class AppConfigService
     {
 
 
@@ -59,13 +59,13 @@ namespace ZC_ALM_TOOLS.Services
             string resourceName = "ZC_ALM_TOOLS.Resources.app_config.xml";
 
             var names = Assembly.GetExecutingAssembly().GetManifestResourceNames();
-            foreach (var name in names) { LogService.Write("Recurso encontrado: " + name); }
+            foreach (var name in names) { LogService.Write("[APP-CONFIG-SERVICE] [CreateAppConfigFile] Recurso encontrado: " + name); }
 
             using (Stream stream = assembly.GetManifestResourceStream(resourceName))
             {
                 if (stream == null)
                 {
-                    LogService.Write("ERROR: No se encontró el recurso embebido " + resourceName, true);
+                    LogService.Write("[APP-CONFIG-SERVICE] [CreateAppConfigFile] ERROR: No se encontró el recurso embebido " + resourceName, true);
                     return;
                 }
 
@@ -74,7 +74,7 @@ namespace ZC_ALM_TOOLS.Services
                     stream.CopyTo(fileStream);
                 }
             }
-            LogService.Write("Configuración maestra extraída correctamente de los recursos del Add-In.");
+            LogService.Write("[APP-CONFIG-SERVICE] [CreateAppConfigFile] Configuración maestra extraída correctamente de los recursos del Add-In.");
         }
 
 
@@ -91,7 +91,7 @@ namespace ZC_ALM_TOOLS.Services
             }
             catch (Exception ex)
             {
-                LogService.Write($"[CONFIG] Error en GetGlobalSettings: {ex.Message}", true);
+                LogService.Write($"[APP-CONFIG-SERVICE] [GetGlobalSettings] Error en GetGlobalSettings: {ex.Message}", true);
                 return new ConfigGlobalSettings(); // Devuelve objeto vacío para evitar nulos
             }
         }
@@ -110,7 +110,7 @@ namespace ZC_ALM_TOOLS.Services
             }
             catch (Exception ex)
             {
-                LogService.Write($"[CONFIG] Error en GetDeviceSettings: {ex.Message}", true);
+                LogService.Write($"[APP-CONFIG-SERVICE] [GetDeviceSettings] Error en GetDeviceSettings: {ex.Message}", true);
                 return new ConfigDeviceSettings();
             }
         }
@@ -134,7 +134,7 @@ namespace ZC_ALM_TOOLS.Services
             }
             catch (Exception ex)
             {
-                LogService.Write($"[CONFIG] Error cargando categorías de dispositivos: {ex.Message}", true);
+                LogService.Write($"[APP-CONFIG-SERVICE] [GetDeviceCategories] Error cargando categorías de dispositivos: {ex.Message}", true);
                 return new List<ConfigDeviceCategory>();
             }
         }
@@ -153,7 +153,7 @@ namespace ZC_ALM_TOOLS.Services
             }
             catch (Exception ex)
             {
-                LogService.Write($"[CONFIG] Error en GetProcessConfig: {ex.Message}", true);
+                LogService.Write($"[APP-CONFIG-SERVICE] [GetProcessConfig] Error en GetProcessConfig: {ex.Message}", true);
                 return new ConfigProcessSettings();
             }
         }

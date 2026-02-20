@@ -14,17 +14,31 @@ using ZC_ALM_TOOLS.Services;
 namespace ZC_ALM_TOOLS.Core
 {
 
-
+    
 
     // ==================================================================================================================
     // Servicio para comunicación directa con Siemens Openness
     public class TiaPlcService
     {
-        private readonly PlcSoftware _plcSoftware;
+        private PlcSoftware _currentPlc;
 
-        public TiaPlcService(PlcSoftware plcSoftware)
+
+
+
+        // ==================================================================================================================
+        // Constructor
+        public TiaPlcService()
         {
-            _plcSoftware = plcSoftware;
+
+        }
+
+
+
+        // ==================================================================================================================
+        // Asignacion de PLC seleccionado
+        public void UpdatePlc(PlcSoftware plcSoftware)
+        {
+            _currentPlc = plcSoftware;
         }
 
 
@@ -59,7 +73,7 @@ namespace ZC_ALM_TOOLS.Core
         {
             try
             {
-                LogService.Write($"[TIA] Verificando constante: {constantName}...");
+                LogService.Write($"[TIA-PLC-SERVICE] [SyncGlobalConstant] Verificando constante: {constantName}...");
                 var table = FindTagTable(tableName);
                 if (table == null) throw new Exception($"No se encontró la tabla '{tableName}'");
 
@@ -70,7 +84,7 @@ namespace ZC_ALM_TOOLS.Core
                 {
                     if (currentValue != newValue)
                     {
-                        LogService.Write($"[TIA-CONFIG] Modificando {constantName}: {currentValue} -> {newValue}");
+                        LogService.Write($"[TIA-PLC-SERVICE] [SyncGlobalConstant] Modificando {constantName}: {currentValue} -> {newValue}");
                         constant.Value = newValue.ToString();
                         Report($"{constantName} actualizado a {newValue}.");
                     }
@@ -79,7 +93,7 @@ namespace ZC_ALM_TOOLS.Core
             }
             catch (Exception ex)
             {
-                LogService.Write($"[TIA-ERROR] Fallo en Sync Global: {ex.Message}", true);
+                LogService.Write($"[TIA-PLC-SERVICE] [SyncGlobalConstant] Fallo en Sync Global: {ex.Message}", true);
                 return false;
             }
         }
@@ -92,7 +106,7 @@ namespace ZC_ALM_TOOLS.Core
         {
             try
             {
-                LogService.Write($"[TIA] === SINCRONIZANDO IDs: {tableName} ===");
+                LogService.Write($"[TIA-PLC-SERVICE] [SyncUserConstants]  === SINCRONIZANDO IDs: {tableName} ===");
                 var table = FindTableInFolder(folderName, tableName);
                 if (table == null) throw new Exception($"La tabla '{tableName}' no existe.");
 
@@ -102,7 +116,7 @@ namespace ZC_ALM_TOOLS.Core
 
                 foreach (var c in constantsToDelete)
                 {
-                    LogService.Write($"[TIA-DELETE] Borrando ID {c.Value}: {c.Name}");
+                    LogService.Write($"[TIA-PLC-SERVICE] [SyncUserConstants] Borrando ID {c.Value}: {c.Name}");
                     c.Delete();
                 }
 
@@ -113,13 +127,13 @@ namespace ZC_ALM_TOOLS.Core
 
                     if (tiaConst == null)
                     {
-                        LogService.Write($"[TIA-CREATE] Creando ID {dev.Numero}: {dev.CPTag}");
+                        LogService.Write($"[TIA-PLC-SERVICE] [SyncUserConstants] Creando ID {dev.Numero}: {dev.CPTag}");
                         tiaConst = table.UserConstants.Create(dev.CPTag, "Int", dev.Numero.ToString());
                     }
 
                     if (tiaConst.Name != dev.CPTag)
                     {
-                        LogService.Write($"[TIA-RENAME] ID {dev.Numero}: {tiaConst.Name} -> {dev.CPTag}");
+                        LogService.Write($"[TIA-PLC-SERVICE] [SyncUserConstants] ID {dev.Numero}: {tiaConst.Name} -> {dev.CPTag}");
                         tiaConst.Name = dev.CPTag;
                     }
 
@@ -130,7 +144,7 @@ namespace ZC_ALM_TOOLS.Core
             }
             catch (Exception ex)
             {
-                LogService.Write($"[TIA-FATAL] Error en Sync Constants: {ex.Message}", true);
+                LogService.Write($"[TIA-PLC-SERVICE] [SyncUserConstants] Error en Sync Constants: {ex.Message}", true);
                 return false;
             }
         }
@@ -143,28 +157,28 @@ namespace ZC_ALM_TOOLS.Core
         {
             try
             {
-                LogService.Write($"[TIA] Buscando bloque '{blockName}' para compilar...");
-                var block = FindBlockRecursively(_plcSoftware.BlockGroup, blockName);
+                LogService.Write($"[TIA-PLC-SERVICE] [CompileBlock] Buscando bloque '{blockName}' para compilar...");
+                var block = FindBlockRecursively(_currentPlc.BlockGroup, blockName);
 
                 if (block == null)
                 {
-                    LogService.Write($"[TIA-ERROR] No se encontró el bloque '{blockName}'", true);
+                    LogService.Write($"[TIA-PLC-SERVICE] [CompileBlock] No se encontró el bloque '{blockName}'", true);
                     return false;
                 }
 
                 ICompilable compileService = block.GetService<ICompilable>();
                 if (compileService != null)
                 {
-                    LogService.Write($"[TIA] Compilando: {blockName}...");
+                    LogService.Write($"[TIA-PLC-SERVICE] [CompileBlock] Compilando: {blockName}...");
                     CompilerResult result = compileService.Compile();
-                    LogService.Write($"[TIA] Resultado Compilación: {result.State} (Errores: {result.ErrorCount})");
+                    LogService.Write($"[TIA-PLC-SERVICE] [CompileBlock] Resultado Compilación: {result.State} (Errores: {result.ErrorCount})");
                     return result.State != CompilerResultState.Error;
                 }
                 return false;
             }
             catch (Exception ex)
             {
-                LogService.Write($"[TIA-ERROR] Fallo al compilar: {ex.Message}", true);
+                LogService.Write($"[TIA-PLC-SERVICE] [CompileBlock] Fallo al compilar: {ex.Message}", true);
                 return false;
             }
 
@@ -178,23 +192,23 @@ namespace ZC_ALM_TOOLS.Core
         {
             try
             {
-                LogService.Write($"[TIA-XML] === INICIANDO CIRUGÍA XML: {dbName} ===");
+                LogService.Write($"[TIA-PLC-SERVICE] [SyncDbComments] === INICIANDO CIRUGÍA XML: {dbName} ===");
 
                 // 1. Localizar el bloque
-                var genericBlock = FindBlockRecursively(_plcSoftware.BlockGroup, dbName);
+                var genericBlock = FindBlockRecursively(_currentPlc.BlockGroup, dbName);
                 var db = genericBlock as GlobalDB;
 
                 if (db == null)
                 {
-                    LogService.Write($"[TIA-XML] ERROR: No se pudo encontrar o castear el bloque '{dbName}'.", true);
+                    LogService.Write($"[TIA-PLC-SERVICE] [SyncDbComments] ERROR: No se pudo encontrar o castear el bloque '{dbName}'.", true);
                     return false;
                 }
 
                 // 2. Exportar a temporal
-                string xmlPath = Path.Combine(AppConfigManager.TempPath, $"{dbName}.xml");
+                string xmlPath = Path.Combine(AppConfigService.TempPath, $"{dbName}.xml");
                 if (File.Exists(xmlPath)) File.Delete(xmlPath);
 
-                LogService.Write($"[TIA-XML] Exportando bloque para edición: {xmlPath}");
+                LogService.Write($"[TIA-PLC-SERVICE] [SyncDbComments] Exportando bloque para edición: {xmlPath}");
                 db.Export(new FileInfo(xmlPath), ExportOptions.WithDefaults);
 
                 // 3. Cargar XML y buscar nodos
@@ -204,19 +218,19 @@ namespace ZC_ALM_TOOLS.Core
                 var staticSection = doc.Descendants(ns + "Section").FirstOrDefault(s => s.Attribute("Name")?.Value == "Static");
                 if (staticSection == null)
                 {
-                    LogService.Write("[TIA-XML] ERROR: No se encontró la sección 'Static' en el XML del DB.", true);
+                    LogService.Write("[TIA-PLC-SERVICE] [SyncDbComments] ERROR: No se encontró la sección 'Static' en el XML del DB.", true);
                     return false;
                 }
 
                 var arrayMember = staticSection.Elements(ns + "Member").FirstOrDefault(m => m.Attribute("Name")?.Value == arrayName);
                 if (arrayMember == null)
                 {
-                    LogService.Write($"[TIA-XML] ERROR: No se encontró el array '{arrayName}' dentro de la sección Static.", true);
+                    LogService.Write($"[TIA-PLC-SERVICE] [SyncDbComments] ERROR: No se encontró el array '{arrayName}' dentro de la sección Static.", true);
                     return false;
                 }
 
                 // 4. Modificar comentarios
-                LogService.Write($"[TIA-XML] Actualizando comentarios para {devices.Count} dispositivos en el array '{arrayName}'...");
+                LogService.Write($"[TIA-PLC-SERVICE] [SyncDbComments] Actualizando comentarios para {devices.Count} dispositivos en el array '{arrayName}'...");
                 int updatedCount = 0;
 
                 foreach (var dev in devices)
@@ -240,11 +254,11 @@ namespace ZC_ALM_TOOLS.Core
                     updatedCount++;
                 }
 
-                LogService.Write($"[TIA-XML] Modificación completada. Guardando archivo temporal...");
+                LogService.Write($"[TIA-PLC-SERVICE] [SyncDbComments] Modificación completada. Guardando archivo temporal...");
                 doc.Save(xmlPath);
 
                 // 5. Re-importar el bloque a TIA Portal
-                LogService.Write($"[TIA-XML] Re-importando bloque '{dbName}' en TIA Portal (Override)...");
+                LogService.Write($"[TIA-PLC-SERVICE] [SyncDbComments] Re-importando bloque '{dbName}' en TIA Portal (Override)...");
                 var parent = genericBlock.Parent;
 
                 if (parent is PlcBlockUserGroup folder)
@@ -252,14 +266,14 @@ namespace ZC_ALM_TOOLS.Core
                 else if (parent is PlcBlockGroup root)
                     root.Blocks.Import(new FileInfo(xmlPath), ImportOptions.Override);
 
-                LogService.Write($"[TIA-XML] ¡ÉXITO! Bloque {dbName} actualizado correctamente.");
+                LogService.Write($"[TIA-PLC-SERVICE] [SyncDbComments] ¡ÉXITO! Bloque {dbName} actualizado correctamente.");
                 return true;
             }
             catch (Exception ex)
             {
-                LogService.Write($"[TIA-XML] ERROR CRÍTICO en cirugía XML: {ex.Message}", true);
+                LogService.Write($"[TIA-PLC-SERVICE] [SyncDbComments] ERROR CRÍTICO en cirugía XML: {ex.Message}", true);
                 if (ex.InnerException != null)
-                    LogService.Write($"[TIA-XML] DETALLE: {ex.InnerException.Message}", true);
+                    LogService.Write($"[TIA-PLC-SERVICE] [SyncDbComments] DETALLE: {ex.InnerException.Message}", true);
 
                 return false;
             }
@@ -290,9 +304,9 @@ namespace ZC_ALM_TOOLS.Core
         // Encontrar tag en una tabla de variables
         private PlcTagTable FindTagTable(string name)
         {
-            var rootTable = _plcSoftware.TagTableGroup.TagTables.Find(name);
+            var rootTable = _currentPlc.TagTableGroup.TagTables.Find(name);
             if (rootTable != null) return rootTable;
-            return _plcSoftware.TagTableGroup.Groups.SelectMany(g => g.TagTables).FirstOrDefault(t => t.Name == name);
+            return _currentPlc.TagTableGroup.Groups.SelectMany(g => g.TagTables).FirstOrDefault(t => t.Name == name);
         }
 
 
@@ -302,7 +316,7 @@ namespace ZC_ALM_TOOLS.Core
         // Buscar tabla dentro de una carpeta
         private PlcTagTable FindTableInFolder(string folder, string table)
         {
-            var group = _plcSoftware.TagTableGroup.Groups.Find(folder);
+            var group = _currentPlc.TagTableGroup.Groups.Find(folder);
             return group?.TagTables.Find(table);
         }
 
