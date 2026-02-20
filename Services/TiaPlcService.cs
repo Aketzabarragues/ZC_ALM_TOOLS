@@ -18,11 +18,11 @@ namespace ZC_ALM_TOOLS.Core
 
     // ==================================================================================================================
     // Servicio para comunicación directa con Siemens Openness
-    public class TiaService
+    public class TiaPlcService
     {
         private readonly PlcSoftware _plcSoftware;
 
-        public TiaService(PlcSoftware plcSoftware)
+        public TiaPlcService(PlcSoftware plcSoftware)
         {
             _plcSoftware = plcSoftware;
         }

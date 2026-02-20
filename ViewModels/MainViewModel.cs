@@ -20,7 +20,7 @@ namespace ZC_ALM_TOOLS.ViewModels
 
         // =================================================================================================================
         // PROPIEDADES
-        private TiaService _tiaService;
+        private TiaPlcService _tiaPlcService;
                 
         // Caché de datos cargados
         private Dictionary<string, List<object>> _engineeringCache = new Dictionary<string, List<object>>();
@@ -33,7 +33,7 @@ namespace ZC_ALM_TOOLS.ViewModels
 
         // ViewModels y Configuración
         public DevicesViewModel DevicesVM { get; set; }
-        public ProcessViewModel ProcessesVM { get; set; }
+        public ProcessViewModel ProcessVM { get; set; }
 
         // Variable que indica que esta ejecutandose algo
         private bool _isBusy;
@@ -99,14 +99,14 @@ namespace ZC_ALM_TOOLS.ViewModels
             _configDeviceCategory = AppConfigManager.GetDeviceCategories();
 
             // Inicializamos servicios y viewmodels
-            _tiaService = new TiaService(plcSoftware);
+            _tiaPlcService = new TiaPlcService(plcSoftware);
 
             DevicesVM = new DevicesViewModel();
-            DevicesVM.Category = _configDeviceCategory;
-            DevicesVM.SetTiaService(_tiaService);
+            DevicesVM.Categories = _configDeviceCategory;
+            DevicesVM.SetTiaService(_tiaPlcService);
 
-            ProcessesVM = new ProcessViewModel();
-            ProcessesVM.SetTiaService(_tiaService);
+            ProcessVM = new ProcessViewModel();
+            ProcessVM.SetTiaService(_tiaPlcService);
 
             // Evento para actualizar el mensaje de estado
             StatusService.OnStatusChanged += UpdateStatus;
@@ -122,6 +122,7 @@ namespace ZC_ALM_TOOLS.ViewModels
             // Mapeo de comandos
             LoadDataCommand = new RelayCommand(LoadExcelAndGenerateJson);
             ConfigSettingsCommand = new RelayCommand(OpenSettingsEditor);
+
         }
 
 
@@ -162,34 +163,45 @@ namespace ZC_ALM_TOOLS.ViewModels
                 LogService.Write("Lanzando proceso Python...");
                 UpdateStatus("Ejecutando extractor Python...");
 
-                string arguments = $"--path \"{SelectedExcelFile}\"";
 
-                // Ejecutar proceso externo
-                Siemens.Engineering.AddIn.Utilities.Process.Start(_configGlobalSettings.ExtractorExePath, arguments);
 
-                // Esperar a que Python genere los XML
-                if (WaitForPythonFiles())
+                // 1. Ejecutar y comprobar si Python terminó con éxito
+                if (StartExtractor())
                 {
-                    LogService.Write("Archivos XML detectados con éxito.");
-                    UpdateStatus("Cargando datos en memoria...");
+                    // 2. Si Python terminó bien, comprobamos que los archivos estén ahí
+                    if (WaitForPythonFiles())
+                    {
+                        LogService.Write("Archivos XML detectados con éxito.");
+                        UpdateStatus("Cargando datos en memoria...");
 
-                    LoadAllFromFolder(AppConfigManager.ExportPath);
+                        LoadAllFromFolder(AppConfigManager.ExportPath);
 
-                    // Pasar datos al ViewModel de dispositivos
-                    DevicesVM.LoadData(_engineeringCache);
-                    ProcessesVM.LoadData(_engineeringCache);
+                        // Actualizar ViewModels
+                        DevicesVM.LoadData(_engineeringCache, _configDeviceSettings);
+                        ProcessVM.LoadData(_engineeringCache, _configProcessesSettings);
 
-                    IsDataLoaded = true;
-                    UpdateStatus("Listo. Todos los módulos cargados.");
+                        IsDataLoaded = true;
+                        UpdateStatus("Listo. Todos los módulos cargados.");
+                    }
+                    else
+                    {
+                        UpdateStatus("Error: Python terminó pero no se encontraron los archivos XML.", true);
+                    }
                 }
                 else
                 {
-                    UpdateStatus("Error: Tiempo de espera agotado.", true);
+                    // Si llegamos aquí, es que Python falló (ExitCode != 0)
+                    UpdateStatus("Error en el script de extracción. Revisa el LOG.", true);
+                    MessageBox.Show("El extractor de Python ha fallado. Consulta los detalles en la pestaña de Log.",
+                                    "Error de Extracción", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
+
+
             }
             catch (Exception ex)
             {
                 LogService.Write($"CRASH EN CARGA: {ex.Message}", true);
+                LogService.Write($"CRASH EN CARGA:\n{ex.ToString()}", true);
                 UpdateStatus("Crash general en el proceso.", true);
                 MessageBox.Show($"{ex.Message}", "Error Crítico");
             }
@@ -202,10 +214,69 @@ namespace ZC_ALM_TOOLS.ViewModels
 
 
 
+        // ==================================================================================================================
+        // Metodo para lanzar el programa de extraccion de python
+        private bool StartExtractor()
+        {
+            try
+            {
+                string arguments = $"--path \"{SelectedExcelFile}\"";
 
+                // 1. Crear la info de inicio (Asegúrate de que sea la de Siemens)
+                var startInfo = new Siemens.Engineering.AddIn.Utilities.ProcessStartInfo
+                {
+                    FileName = _configGlobalSettings.ExtractorExePath,
+                    Arguments = arguments,
+                    CreateNoWindow = true,
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    StandardOutputEncoding = System.Text.Encoding.UTF8,
+                    StandardErrorEncoding = System.Text.Encoding.UTF8,
+                    WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden
+                };
+
+                // 2. CREAR EL OBJETO PROCESO
+                var myProcess = new Siemens.Engineering.AddIn.Utilities.Process();
+                myProcess.StartInfo = startInfo;
+
+                // 3. Suscribirse a los eventos ANTES de empezar
+                myProcess.OutputDataReceived += (s, e) => {
+                    if (!string.IsNullOrEmpty(e.Data)) LogService.Write($"[PYTHON] {e.Data}");
+                };
+
+                myProcess.ErrorDataReceived += (s, e) => {
+                    if (!string.IsNullOrEmpty(e.Data)) LogService.Write($"[PYTHON-ERR] {e.Data}", true);
+                };
+
+                // 4. LANZAR E INICIAR LECTURA
+                if (myProcess.Start())
+                {
+                    myProcess.BeginOutputReadLine();
+                    myProcess.BeginErrorReadLine();
+
+                    LogService.Write("Extractor ejecutándose en segundo plano...");
+                    myProcess.WaitForExit();
+
+                    // Devolvemos true solo si terminó sin errores (ExitCode 0)
+                    return myProcess.ExitCode == 0;
+                }
+                return false;
+            }
+            catch (Exception ex)
+            {
+                LogService.Write($"Error crítico lanzando Python: {ex.Message}", true);
+                return false;
+            }
+        }
+
+
+
+        // ==================================================================================================================
         // Metodo para esperar a que se encuentren todos los archivos esperados
         private bool WaitForPythonFiles()
-        {
+        {        
+
             LogService.Write($"Iniciando espera en: {AppConfigManager.ExportPath}");
 
             // Creamos la lista de archivos que esperamos basándonos en la configuración
@@ -238,6 +309,8 @@ namespace ZC_ALM_TOOLS.ViewModels
         }
 
 
+
+        // ==================================================================================================================
         // Metodo para cargar todos los archivos desde una carpeta
         private void LoadAllFromFolder(string folderPath)
         {
@@ -296,14 +369,16 @@ namespace ZC_ALM_TOOLS.ViewModels
                 string pathAlm = Path.Combine(folderPath, _configProcessesSettings.AlarmXml);
                 if (File.Exists(pathAlm))
                 {
-                    var data = DataService.LoadParameters(pathAlm);
+                    var data = DataService.LoadAlarms(pathAlm);
                     _engineeringCache[_configProcessesSettings.AlarmName] = data.Cast<object>().ToList();
                 }
-            }           
+            }
 
         }
 
 
+
+        // ==================================================================================================================
         // Limpiar la carpeta de exportacion de archivos
         private void ClearExportFolder(string path)
         {

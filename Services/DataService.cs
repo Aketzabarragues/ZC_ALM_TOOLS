@@ -84,6 +84,38 @@ namespace ZC_ALM_TOOLS.Services
 
 
         // ==================================================================================================================
+        // Carga una lista de parámetros (ya sean Reales o Enteros)
+        public static List<Alarms> LoadAlarms(string path)
+        {
+            var list = new List<Alarms>();
+
+            if (!File.Exists(path))
+            {
+                LogService.Write($"[DATA] No se encuentra archivo de alarmas: {path}", true);
+                return list;
+            }
+
+            try
+            {
+                XDocument doc = XDocument.Load(path);
+                // Buscamos los nodos <Alarma> del XML
+                list = doc.Descendants("Alarma")
+                          .Select(x => Alarms.FromXml(x))
+                          .ToList();
+
+                LogService.Write($"[DATA] Cargadas {list.Count} alarmas desde {Path.GetFileName(path)}.");
+            }
+            catch (Exception ex)
+            {
+                LogService.Write($"[DATA] Error leyendo alarmas en {Path.GetFileName(path)}: {ex.Message}", true);
+            }
+
+            return list;
+        }
+
+
+
+        // ==================================================================================================================
         // Carga la lista de numero maximo de dispositivos
         public static List<Disp_Config> LoadDeviceNMax(string path)
         {

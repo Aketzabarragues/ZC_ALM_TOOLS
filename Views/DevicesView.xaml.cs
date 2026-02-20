@@ -1,5 +1,5 @@
 ﻿using System.Windows.Controls;
-using ZC_ALM_TOOLS.ViewModels; // Importante
+using ZC_ALM_TOOLS.ViewModels;
 
 namespace ZC_ALM_TOOLS.Views
 {
@@ -8,8 +8,6 @@ namespace ZC_ALM_TOOLS.Views
         public DevicesView()
         {
             InitializeComponent();
-            // Asignamos el ViewModel como contexto de datos
-            this.DataContext = new DevicesViewModel();
         }
     }
 }

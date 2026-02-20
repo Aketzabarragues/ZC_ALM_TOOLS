@@ -76,9 +76,9 @@
 		<DeviceDataConfigXml>config_disp.xml</DeviceDataConfigXml>
 	</DeviceSettings>
 	<ProcessSettings>
-		<ProcessXml>procesos.xml</ProcessXml>
-		<PRealXml>preal.xml</PRealXml>
-		<PIntXml>pint.xml</PIntXml>
-		<AlarmXml>alarmas.xml</AlarmXml>
+		<ProcessXml Name="Procesos">procesos.xml</ProcessXml>
+		<PRealXml Name="P_Real">preal.xml</PRealXml>
+		<PIntXml Name="P_Int">pint.xml</PIntXml>
+		<AlarmXml Name="Alarmas">alarmas.xml</AlarmXml>
 	</ProcessSettings>
 </AppConfig>

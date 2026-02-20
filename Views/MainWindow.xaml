@@ -79,12 +79,12 @@
                     </StackPanel>
                 </StackPanel>
 
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">                    
+                    
                     <Button Command="{Binding ConfigSettingsCommand}"
-                    Style="{StaticResource SettingsButtonStyle}"
-                    ToolTip="Editar configuracion"
-                    Content="⚙️"/>
+                            Style="{StaticResource SettingsButtonStyle}"
+                            ToolTip="Editar configuracion"
+                            Content="⚙️"/>
 
                 </StackPanel>
             </Grid>
@@ -114,12 +114,7 @@
             </TabItem>
 
             <TabItem Header="🏭 Procesos">
-                <Grid Background="#FAFAFA">
-                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                        <TextBlock Text="🏭" FontSize="48" HorizontalAlignment="Center" Margin="0,0,0,10"/>
-                        <TextBlock Text="Módulo de Procesos (Próximamente)" Foreground="#AAA" FontSize="14"/>
-                    </StackPanel>
-                </Grid>
+                <views:ProcessView DataContext="{Binding ProcessVM}"/>
             </TabItem>
 
             <TabItem Header="🚨 Alarmas">
