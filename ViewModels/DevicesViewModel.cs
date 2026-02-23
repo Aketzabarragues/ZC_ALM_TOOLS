@@ -3,8 +3,11 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Forms.Design;
 using System.Xml.Linq;
+using Siemens.Engineering.Hmi;
 using ZC_ALM_TOOLS.Core;
 using ZC_ALM_TOOLS.Models;
 using ZC_ALM_TOOLS.Services;
@@ -16,11 +19,48 @@ namespace ZC_ALM_TOOLS.ViewModels
     {
 
 
+        // 1. Propiedad para ver el texto en pantalla
+        private string _testMessage = "Esperando prueba...";
+        public string TestMessage
+        {
+            get => _testMessage;
+            set
+            {
+                _testMessage = value;
+                OnPropertyChanged(nameof(TestMessage)); // Usa tu método de notificación (RaisePropertyChanged, etc.)
+            }
+        }
+
+        // 2. Comando
+        public RelayCommand TestAsyncCommand { get; set; }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
         // ==================================================================================================================
         // Tia portal
         private TiaPlcService _tiaPlcService;
+        private TiaHmiService _tiaHmiService;
+
+        public string ActivePlcName { get; private set; }
+        public ObservableCollection<TiaTarget> HmiTargets { get; set; }
+
 
         // Cachés de datos
         private ConfigDeviceSettings _deviceSettings; // Configuración dinámica del XML
@@ -41,6 +81,17 @@ namespace ZC_ALM_TOOLS.ViewModels
         // Categoría seleccionada
         private ConfigDeviceCategory _selectedCategory;
         public ConfigDeviceCategory SelectedCategory { get => _selectedCategory; set { _selectedCategory = value; OnPropertyChanged(); if (_selectedCategory != null) { LogService.Write($"[DEVICE-VM] [SelectedCategory] Cambio de categoría: {_selectedCategory.Name}"); } RefreshView(); } }
+
+
+        // Selecciones individuales de lo que se quiere sincronizar de Hmi y Scada
+        private bool _syncHmiVariables = true;
+        public bool SyncHmiVariables { get => _syncHmiVariables; set { _syncHmiVariables = value; OnPropertyChanged(); } }
+
+        private bool _syncHmiTextLists = true;
+        public bool SyncHmiTextLists { get => _syncHmiTextLists; set { _syncHmiTextLists = value; OnPropertyChanged(); } }
+
+        private bool _syncHmiAlarms = false;
+        public bool SyncHmiAlarms { get => _syncHmiAlarms; set { _syncHmiAlarms = value; OnPropertyChanged(); } }
 
         // Texto informativo del label de dimensiones
         private string _dimensionInfo;
@@ -64,15 +115,35 @@ namespace ZC_ALM_TOOLS.ViewModels
 
             SyncCommand = new RelayCommand(ExecuteSync, CanExecuteAction);
             CompareCommand = new RelayCommand(() => ExecuteCompare(false), CanExecuteAction);
+
+
+
+            TestAsyncCommand = new RelayCommand(ExecuteTestAsync, CanExecuteAction);
         }
 
+        // 4. El método asíncrono de prueba
+        private async void ExecuteTestAsync()
+        {
+            // Cambiamos el texto ANTES de bloquear nada
+            TestMessage = "TIA Portal pensando... (Intenta mover la ventana)";
 
+            // El 'await Task.Run' es la magia que manda el trabajo a otro núcleo de la CPU
+            await Task.Run(() =>
+            {
+                // Simulamos una operación lentísima de la API de Openness de 3 segundos
+                System.Threading.Thread.Sleep(6000);
+            });
+
+            // Cuando termina el hilo secundario, WPF vuelve aquí y actualiza la UI
+            TestMessage = "¡Listo! El hilo principal nunca se congeló.";
+        }
 
         // ==================================================================================================================
         // Asigna la instancia de Tia Portal
-        public void SetTiaService(TiaPlcService service)
+        public void SetTiaService(TiaPlcService service, TiaHmiService hmiService)
         {
             _tiaPlcService = service;
+            _tiaHmiService = hmiService;
         }
 
 
@@ -113,8 +184,9 @@ namespace ZC_ALM_TOOLS.ViewModels
 
         // ==================================================================================================================
         // Metodo para actualizar que la seleccion del PLC ha cambiado
-        public void NotifyPlcChanged()
+        public void NotifyPlcChanged(string plcName)
         {
+            ActivePlcName = plcName;
             LogService.Write($"[DEVICE-VM] [NotifyPlcChanged] El PLC de origen ha cambiado. Reiniciando estados de comparación...");
                         
             _plcCache.Clear();
@@ -262,6 +334,39 @@ namespace ZC_ALM_TOOLS.ViewModels
                 // Resumen final
                 if (okNMax && okConst && okComp && okDb)
                 {
+
+
+
+
+                    // 1. Buscamos si el usuario ha marcado algún HMI en el panel lateral
+                    var hmisSeleccionados = HmiTargets?.Where(h => h.IsChecked).ToList() ?? new List<TiaTarget>();
+
+                    if (hmisSeleccionados.Any() && (SyncHmiVariables || SyncHmiTextLists || SyncHmiAlarms))
+                    {
+                        StatusService.Set("Sincronizando HMIs seleccionados...", false);
+
+                        foreach (var hmi in hmisSeleccionados)
+                        {
+                            LogService.Write($"[DEVICE-VM] [ExecuteSync] --- INICIANDO SYNC HMI: {hmi.Name} ---");
+
+                            if (SyncHmiVariables)
+                                _tiaHmiService.SyncHmiVariables(hmi.SoftwareObject, ActivePlcName, SelectedCategory, deviceList);
+
+                            if (SyncHmiTextLists)
+                                _tiaHmiService.SyncHmiTextLists(hmi.SoftwareObject, SelectedCategory, deviceList);
+
+                            if (SyncHmiAlarms)
+                                _tiaHmiService.SyncHmiAlarms(hmi.SoftwareObject, SelectedCategory, deviceList);
+                        }
+                    }
+
+
+
+
+
+
+
+
                     StatusService.Set("Sincronización completada con éxito.", false);
                 }
                 else

@@ -97,6 +97,7 @@
     <Compile Include="Services\LogService.cs" />
     <Compile Include="Services\StatusService.cs" />
     <Compile Include="Services\TiaDeviceScanner.cs" />
+    <Compile Include="Services\TiaHmiService.cs" />
     <Compile Include="Services\TiaPlcService.cs" />
     <Compile Include="ViewModels\DevicesViewModel.cs" />
     <Compile Include="ViewModels\MainViewModel.cs" />

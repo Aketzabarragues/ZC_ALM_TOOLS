@@ -8,10 +8,8 @@
         mc:Ignorable="d"
         Title="ZC Tools - TIA Portal Add-In" Height="800" Width="1400"
         WindowStartupLocation="CenterScreen" Background="#F0F0F0">
-
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
-
         <Style x:Key="SettingsButtonStyle" TargetType="Button">
             <Setter Property="Foreground" Value="#555555"/>
             <Setter Property="Background" Value="Transparent"/>
@@ -27,7 +25,6 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
-
         <Style x:Key="PrimaryButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="#007ACC"/>
             <Setter Property="Foreground" Value="White"/>
@@ -57,7 +54,6 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
-        
         <Style x:Key="DeviceItemStyle" TargetType="ListBoxItem">
             <Setter Property="Padding" Value="8,5"/>
             <Setter Property="Background" Value="Transparent"/>
@@ -80,20 +76,16 @@
                 </Setter.Value>
             </Setter>
         </Style>
-
     </Window.Resources>
-
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="250"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
-
         <Grid.RowDefinitions>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-
         <Border Grid.Column="0" Grid.Row="0" Background="White" BorderBrush="#E0E0E0" BorderThickness="0,0,1,0">
             <Grid>
                 <Grid.RowDefinitions>
@@ -101,68 +93,64 @@
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
-
-                <Border Padding="10" Background="#F8F9FA" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1">
+                <Border Grid.Row="0" Padding="10" Background="#F8F9FA" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1">
                     <TextBlock Text="PROYECTO TIA PORTAL" FontWeight="Bold" Foreground="#444"/>
                 </Border>
-
-                <StackPanel>
-                    <Border Padding="10" Background="#F8F9FA" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1">
-                        <TextBlock Text="PLC" FontWeight="Bold" Foreground="#444" FontSize="10"/>
-                    </Border>
-
-                    <ListBox ItemsSource="{Binding PlcTargets}" 
-                             SelectedItem="{Binding SelectedTarget}"
-                             ItemContainerStyle="{StaticResource DeviceItemStyle}"
-                             BorderThickness="0">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal" Margin="2">
-                                    <TextBlock Text="💻" Margin="0,0,10,0"/>
-                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
-                                </StackPanel>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-
-                    <Border Padding="10" Background="#F8F9FA" BorderBrush="#E0E0E0" BorderThickness="0,1,0,1" Margin="0,15,0,0">
-                        <TextBlock Text="HMI / SCADA" FontWeight="Bold" Foreground="#444" FontSize="10"/>
-                    </Border>
-
-                    <ListBox ItemsSource="{Binding HmiTargets}" 
-                             ItemContainerStyle="{StaticResource DeviceItemStyle}"
-                             BorderThickness="0">
-                        
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <Grid Margin="2">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <CheckBox IsChecked="{Binding IsChecked}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                                    <TextBlock Grid.Column="1" Text="🖥️" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                                    <TextBlock Grid.Column="2" Text="{Binding Name}" VerticalAlignment="Center"/>
-                                </Grid>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-                </StackPanel>
-                
-                
-
-                
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel>
+                        <Border Padding="10,5" Background="#F8F9FA" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1">
+                            <TextBlock Text="PLC" FontWeight="Bold" Foreground="#333" FontSize="10"/>
+                        </Border>
+                        <ListBox ItemsSource="{Binding PlcTargets}" 
+                         SelectedItem="{Binding SelectedTarget}"
+                         ItemContainerStyle="{StaticResource DeviceItemStyle}"
+                         BorderThickness="0"
+                         Background="Transparent">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" Margin="5">
+                                        <TextBlock Text="💻" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center" Foreground="#333"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <Border Padding="10,5" Background="#F8F9FA" BorderBrush="#E0E0E0" BorderThickness="0,1,0,1" Margin="0,15,0,0">
+                            <TextBlock Text="HMI / SCADA" FontWeight="Bold" Foreground="#444" FontSize="10"/>
+                        </Border>
+                        <ListBox ItemsSource="{Binding HmiTargets}" 
+                                 ItemContainerStyle="{StaticResource DeviceItemStyle}"
+                                 BorderThickness="0"
+                                 Background="Transparent"
+                                 SelectionMode="Single">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="5">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <CheckBox IsChecked="{Binding IsChecked}" 
+                                          VerticalAlignment="Center" 
+                                          Margin="0,0,8,0"
+                                          Cursor="Hand"/>
+                                        <TextBlock Grid.Column="1" Text="🖥️" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding Name}" VerticalAlignment="Center" Foreground="#333"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </StackPanel>
+                </ScrollViewer>
             </Grid>
         </Border>
-
         <Grid Grid.Column="1"  Grid.Row="0" >
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
-
             <Border Grid.Row="0" Padding="15,10" Background="#F5F6F7" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1">
                 <Grid>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
@@ -170,14 +158,12 @@
                                 Command="{Binding LoadDataCommand}" 
                                 Style="{StaticResource PrimaryButtonStyle}"
                                 Width="260" Margin="0,0,15,0"/>
-
                         <StackPanel VerticalAlignment="Center">
                             <TextBlock Text="Archivo seleccionado:" FontSize="10" Foreground="#888"/>
                             <TextBlock Text="{Binding SelectedExcelFile, TargetNullValue='Ningún archivo seleccionado'}" 
                                        Foreground="#555" FontWeight="Medium" FontStyle="Italic"/>
                         </StackPanel>
                     </StackPanel>
-
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                         <Button Command="{Binding ConfigSettingsCommand}"
                                 Style="{StaticResource SettingsButtonStyle}"
@@ -186,7 +172,6 @@
                     </StackPanel>
                 </Grid>
             </Border>
-
             <TabControl Grid.Row="1" Margin="10" 
                         IsEnabled="{Binding IsDataLoaded}"
                         Background="White" BorderBrush="#D0D0D0">
@@ -199,9 +184,8 @@
                 <TabItem Header="🚨 Alarmas">
                     <TextBlock Text="Módulo de Alarmas" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </TabItem>
-            </TabControl>            
+            </TabControl>
         </Grid>
-
         <StatusBar Grid.Row="1" Grid.ColumnSpan="2" Background="#E9ECEF" BorderBrush="#CED4DA" BorderThickness="0,1,0,0" Padding="5,2">
             <StatusBar.ItemsPanel>
                 <ItemsPanelTemplate>
@@ -213,7 +197,6 @@
                     </Grid>
                 </ItemsPanelTemplate>
             </StatusBar.ItemsPanel>
-
             <StatusBarItem Grid.Column="0" HorizontalAlignment="Left">
                 <StackPanel Orientation="Horizontal">
                     <Ellipse Width="8" Height="8" Margin="5,0,8,0">
@@ -234,7 +217,6 @@
                        VerticalAlignment="Center"/>
                 </StackPanel>
             </StatusBarItem>
-
             <StatusBarItem Grid.Column="1" HorizontalAlignment="Right" Margin="0,0,10,0">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="Sincronizando..." 
@@ -243,7 +225,6 @@
                        Margin="0,0,10,0"
                        VerticalAlignment="Center"
                        Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}"/>
-
                     <ProgressBar Width="150" 
                          Height="14" 
                          IsIndeterminate="True"
@@ -260,6 +241,5 @@
                 </StackPanel>
             </StatusBarItem>
         </StatusBar>
-
     </Grid>
 </Window>

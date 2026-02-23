@@ -24,6 +24,7 @@ namespace ZC_ALM_TOOLS.ViewModels
         private readonly Project _tiaproject;
         private readonly TiaPortal _tiaPortal;
         private TiaPlcService _tiaPlcService;
+        private TiaHmiService _tiaHmiService;
 
         public ObservableCollection<TiaTarget> PlcTargets { get; set; }
         public ObservableCollection<TiaTarget> HmiTargets { get; set; }
@@ -95,11 +96,24 @@ namespace ZC_ALM_TOOLS.ViewModels
 
             // Buscamos todos los dispositivos del proyecto
             var scannedDevices = TiaDeviceScanner.ScanProject(_tiaproject);
+            foreach (var device in scannedDevices)
+            {
+                LogService.Write($"{device.Name}, {device.Type}");
+            }
             PlcTargets = new ObservableCollection<TiaTarget>(scannedDevices.Where(t => t.Type == TargetType.PLC));
-            HmiTargets = new ObservableCollection<TiaTarget>(scannedDevices.Where(t => t.Type != TargetType.PLC));
+            foreach (var device in PlcTargets)
+            {
+                LogService.Write($"{device.Name}, {device.Type}");
+            }
+            HmiTargets = new ObservableCollection<TiaTarget>(scannedDevices.Where(t => t.Type == TargetType.HMI));
+            foreach (var device in HmiTargets)
+            {
+                LogService.Write($"{device.Name}, {device.Type}");
+            }
 
             // Inicializamos servicios de Tia portal
             _tiaPlcService = new TiaPlcService();
+            _tiaHmiService = new TiaHmiService();
 
             // Seleccionamos el primer PLC por defecto para la comparación
             SelectedTarget = PlcTargets.FirstOrDefault(t => t.Type == TargetType.PLC);            
@@ -114,7 +128,8 @@ namespace ZC_ALM_TOOLS.ViewModels
             // Inicializamos viewmodels
             DevicesVM = new DevicesViewModel();
             DevicesVM.Categories = _configDeviceCategory;
-            DevicesVM.SetTiaService(_tiaPlcService);
+            DevicesVM.SetTiaService(_tiaPlcService, _tiaHmiService);
+            DevicesVM.HmiTargets = HmiTargets;
 
             ProcessVM = new ProcessViewModel();
             ProcessVM.SetTiaService(_tiaPlcService);
@@ -145,7 +160,7 @@ namespace ZC_ALM_TOOLS.ViewModels
             {
 
                 _tiaPlcService.UpdatePlc(plc);
-                DevicesVM?.NotifyPlcChanged();
+                DevicesVM?.NotifyPlcChanged(SelectedTarget.Name);
 // PENDIENTE PONER EL DE PROCESOS
 
                 UpdateStatus($"Objetivo cambiado a: {SelectedTarget.Name}");
