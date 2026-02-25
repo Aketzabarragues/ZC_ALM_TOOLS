@@ -19,40 +19,6 @@ namespace ZC_ALM_TOOLS.ViewModels
     {
 
 
-        // 1. Propiedad para ver el texto en pantalla
-        private string _testMessage = "Esperando prueba...";
-        public string TestMessage
-        {
-            get => _testMessage;
-            set
-            {
-                _testMessage = value;
-                OnPropertyChanged(nameof(TestMessage)); // Usa tu método de notificación (RaisePropertyChanged, etc.)
-            }
-        }
-
-        // 2. Comando
-        public RelayCommand TestAsyncCommand { get; set; }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         // ==================================================================================================================
         // Tia portal
         private TiaPlcService _tiaPlcService;
@@ -111,32 +77,22 @@ namespace ZC_ALM_TOOLS.ViewModels
         // Constructor
         public DevicesViewModel()
         {
-
-
             SyncCommand = new RelayCommand(ExecuteSync, CanExecuteAction);
-            CompareCommand = new RelayCommand(() => ExecuteCompare(false), CanExecuteAction);
-
-
-
-            TestAsyncCommand = new RelayCommand(ExecuteTestAsync, CanExecuteAction);
+            CompareCommand = new RelayCommand(ExecuteCompareCommand, CanExecuteAction);
         }
 
-        // 4. El método asíncrono de prueba
-        private async void ExecuteTestAsync()
+
+        // Método puente para el botón Comparar
+        private async void ExecuteCompareCommand()
         {
-            // Cambiamos el texto ANTES de bloquear nada
-            TestMessage = "TIA Portal pensando... (Intenta mover la ventana)";
-
-            // El 'await Task.Run' es la magia que manda el trabajo a otro núcleo de la CPU
-            await Task.Run(() =>
-            {
-                // Simulamos una operación lentísima de la API de Openness de 3 segundos
-                System.Threading.Thread.Sleep(6000);
-            });
-
-            // Cuando termina el hilo secundario, WPF vuelve aquí y actualiza la UI
-            TestMessage = "¡Listo! El hilo principal nunca se congeló.";
+            await ExecuteCompare(false);
         }
+
+
+
+
+
+
 
         // ==================================================================================================================
         // Asigna la instancia de Tia Portal
@@ -222,41 +178,55 @@ namespace ZC_ALM_TOOLS.ViewModels
 
         // ==================================================================================================================
         // Actualizar el numero maximo de dispositivos
-        private void UpdateDimensionInfo()
+        private async void UpdateDimensionInfo()
         {
-            if (SelectedCategory == null || _tiaPlcService == null)
+
+            if (SelectedCategory == null || _tiaPlcService == null || _deviceSettings == null || _engineeringCache == null)
             {
                 DimensionColor = "Transparent";
                 DimensionInfo = "Seleccione un PLC y Categoría";
                 return;
             }
 
-            // Obtener valor del Excel
-            int excelVal = 0;
-            if (_engineeringCache.TryGetValue(_deviceSettings.Disp_N_Max, out var limitsList))
+            try
             {
-                var limitItem = limitsList.Cast<Disp_Config>()
-                                          .FirstOrDefault(x => x.Nombre == SelectedCategory.GlobalConfigKey);
-                excelVal = limitItem?.Valor ?? 0;
-            }
+                // Obtener valor del Excel
+                int excelVal = 0;
+                if (_engineeringCache.TryGetValue(_deviceSettings.Disp_N_Max, out var limitsList))
+                {
+                    var limitItem = limitsList.Cast<Disp_Config>()
+                        .FirstOrDefault(x => x.Nombre == SelectedCategory.GlobalConfigKey);
+                    excelVal = limitItem?.Valor ?? 0;
+                }
 
-            // Obtener valor del PLC (Consultar TIA o usar Caché)
-            if (!_plcCache.TryGetValue(SelectedCategory.Name, out _currentPlcNMax))
+                DimensionInfo = $"Dimensión: Excel ({excelVal}) | PLC (Consultando...)";
+                DimensionColor = "LightGray";
+
+                await Task.Delay(50);
+                // Obtener valor del PLC (Consultar TIA o usar Caché)
+                if (!_plcCache.TryGetValue(SelectedCategory.Name, out _currentPlcNMax))
+                {
+                    _currentPlcNMax = _tiaPlcService.ReadGlobalConstant(_deviceSettings.ConfigTableName, SelectedCategory.PlcCountConstant);
+                    _plcCache[SelectedCategory.Name] = _currentPlcNMax;
+                }
+
+                // Actualizar UI
+                DimensionInfo = $"Dimensión: Excel ({excelVal}) | PLC ({_currentPlcNMax})";
+                DimensionColor = (excelVal == _currentPlcNMax) ? "#A5D6A7" : "#EF9A9A";
+            }
+            catch (Exception ex)
             {
-                _currentPlcNMax = _tiaPlcService.ReadGlobalConstant(_deviceSettings.ConfigTableName, SelectedCategory.PlcCountConstant);
-                _plcCache[SelectedCategory.Name] = _currentPlcNMax;
+                LogService.Write($"[DEVICE-VM] [UpdateDimensionInfo] Error leyendo dimensiones: {ex.Message}", true);
+                DimensionInfo = "Dimensión: Error de lectura";
+                DimensionColor = "#EF9A9A";
             }
-
-            // Actualizar UI
-            DimensionInfo = $"Dimensión: Excel ({excelVal}) | PLC ({_currentPlcNMax})";
-            DimensionColor = (excelVal == _currentPlcNMax) ? "#A5D6A7" : "#EF9A9A";
         }
 
 
 
         // ==================================================================================================================
         // Metodo para ejecutar la sincronizacion
-        private void ExecuteSync()
+        private async void ExecuteSync()
         {
             if (SelectedCategory == null) return;
 
@@ -266,13 +236,12 @@ namespace ZC_ALM_TOOLS.ViewModels
             if (confirm != MessageBoxResult.Yes) return;
 
             StatusService.SetBusy(true);
-            UpdateStatusFrame();
 
             bool okNMax = true, okConst = false, okComp = false, okDb = false;
 
             try
             {
-                StatusService.Set($"Inicio sincronización: {SelectedCategory.Name} ---", false);
+                StatusService.Set($"Inicio sincronización: {SelectedCategory.Name} ---", StatusType.Ok);
                 LogService.Write($"[DEVICE-VM] [ExecuteSync] Inicio sincronización: {SelectedCategory.Name} ---");
 
                 // N_MAX. Buscamos la carpeta de límites ("Disp_N_Max")
@@ -304,23 +273,27 @@ namespace ZC_ALM_TOOLS.ViewModels
                     }
                 }
 
+
+                StatusService.Set("Sincronizando constantes de usuario...", StatusType.Ok);
+                await Task.Delay(10);
+
                 // CONSTANTES DE USUARIO
                 var deviceList = CurrentDevices.Cast<IDevice>()
                                       .Where(d => d.Estado != "Eliminar")
                                       .ToList();
 
-                okConst = _tiaPlcService.SyncUserConstants(SelectedCategory.TiaGroup, SelectedCategory.TiaTable, deviceList);
+                okConst = await _tiaPlcService.SyncDispUserConstants(SelectedCategory.TiaTable, deviceList);
                 SelectedCategory.ConstantsStatus = okConst ? SynchronizationStatus.Ok : SynchronizationStatus.Error;
 
                 // COMPILACIÓN DEL DB
                 okComp = _tiaPlcService.CompileBlock(SelectedCategory.TiaDbName);
-                UpdateStatusFrame();
 
                 if (okComp)
                 {
-                    okDb = _tiaPlcService.SyncDbComments(SelectedCategory.TiaDbName, SelectedCategory.TiaDbArrayName, deviceList);
-                    UpdateStatusFrame();
+                    okDb = await _tiaPlcService.SyncDispDbComments(SelectedCategory.TiaDbName, SelectedCategory.TiaDbArrayName, deviceList);
                     SelectedCategory.DbStatus = okDb ? SynchronizationStatus.Ok : SynchronizationStatus.Error;
+
+                    _tiaPlcService.CompileBlock(SelectedCategory.TiaDbName);
                 }
                 else
                 {
@@ -328,22 +301,22 @@ namespace ZC_ALM_TOOLS.ViewModels
                     LogService.Write("[DEVICE-VM] [ExecuteSync] Fallo en compilación: no se pueden sincronizar comentarios.", true);
                 }
 
+                await Task.Delay(100);
+
                 // Tras sincronizar, ejecutamos la comparación para verificar que todo ha quedado bien
-                ExecuteCompare(keepDbStatus: true); // No reseteamos el estado DB porque acabamos de escribirlo
+                await ExecuteCompare(keepDbStatus: true); // No reseteamos el estado DB porque acabamos de escribirlo
 
                 // Resumen final
                 if (okNMax && okConst && okComp && okDb)
                 {
-
-
-
 
                     // 1. Buscamos si el usuario ha marcado algún HMI en el panel lateral
                     var hmisSeleccionados = HmiTargets?.Where(h => h.IsChecked).ToList() ?? new List<TiaTarget>();
 
                     if (hmisSeleccionados.Any() && (SyncHmiVariables || SyncHmiTextLists || SyncHmiAlarms))
                     {
-                        StatusService.Set("Sincronizando HMIs seleccionados...", false);
+                        StatusService.Set("Sincronizando HMIs seleccionados...", StatusType.Ok);
+                        await Task.Delay(10);
 
                         foreach (var hmi in hmisSeleccionados)
                         {
@@ -360,14 +333,7 @@ namespace ZC_ALM_TOOLS.ViewModels
                         }
                     }
 
-
-
-
-
-
-
-
-                    StatusService.Set("Sincronización completada con éxito.", false);
+                    StatusService.Set("Sincronización completada con éxito.", StatusType.Ok);
                 }
                 else
                 {
@@ -376,20 +342,19 @@ namespace ZC_ALM_TOOLS.ViewModels
                     if (!okComp) msg += "- Fallo en compilación\n";
                     if (!okDb) msg += "- Fallo en comentarios DB\n";
 
-                    StatusService.Set("Sincronización finalizada con errores.", true);
+                    StatusService.Set("Sincronización finalizada con errores.", StatusType.Error);
                 }
 
             }
             catch (Exception ex)
             {
                 LogService.Write($"[DEVICE-VM] [ExecuteSync] Error Crítico: {ex.Message}", true);
-                StatusService.Set($"Error Crítico: {ex.Message}", true);
+                StatusService.Set($"Error Crítico: {ex.Message}", StatusType.Error);
                 SelectedCategory.DbStatus = SynchronizationStatus.Error;
             }
             finally
             {
                 StatusService.SetBusy(false);
-                UpdateStatusFrame();
             }
         }
 
@@ -397,21 +362,21 @@ namespace ZC_ALM_TOOLS.ViewModels
 
         // ==================================================================================================================
         // Metodo para comparar el dispositivo seleccionado con el PLC
-        private void ExecuteCompare(bool keepDbStatus)
+        private async Task ExecuteCompare(bool keepDbStatus)
         {
             if (SelectedCategory == null || _deviceSettings == null || _engineeringCache == null) return;
 
 
             try
             {
-
                 StatusService.SetBusy(true);
-                UpdateStatusFrame();
 
                 RefreshView();
 
                 LogService.Write($"[DEVICE-VM] [ExecuteCompare] Iniciando comparación: {SelectedCategory.Name} ---");
-                StatusService.Set("Comparando datos con TIA Portal...", false);
+                StatusService.Set("Comparando datos con TIA Portal...", StatusType.Ok);
+
+                await Task.Delay(10);
 
                 // Reset de estados
                 SelectedCategory.NMaxStatus = SynchronizationStatus.Pending;
@@ -419,7 +384,7 @@ namespace ZC_ALM_TOOLS.ViewModels
                 if (!keepDbStatus) SelectedCategory.DbStatus = SynchronizationStatus.Pending;
 
                 // Sincronizar info de N_MAX
-                StatusService.Set("Comprobando dimensión N_MAX...");
+                StatusService.Set("Comprobando dimensión N_MAX...", StatusType.Ok);
                 UpdateDimensionInfo();
 
                 int excelVal = 0;
@@ -437,30 +402,28 @@ namespace ZC_ALM_TOOLS.ViewModels
                 SelectedCategory.NMaxStatus = nMaxMatch ? SynchronizationStatus.Ok : SynchronizationStatus.Error;
                 LogService.Write($"[DEVICE-VM] [ExecuteCompare] N_MAX -> Excel: {excelVal} | PLC: {_currentPlcNMax} ({(nMaxMatch ? "OK" : "ERROR")})");
 
-                UpdateStatusFrame();
-
-
                 // Exportar y Parsear PLC
                 string tempXmlPath = Path.Combine(AppConfigService.TempPath, "plc_export.xml");
-                StatusService.Set($"Exportando tabla '{SelectedCategory.TiaTable}' desde TIA...");
+                StatusService.Set($"Exportando tabla '{SelectedCategory.TiaTable}' desde TIA...", StatusType.Ok);
                 LogService.Write($"[DEVICE-VM] [ExecuteCompare] Exportando tabla '{SelectedCategory.TiaTable}' a XML temporal...");
-                UpdateStatusFrame();
 
-                if (!_tiaPlcService.ExportTagTable(SelectedCategory.TiaGroup, SelectedCategory.TiaTable, tempXmlPath))
+                bool exportOk = _tiaPlcService.ExportDispTagTable(SelectedCategory.TiaTable, tempXmlPath);
+
+                if (!exportOk)
                 {
                     LogService.Write("[DEVICE-VM] [ExecuteCompare] ERROR: No se pudo exportar la tabla desde TIA Portal.", true);
-                    StatusService.Set($"No se pudo exportar la tabla '{SelectedCategory.TiaTable}' desde TIA Portal.");
+                    StatusService.Set($"No se pudo exportar la tabla '{SelectedCategory.TiaTable}' desde TIA Portal.", StatusType.Error);
                     SelectedCategory.ConstantsStatus = SynchronizationStatus.Error;
                     return;
                 }
-                UpdateStatusFrame();
 
-                StatusService.Set("Analizando datos recibidos del PLC...");
+                StatusService.Set("Cruzando datos Excel vs PLC...", StatusType.Ok);
+                await Task.Delay(10);
+
+
                 var plcDict = ParsePlcXml(tempXmlPath);
-                UpdateStatusFrame();
 
                 // Obtenemos los dispositivos del Excel (los que ya están en la tabla)
-                StatusService.Set("Cruzando datos Excel vs PLC...");
                 var excelList = CurrentDevices.Cast<IDevice>().ToList();
                 bool allMatch = true;
                 int countMatch = 0, countMismatch = 0, countNew = 0;
@@ -526,18 +489,26 @@ namespace ZC_ALM_TOOLS.ViewModels
                 LogService.Write($"[DEVICE-VM] [ExecuteCompare] RESUMEN: {countMatch} OK, {countMismatch} Diferentes, {countNew} Nuevos.");
                 LogService.Write("[DEVICE-VM] [ExecuteCompare] COMPARACIÓN FINALIZADA");
 
-                StatusService.Set(allMatch ? "Comparación finalizada: Todo OK." : "Comparación finalizada: Se detectaron diferencias.", !allMatch);
+                if (allMatch)
+                {
+                    StatusService.Set("Comparación finalizada: Todo OK.", StatusType.Ok);
+                    
+                }
+                else
+                {
+                    StatusService.Set("Comparación finalizada: Se detectaron diferencias.", StatusType.Warning);
+                }
+                
             }
             catch (Exception ex)
             {
                 LogService.Write($"[DEVICE-VM] [ExecuteCompare] ERROR CRÍTICO EN COMPARACIÓN: {ex.Message}", true);
                 SelectedCategory.ConstantsStatus = SynchronizationStatus.Error;
-                StatusService.Set("Error durante la comparación. Revisa el Log.", true);
+                StatusService.Set("Error durante la comparación. Revisa el Log.", StatusType.Error);
             }
             finally
             {
                 StatusService.SetBusy(false);
-                UpdateStatusFrame();
             }
         }
 

@@ -41,7 +41,7 @@ namespace ZC_ALM_TOOLS.Services
                 // FASE A: EXPLORAR CONEXIONES
                 // =========================================================================
                 string connectionName = "";
-                LogService.Write($"[TIA-HMI-SERVICE] --- Analizando Conexiones (Total reportadas: {hmiTarget.Connections.Count}) ---");
+                LogService.Write($"[TIA-HMI-SERVICE] Analizando Conexiones (Total reportadas: {hmiTarget.Connections.Count})");
 
                 foreach (Connection connection in hmiTarget.Connections)
                 {
@@ -51,8 +51,8 @@ namespace ZC_ALM_TOOLS.Services
                         connectionName = connection.Name;
                     }
                         
-                    LogService.Write($"[TIA-HMI-SERVICE] --- Analizando Conexiones (Total reportadas: {connection.Name}) ---");
-                    LogService.Write($"[TIA-HMI-SERVICE] --- Analizando Conexiones (Total reportadas: {connection.Parent}) ---");
+                    LogService.Write($"[TIA-HMI-SERVICE] Analizando Conexiones (Total reportadas: {connection.Name})");
+                    LogService.Write($"[TIA-HMI-SERVICE] Analizando Conexiones (Total reportadas: {connection.Parent})");
                 }
 
                 if (!string.IsNullOrEmpty(connectionName))
@@ -78,7 +78,7 @@ namespace ZC_ALM_TOOLS.Services
                 string nombreTablaLimpio = category.TiaTable.Replace("002_", "");
                 tableNameToFind = prefijoHmi + nombreTablaLimpio;
 
-                LogService.Write($"[TIA-HMI-SERVICE] --- Buscando Tabla de Variables: {tableNameToFind} ---");
+                LogService.Write($"[TIA-HMI-SERVICE] Buscando Tabla de Variables: {tableNameToFind}");
 
 
 

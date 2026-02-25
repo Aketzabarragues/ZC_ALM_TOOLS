@@ -2,6 +2,10 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
+using System.Threading.Tasks;
+using System.Windows.Interop;
 using System.Xml.Linq;
 using Siemens.Engineering;
 using Siemens.Engineering.Compiler;
@@ -35,79 +39,19 @@ namespace ZC_ALM_TOOLS.Core
 
 
         // ==================================================================================================================
-        // Asignacion de PLC seleccionado
-        public void UpdatePlc(PlcSoftware plcSoftware)
-        {
-            _currentPlc = plcSoftware;
-        }
+        // METODOS PARA DISPOSITIVOS
+        // ==================================================================================================================
 
 
 
         // ==================================================================================================================
-        // Lee el valor de una constante global (ej. N_MAX)
-        public int ReadGlobalConstant(string tableName, string constantName)
-        {
-            try
-            {
-                var table = FindTagTable(tableName);
-                if (table == null) return -1;
-
-                var constant = table.UserConstants.Find(constantName);
-                if (constant != null && int.TryParse(constant.Value, out int value))
-                {
-                    return value;
-                }
-                return 0;
-            }
-            catch
-            {
-                return -1;
-            }
-        }
-
-
-
-        // ==================================================================================================================
-        // Sincroniza el valor de una constante global de dimensionado
-        public bool SyncGlobalConstant(string tableName, string constantName, int newValue)
-        {
-            try
-            {
-                LogService.Write($"[TIA-PLC-SERVICE] [SyncGlobalConstant] Verificando constante: {constantName}...");
-                var table = FindTagTable(tableName);
-                if (table == null) throw new Exception($"No se encontró la tabla '{tableName}'");
-
-                var constant = table.UserConstants.Find(constantName);
-                if (constant == null) throw new Exception($"No existe la constante '{constantName}'");
-
-                if (int.TryParse(constant.Value, out int currentValue))
-                {
-                    if (currentValue != newValue)
-                    {
-                        LogService.Write($"[TIA-PLC-SERVICE] [SyncGlobalConstant] Modificando {constantName}: {currentValue} -> {newValue}");
-                        constant.Value = newValue.ToString();
-                        Report($"{constantName} actualizado a {newValue}.");
-                    }
-                }
-                return true;
-            }
-            catch (Exception ex)
-            {
-                LogService.Write($"[TIA-PLC-SERVICE] [SyncGlobalConstant] Fallo en Sync Global: {ex.Message}", true);
-                return false;
-            }
-        }
-
-
-
-        // ==================================================================================================================
-        // Sincroniza la lista de IDs (Constantes) desde el Excel
-        public bool SyncUserConstants(string folderName, string tableName, List<IDevice> excelDevices)
+        // Sincroniza la lista de constantes de dispositivos desde el Excel
+        public async Task<bool> SyncDispUserConstants(string tableName, List<IDevice> excelDevices)
         {
             try
             {
                 LogService.Write($"[TIA-PLC-SERVICE] [SyncUserConstants]  === SINCRONIZANDO IDs: {tableName} ===");
-                var table = FindTableInFolder(folderName, tableName);
+                var table = FindTagTableRecursively(tableName);
                 if (table == null) throw new Exception($"La tabla '{tableName}' no existe.");
 
                 // Eliminar las que sobran en TIA
@@ -117,7 +61,9 @@ namespace ZC_ALM_TOOLS.Core
                 foreach (var c in constantsToDelete)
                 {
                     LogService.Write($"[TIA-PLC-SERVICE] [SyncUserConstants] Borrando ID {c.Value}: {c.Name}");
+                    StatusService.Set($"Borrando ID {c.Value}: {c.Name}", StatusType.Ok);
                     c.Delete();
+                    await Task.Delay(1);
                 }
 
                 // Crear o Renombrar según Excel
@@ -128,18 +74,23 @@ namespace ZC_ALM_TOOLS.Core
                     if (tiaConst == null)
                     {
                         LogService.Write($"[TIA-PLC-SERVICE] [SyncUserConstants] Creando ID {dev.Numero}: {dev.CPTag}");
+                        StatusService.Set($"Creando ID {dev.Numero}: {dev.CPTag}", StatusType.Ok);
                         tiaConst = table.UserConstants.Create(dev.CPTag, "Int", dev.Numero.ToString());
                     }
 
                     if (tiaConst.Name != dev.CPTag)
                     {
                         LogService.Write($"[TIA-PLC-SERVICE] [SyncUserConstants] ID {dev.Numero}: {tiaConst.Name} -> {dev.CPTag}");
+                        StatusService.Set($"ID {dev.Numero}: {tiaConst.Name} -> {dev.CPTag}", StatusType.Ok);
                         tiaConst.Name = dev.CPTag;
                     }
 
+                    await Task.Delay(1);
+
                     UpdatePlcComment(tiaConst, dev.CPComentario);
+                    
                 }
-                Report("Sincronización de constantes finalizada.");
+                StatusService.Set("Sincronización de constantes finalizada.", StatusType.Ok);
                 return true;
             }
             catch (Exception ex)
@@ -152,43 +103,8 @@ namespace ZC_ALM_TOOLS.Core
 
 
         // ==================================================================================================================
-        // Compila un bloque específico (necesario antes de la cirugía XML)
-        public bool CompileBlock(string blockName)
-        {
-            try
-            {
-                LogService.Write($"[TIA-PLC-SERVICE] [CompileBlock] Buscando bloque '{blockName}' para compilar...");
-                var block = FindBlockRecursively(_currentPlc.BlockGroup, blockName);
-
-                if (block == null)
-                {
-                    LogService.Write($"[TIA-PLC-SERVICE] [CompileBlock] No se encontró el bloque '{blockName}'", true);
-                    return false;
-                }
-
-                ICompilable compileService = block.GetService<ICompilable>();
-                if (compileService != null)
-                {
-                    LogService.Write($"[TIA-PLC-SERVICE] [CompileBlock] Compilando: {blockName}...");
-                    CompilerResult result = compileService.Compile();
-                    LogService.Write($"[TIA-PLC-SERVICE] [CompileBlock] Resultado Compilación: {result.State} (Errores: {result.ErrorCount})");
-                    return result.State != CompilerResultState.Error;
-                }
-                return false;
-            }
-            catch (Exception ex)
-            {
-                LogService.Write($"[TIA-PLC-SERVICE] [CompileBlock] Fallo al compilar: {ex.Message}", true);
-                return false;
-            }
-
-        }
-
-
-
-        // ==================================================================================================================
-        // Inyecta comentarios en el DB mediante manipulación de XML
-        public bool SyncDbComments(string dbName, string arrayName, List<IDevice> devices)
+        // Inyecta comentarios en el DB de dispositivos mediante manipulación de XML
+        public async Task<bool> SyncDispDbComments(string dbName, string arrayName, List<IDevice> devices)
         {
             try
             {
@@ -252,6 +168,7 @@ namespace ZC_ALM_TOOLS.Core
                             new XAttribute("Lang", "es-ES"),
                             $"{dev.Tag} - {dev.Descripcion}")));
                     updatedCount++;
+                    await Task.Delay(1);
                 }
 
                 LogService.Write($"[TIA-PLC-SERVICE] [SyncDbComments] Modificación completada. Guardando archivo temporal...");
@@ -282,13 +199,13 @@ namespace ZC_ALM_TOOLS.Core
 
 
         // ==================================================================================================================
-        // Exportar tabla de variables
-        public bool ExportTagTable(string folderName, string tableName, string xmlPath)
+        // Exportar tabla de variables de dispositivos
+        public bool ExportDispTagTable(string tableName, string xmlPath)
         {
             try
             {
                 if (File.Exists(xmlPath)) File.Delete(xmlPath);
-                var table = FindTableInFolder(folderName, tableName);
+                var table = FindTagTableRecursively(tableName);
                 if (table == null) return false;
 
                 table.Export(new FileInfo(xmlPath), ExportOptions.WithDefaults);
@@ -299,25 +216,138 @@ namespace ZC_ALM_TOOLS.Core
 
 
 
+        // ==================================================================================================================
+        // METODOS GENERALES
+        // ==================================================================================================================
+
+
 
         // ==================================================================================================================
-        // Encontrar tag en una tabla de variables
-        private PlcTagTable FindTagTable(string name)
+        // Asignacion de PLC seleccionado
+        public void UpdatePlc(PlcSoftware plcSoftware)
         {
-            var rootTable = _currentPlc.TagTableGroup.TagTables.Find(name);
-            if (rootTable != null) return rootTable;
-            return _currentPlc.TagTableGroup.Groups.SelectMany(g => g.TagTables).FirstOrDefault(t => t.Name == name);
+            _currentPlc = plcSoftware;
+        }
+
+
+
+        // ==================================================================================================================
+        // Lee el valor de una constante global (ej. N_MAX)
+        public int ReadGlobalConstant(string tableName, string constantName)
+        {
+            try
+            {
+                var table = FindTagTableRecursively(tableName);
+                if (table == null) return -1;
+
+                var constant = table.UserConstants.Find(constantName);
+                if (constant != null && int.TryParse(constant.Value, out int value))
+                {
+                    return value;
+                }
+                return 0;
+            }
+            catch
+            {
+                return -1;
+            }
+        }
+
+
+
+        // ==================================================================================================================
+        // Sincroniza el valor de una constante global de dimensionado
+        public bool SyncGlobalConstant(string tableName, string constantName, int newValue)
+        {
+            try
+            {
+                LogService.Write($"[TIA-PLC-SERVICE] [SyncGlobalConstant] Verificando constante: {constantName}...");
+                var table = FindTagTableRecursively(tableName);
+                if (table == null) throw new Exception($"No se encontró la tabla '{tableName}'");
+
+                var constant = table.UserConstants.Find(constantName);
+                if (constant == null) throw new Exception($"No existe la constante '{constantName}'");
+
+                if (int.TryParse(constant.Value, out int currentValue))
+                {
+                    if (currentValue != newValue)
+                    {
+                        LogService.Write($"[TIA-PLC-SERVICE] [SyncGlobalConstant] Modificando {constantName}: {currentValue} -> {newValue}");
+                        StatusService.Set($"{constantName} actualizado a {newValue}.", StatusType.Ok);
+                        constant.Value = newValue.ToString();
+
+                    }
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                LogService.Write($"[TIA-PLC-SERVICE] [SyncGlobalConstant] Fallo en Sync Global: {ex.Message}", true);
+                return false;
+            }
         }
 
 
 
 
         // ==================================================================================================================
-        // Buscar tabla dentro de una carpeta
-        private PlcTagTable FindTableInFolder(string folder, string table)
+        // Compila un bloque específico (necesario antes de la cirugía XML)
+        public bool CompileBlock(string blockName)
         {
-            var group = _currentPlc.TagTableGroup.Groups.Find(folder);
-            return group?.TagTables.Find(table);
+            try
+            {
+                LogService.Write($"[TIA-PLC-SERVICE] [CompileBlock] Buscando bloque '{blockName}' para compilar...");
+                var block = FindBlockRecursively(_currentPlc.BlockGroup, blockName);
+
+                if (block == null)
+                {
+                    LogService.Write($"[TIA-PLC-SERVICE] [CompileBlock] No se encontró el bloque '{blockName}'", true);
+                    return false;
+                }
+
+                ICompilable compileService = block.GetService<ICompilable>();
+                if (compileService != null)
+                {
+                    LogService.Write($"[TIA-PLC-SERVICE] [CompileBlock] Compilando: {blockName}...");
+                    CompilerResult result = compileService.Compile();
+                    LogService.Write($"[TIA-PLC-SERVICE] [CompileBlock] Resultado Compilación: {result.State} (Errores: {result.ErrorCount})");
+                    return result.State != CompilerResultState.Error;
+                }
+                return false;
+            }
+            catch (Exception ex)
+            {
+                LogService.Write($"[TIA-PLC-SERVICE] [CompileBlock] Fallo al compilar: {ex.Message}", true);
+                return false;
+            }
+
+        }
+
+
+
+
+
+        // ==================================================================================================================
+        // Buscar tabla de variables recursivamente por nombre (Sirve para todo)
+        public PlcTagTable FindTagTableRecursively(string tableName)
+        {
+            if (_currentPlc == null) return null;
+            return FindTagTableRecursive(_currentPlc.TagTableGroup, tableName);
+        }
+
+        private PlcTagTable FindTagTableRecursive(PlcTagTableGroup group, string tableName)
+        {
+            if (group == null) return null;
+
+            var table = group.TagTables.Find(tableName);
+            if (table != null) return table;
+
+            foreach (var subGroup in group.Groups)
+            {
+                var found = FindTagTableRecursive(subGroup, tableName);
+                if (found != null) return found;
+            }
+            return null;
         }
 
 
@@ -338,6 +368,16 @@ namespace ZC_ALM_TOOLS.Core
 
 
         // ==================================================================================================================
+        // Metodo publico para buscar bloque
+        public PlcBlock FindBlockByName(string blockName)
+        {
+            if (_currentPlc == null) return null;
+            // Le pasamos la carpeta raíz del PLC y el nombre que queremos buscar
+            return FindBlockRecursively(_currentPlc.BlockGroup, blockName);
+        }
+
+
+        // ==================================================================================================================
         // Buscar bloque recursivamente
         private PlcBlock FindBlockRecursively(PlcBlockGroup group, string name)
         {
@@ -350,16 +390,6 @@ namespace ZC_ALM_TOOLS.Core
                 if (found != null) return found;
             }
             return null;
-        }
-
-
-
-
-
-        // ==================================================================================================================
-        private void Report(string msg, bool error = false)
-        {
-            StatusService.Set(msg, error);
         }
 
     }

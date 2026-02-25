@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Net.NetworkInformation;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using Microsoft.Win32;
 using Siemens.Engineering;
@@ -55,7 +56,7 @@ namespace ZC_ALM_TOOLS.ViewModels
 
         // ViewModels y Configuración
         public DevicesViewModel DevicesVM { get; set; }
-        public ProcessViewModel ProcessVM { get; set; }
+        public ParamsAlarmsViewModel ParamsAlarmsVM { get; set; }
 
         // Variable que indica que esta ejecutandose algo
         private bool _isBusy;
@@ -131,8 +132,8 @@ namespace ZC_ALM_TOOLS.ViewModels
             DevicesVM.SetTiaService(_tiaPlcService, _tiaHmiService);
             DevicesVM.HmiTargets = HmiTargets;
 
-            ProcessVM = new ProcessViewModel();
-            ProcessVM.SetTiaService(_tiaPlcService);
+            ParamsAlarmsVM = new ParamsAlarmsViewModel();
+            ParamsAlarmsVM.SetTiaService(_tiaPlcService);
 
             // Evento para actualizar el mensaje de estado
             StatusService.OnStatusChanged += UpdateStatus;
@@ -154,12 +155,13 @@ namespace ZC_ALM_TOOLS.ViewModels
 
         // ==================================================================================================================
         // Método para actualizar el PLC de trabajo cuando el usuario cambia la selección
-        private void UpdateActiveService()
+        private async void UpdateActiveService()
         {
             if (SelectedTarget != null && SelectedTarget.SoftwareObject is PlcSoftware plc)
             {
 
-                _tiaPlcService.UpdatePlc(plc);
+                _tiaPlcService.UpdatePlc(plc); 
+
                 DevicesVM?.NotifyPlcChanged(SelectedTarget.Name);
 // PENDIENTE PONER EL DE PROCESOS
 
@@ -171,7 +173,7 @@ namespace ZC_ALM_TOOLS.ViewModels
 
         // ==================================================================================================================
         // LÓGICA DE EXTRACCIÓN Y CARGA
-        private void LoadExcelAndGenerateJson()
+        private async void LoadExcelAndGenerateJson()
         {
             LogService.Write("[MAIN-VM] [LoadExcelAndGenerateJson] Botón 'Cargar' pulsado.");
 
@@ -194,7 +196,7 @@ namespace ZC_ALM_TOOLS.ViewModels
                 if (!File.Exists(_configGlobalSettings.ExtractorExePath))
                 {
                     LogService.Write("[MAIN-VM] [LoadExcelAndGenerateJson] ERROR: Extractor no encontrado", true);
-                    UpdateStatus("Error: No se encuentra ZC_Extractor.exe", true);
+                    UpdateStatus("Error: No se encuentra ZC_Extractor.exe", StatusType.Error);
                     MessageBox.Show($"Extractor no encontrado en:\n{_configGlobalSettings.ExtractorExePath}", "Error de configuración");
                     return;
                 }
@@ -208,32 +210,32 @@ namespace ZC_ALM_TOOLS.ViewModels
 
 
                 // 1. Ejecutar y comprobar si Python terminó con éxito
-                if (StartExtractor())
+                if (await StartExtractor())
                 {
                     // 2. Si Python terminó bien, comprobamos que los archivos estén ahí
-                    if (WaitForPythonFiles())
+                    if (await WaitForPythonFiles())
                     {
                         LogService.Write("[MAIN-VM] [LoadExcelAndGenerateJson] Archivos XML detectados con éxito.");
                         UpdateStatus("Cargando datos en memoria...");
 
-                        LoadAllFromFolder(AppConfigService.ExportPath);
+                        await Task.Run(() => LoadAllFromFolder(AppConfigService.ExportPath));
 
                         // Actualizar ViewModels
                         DevicesVM.LoadData(_engineeringCache, _configDeviceSettings);
-                        ProcessVM.LoadData(_engineeringCache, _configProcessesSettings);
+                        ParamsAlarmsVM.LoadData(_engineeringCache, _configProcessesSettings);
 
                         IsDataLoaded = true;
                         UpdateStatus("Listo. Todos los módulos cargados.");
                     }
                     else
                     {
-                        UpdateStatus("Error: Python terminó pero no se encontraron los archivos XML.", true);
+                        UpdateStatus("Error: Python terminó pero no se encontraron los archivos XML.", StatusType.Error);
                     }
                 }
                 else
                 {
                     // Si llegamos aquí, es que Python falló (ExitCode != 0)
-                    UpdateStatus("Error en el script de extracción. Revisa el LOG.", true);
+                    UpdateStatus("Error en el script de extracción. Revisa el LOG.", StatusType.Error);
                     MessageBox.Show("El extractor de Python ha fallado. Consulta los detalles en la pestaña de Log.",
                                     "Error de Extracción", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
@@ -244,7 +246,7 @@ namespace ZC_ALM_TOOLS.ViewModels
             {
                 LogService.Write($"[MAIN-VM] [LoadExcelAndGenerateJson] CRASH EN CARGA: {ex.Message}", true);
                 LogService.Write($"[MAIN-VM] [LoadExcelAndGenerateJson] CRASH EN CARGA:\n{ex.ToString()}", true);
-                UpdateStatus("Crash general en el proceso.", true);
+                UpdateStatus("Error general en el proceso.", StatusType.Error);
                 MessageBox.Show($"{ex.Message}", "Error Crítico");
             }
             finally 
@@ -258,7 +260,7 @@ namespace ZC_ALM_TOOLS.ViewModels
 
         // ==================================================================================================================
         // Metodo para lanzar el programa de extraccion de python
-        private bool StartExtractor()
+        private async Task<bool> StartExtractor()
         {
             try
             {
@@ -298,16 +300,14 @@ namespace ZC_ALM_TOOLS.ViewModels
                     myProcess.BeginErrorReadLine();
 
                     LogService.Write("[MAIN-VM] [StartExtractor] Extractor ejecutándose en segundo plano...");
-                    //myProcess.WaitForExit();
-
-                    while (!myProcess.HasExited)
+                    
+                    await Task.Run(() =>
                     {
-                        // Dejamos que TIA Portal procese sus eventos (repintar ventana, mensajes, etc.)
-                        UpdateStatusFrame();
-
-                        // Dormimos un tiempo mínimo para no saturar la CPU
-                        Thread.Sleep(100);
-                    }
+                        while (!myProcess.HasExited)
+                        {
+                            myProcess.WaitForExit();
+                        }
+                    });
 
                     LogService.Write($"[MAIN-VM] [StartExtractor] Extractor finalizado con código: {myProcess.ExitCode}");
                     return myProcess.ExitCode == 0;
@@ -325,7 +325,7 @@ namespace ZC_ALM_TOOLS.ViewModels
 
         // ==================================================================================================================
         // Metodo para esperar a que se encuentren todos los archivos esperados
-        private bool WaitForPythonFiles()
+        private async Task<bool> WaitForPythonFiles()
         {        
 
             LogService.Write($"[MAIN-VM] [WaitForPythonFiles] Iniciando espera en: {AppConfigService.ExportPath}");
@@ -353,8 +353,7 @@ namespace ZC_ALM_TOOLS.ViewModels
 
                 if (allFound) return true;
 
-                Thread.Sleep(200);
-                UpdateStatusFrame();
+                await Task.Delay(200);
             }
             return false;
         }
@@ -454,11 +453,16 @@ namespace ZC_ALM_TOOLS.ViewModels
         }
 
         // Metodo para actualizar la barra de estado
-        private void UpdateStatus(string message, bool isError = false)
+        private void UpdateStatus(string message, StatusType type = StatusType.Ok)
         {
             StatusMessage = message;
-            StatusColor = isError ? "Red" : "Black";
-            UpdateStatusFrame();
+
+            if (type == StatusType.Ok)
+                StatusColor = "Black"; // O el color por defecto que prefieras
+            else if (type == StatusType.Warning)
+                StatusColor = "Orange";
+            else if (type == StatusType.Error)
+                StatusColor = "Red";
         }
 
 

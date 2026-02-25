@@ -101,7 +101,7 @@
     <Compile Include="Services\TiaPlcService.cs" />
     <Compile Include="ViewModels\DevicesViewModel.cs" />
     <Compile Include="ViewModels\MainViewModel.cs" />
-    <Compile Include="ViewModels\ProcessViewModel.cs" />
+    <Compile Include="ViewModels\ParamsAlarmsViewModel.cs" />
     <Compile Include="Views\MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
     </Compile>
@@ -110,8 +110,8 @@
     <Compile Include="Views\DevicesView.xaml.cs">
       <DependentUpon>DevicesView.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Views\ProcessView.xaml.cs">
-      <DependentUpon>ProcessView.xaml</DependentUpon>
+    <Compile Include="Views\ParamsAlarmsView.xaml.cs">
+      <DependentUpon>ParamsAlarmsView.xaml</DependentUpon>
     </Compile>
   </ItemGroup>
   <ItemGroup>
@@ -131,7 +131,7 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Views\ProcessView.xaml">
+    <Page Include="Views\ParamsAlarmsView.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

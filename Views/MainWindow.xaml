@@ -6,7 +6,7 @@
         xmlns:views="clr-namespace:ZC_ALM_TOOLS.Views"
         xmlns:models="clr-namespace:ZC_ALM_TOOLS.Models"
         mc:Ignorable="d"
-        Title="ZC Tools - TIA Portal Add-In" Height="800" Width="1400"
+        Title="ZC Tools - TIA Portal Add-In" Height="800" Width="1500"
         WindowStartupLocation="CenterScreen" Background="#F0F0F0">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
@@ -79,7 +79,7 @@
     </Window.Resources>
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="250"/>
+            <ColumnDefinition Width="150"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
@@ -96,7 +96,7 @@
                 <Border Grid.Row="0" Padding="10" Background="#F8F9FA" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1">
                     <TextBlock Text="PROYECTO TIA PORTAL" FontWeight="Bold" Foreground="#444"/>
                 </Border>
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" IsEnabled="{Binding IsDataLoaded}">
                     <StackPanel>
                         <Border Padding="10,5" Background="#F8F9FA" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1">
                             <TextBlock Text="PLC" FontWeight="Bold" Foreground="#333" FontSize="10"/>
@@ -115,14 +115,15 @@
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>
-                        <Border Padding="10,5" Background="#F8F9FA" BorderBrush="#E0E0E0" BorderThickness="0,1,0,1" Margin="0,15,0,0">
+                        <Border Padding="10,5" Background="#F8F9FA" BorderBrush="#E0E0E0" BorderThickness="0,1,0,1" Margin="0,15,0,0" Visibility="Hidden">
                             <TextBlock Text="HMI / SCADA" FontWeight="Bold" Foreground="#444" FontSize="10"/>
                         </Border>
                         <ListBox ItemsSource="{Binding HmiTargets}" 
                                  ItemContainerStyle="{StaticResource DeviceItemStyle}"
                                  BorderThickness="0"
                                  Background="Transparent"
-                                 SelectionMode="Single">
+                                 SelectionMode="Single"
+                                 Visibility="Hidden">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <Grid Margin="5">
@@ -172,20 +173,22 @@
                     </StackPanel>
                 </Grid>
             </Border>
+            
             <TabControl Grid.Row="1" Margin="10" 
                         IsEnabled="{Binding IsDataLoaded}"
                         Background="White" BorderBrush="#D0D0D0">
                 <TabItem Header="🔧 Dispositivos">
                     <views:DevicesView DataContext="{Binding DevicesVM}"/>
                 </TabItem>
-                <TabItem Header="🏭 Procesos">
-                    <views:ProcessView DataContext="{Binding ProcessVM}"/>
+                <TabItem Header="🏭 Parametros y alarmas">
+                    <views:ParamsAlarmsView DataContext="{Binding ParamsAlarmsVM}"/>
                 </TabItem>
                 <TabItem Header="🚨 Alarmas">
                     <TextBlock Text="Módulo de Alarmas" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </TabItem>
             </TabControl>
         </Grid>
+        
         <StatusBar Grid.Row="1" Grid.ColumnSpan="2" Background="#E9ECEF" BorderBrush="#CED4DA" BorderThickness="0,1,0,0" Padding="5,2">
             <StatusBar.ItemsPanel>
                 <ItemsPanelTemplate>
@@ -207,9 +210,12 @@
                                     <DataTrigger Binding="{Binding StatusColor}" Value="Red">
                                         <Setter Property="Fill" Value="#F44336"/>
                                     </DataTrigger>
+                                    <DataTrigger Binding="{Binding StatusColor}" Value="Orange">
+                                        <Setter Property="Fill" Value="#FF9800"/>
+                                    </DataTrigger>
                                 </Style.Triggers>
                             </Style>
-                        </Ellipse.Style>
+                        </Ellipse.Style>   
                     </Ellipse>
                     <TextBlock Text="{Binding StatusMessage}" 
                        Foreground="{Binding StatusColor}" 
