@@ -29,7 +29,8 @@ namespace ZC_ALM_TOOLS.ViewModels
 
         public ObservableCollection<TiaTarget> PlcTargets { get; set; }
         public ObservableCollection<TiaTarget> HmiTargets { get; set; }
-        
+        public ObservableCollection<TiaTarget> ScadaTargets { get; set; }
+
 
 
 
@@ -96,21 +97,10 @@ namespace ZC_ALM_TOOLS.ViewModels
             _tiaproject = project;
 
             // Buscamos todos los dispositivos del proyecto
-            var scannedDevices = TiaDeviceScanner.ScanProject(_tiaproject);
-            foreach (var device in scannedDevices)
-            {
-                LogService.Write($"{device.Name}, {device.Type}");
-            }
+            var scannedDevices = TiaDeviceScanner.ScanProject(_tiaproject);            
             PlcTargets = new ObservableCollection<TiaTarget>(scannedDevices.Where(t => t.Type == TargetType.PLC));
-            foreach (var device in PlcTargets)
-            {
-                LogService.Write($"{device.Name}, {device.Type}");
-            }
             HmiTargets = new ObservableCollection<TiaTarget>(scannedDevices.Where(t => t.Type == TargetType.HMI));
-            foreach (var device in HmiTargets)
-            {
-                LogService.Write($"{device.Name}, {device.Type}");
-            }
+            ScadaTargets = new ObservableCollection<TiaTarget>(scannedDevices.Where(t => t.Type == TargetType.SCADA));
 
             // Inicializamos servicios de Tia portal
             _tiaPlcService = new TiaPlcService();

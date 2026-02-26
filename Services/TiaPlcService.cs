@@ -108,7 +108,7 @@ namespace ZC_ALM_TOOLS.Core
         {
             try
             {
-                LogService.Write($"[TIA-PLC-SERVICE] [SyncDbComments] === INICIANDO CIRUGÍA XML: {dbName} ===");
+                LogService.Write($"[TIA-PLC-SERVICE] [SyncDbComments] === INICIANDO SINCRONIZACION DE COMENTARIOS: {dbName} ===");
 
                 // 1. Localizar el bloque
                 var genericBlock = FindBlockRecursively(_currentPlc.BlockGroup, dbName);
@@ -212,6 +212,196 @@ namespace ZC_ALM_TOOLS.Core
                 return true;
             }
             catch { return false; }
+        }
+
+
+
+        // ==================================================================================================================
+        // METODOS PARA PARAMETROS Y ALARMAS
+        // ==================================================================================================================
+
+
+
+        // ==================================================================================================================
+        // Inyecta los textos en los Arrays principales y de Visibilidad de un DB de Parámetros
+        public bool SyncParamsComments<T>(string blockName, string arrayName, IEnumerable<T> items, Func<T, int> getId, Func<T, string> getComment)
+        {
+            try
+            {
+                LogService.Write($"[TIA-PLC-SERVICE] [SyncParamsComments] === INICIANDO SINCRONIZACION DE COMENTARIOS: {blockName} ===");
+
+                var block = FindBlockByName(blockName);
+                if (block == null) throw new Exception($"Bloque '{blockName}' no encontrado.");
+
+                string tempPath = Path.Combine(Path.GetTempPath(), $"{blockName}.xml");
+                if (File.Exists(tempPath)) File.Delete(tempPath);
+
+                LogService.Write($"[TIA-PLC-SERVICE] [SyncParamsComments] Exportando DB a XML temporal...");
+                block.Export(new FileInfo(tempPath), ExportOptions.WithDefaults);
+
+                XDocument doc = XDocument.Load(tempPath);
+
+                // El namespace correcto que usa TIA Portal V18 para las interfaces
+                XNamespace ns = "http://www.siemens.com/automation/Openness/SW/Interface/v5";
+
+                // Localizamos los dos arrays principales (El de datos y el de visibilidad)
+                var dataMember = doc.Descendants().FirstOrDefault(x => x.Name.LocalName == "Member" && x.Attribute("Name")?.Value == arrayName);
+                var visMember = doc.Descendants().FirstOrDefault(x => x.Name.LocalName == "Member" && x.Attribute("Name")?.Value == "Vis");
+
+                if (dataMember == null) throw new Exception($"No se encontró el array '{arrayName}' en el DB.");
+                if (visMember == null) LogService.Write($"[TIA-PLC-SERVICE] [SyncParamsComments] ATENCIÓN: No se encontró el array 'Vis' en {blockName}.");
+
+                LogService.Write($"[TIA-PLC-SERVICE] [SyncParamsComments] Actualizando comentarios en {arrayName} y Vis...");
+                bool isModified = false;
+
+                foreach (var item in items)
+                {
+                    int id = getId(item);
+                    string expectedComment = getComment(item) ?? "";
+
+                    // Inyectar en el array de Datos
+                    if (UpdateOrAddCommentNode(dataMember, id, expectedComment, ns)) isModified = true;
+
+                    // Inyectar en el array de Visibilidad
+                    if (visMember != null)
+                    {
+                        if (UpdateOrAddCommentNode(visMember, id, expectedComment, ns)) isModified = true;
+                    }
+                }
+
+                if (isModified)
+                {
+                    LogService.Write($"[TIA-PLC-SERVICE] [SyncParamsComments] XML modificado. Guardando e importando...");
+                    doc.Save(tempPath);
+                    var group = block.Parent as PlcBlockGroup;
+                    group.Blocks.Import(new FileInfo(tempPath), ImportOptions.Override);
+                    LogService.Write($"[TIA-PLC-SERVICE] [SyncParamsComments] ¡ÉXITO! Bloque {blockName} actualizado.");
+                    return true;
+                }
+                else
+                {
+                    LogService.Write($"[TIA-PLC-SERVICE] [SyncParamsComments] No había textos que actualizar en {blockName}.");
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                LogService.Write($"[TIA-PLC-SERVICE] [SyncParamsComments] Fallo en inyección de XML en {blockName}: {ex.Message}", true);
+                return false;
+            }
+        }
+
+
+
+        // ==================================================================================================================
+        // Inyecta los textos en el Array principal de un DB de Alarmas
+        public bool SyncAlarmsComments<T>(string blockName, string arrayName, IEnumerable<T> items, Func<T, int> getId, Func<T, string> getComment)
+        {
+            try
+            {
+                LogService.Write($"[TIA-PLC-SERVICE] [SyncAlarmsComments] === INYECTANDO TEXTOS: {blockName} ===");
+
+                var block = FindBlockByName(blockName);
+                if (block == null) throw new Exception($"Bloque '{blockName}' no encontrado.");
+
+                string tempPath = Path.Combine(Path.GetTempPath(), $"{blockName}.xml");
+                if (File.Exists(tempPath)) File.Delete(tempPath);
+
+                LogService.Write($"[TIA-PLC-SERVICE] [SyncAlarmsComments] Exportando DB a XML temporal...");
+                block.Export(new FileInfo(tempPath), ExportOptions.WithDefaults);
+
+                XDocument doc = XDocument.Load(tempPath);
+                XNamespace ns = "http://www.siemens.com/automation/Openness/SW/Interface/v5";
+
+                // Localizamos únicamente el array principal (ej. "ALM")
+                var dataMember = doc.Descendants().FirstOrDefault(x => x.Name.LocalName == "Member" && x.Attribute("Name")?.Value == arrayName);
+
+                if (dataMember == null) throw new Exception($"No se encontró el array '{arrayName}' en el DB.");
+
+                LogService.Write($"[TIA-PLC-SERVICE] [SyncAlarmsComments] Actualizando comentarios en {arrayName}...");
+                bool isModified = false;
+
+                foreach (var item in items)
+                {
+                    int id = getId(item);
+                    string expectedComment = getComment(item) ?? "";
+
+                    // Inyectamos el texto usando nuestro método auxiliar infalible
+                    if (UpdateOrAddCommentNode(dataMember, id, expectedComment, ns)) isModified = true;
+                }
+
+                if (isModified)
+                {
+                    LogService.Write($"[TIA-PLC-SERVICE] [SyncAlarmsComments] XML modificado. Guardando e importando...");
+                    doc.Save(tempPath);
+                    var group = block.Parent as PlcBlockGroup;
+                    group.Blocks.Import(new FileInfo(tempPath), ImportOptions.Override);
+                    LogService.Write($"[TIA-PLC-SERVICE] [SyncAlarmsComments] ¡ÉXITO! Bloque {blockName} actualizado.");
+                    return true;
+                }
+                else
+                {
+                    LogService.Write($"[TIA-PLC-SERVICE] [SyncAlarmsComments] No había textos que actualizar en {blockName}.");
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                LogService.Write($"[TIA-PLC-SERVICE] [SyncAlarmsComments] Fallo en inyección de XML en {blockName}: {ex.Message}", true);
+                return false;
+            }
+        }
+
+
+
+
+
+        // Método auxiliar privado para no repetir la lógica de inyección de nodos XML
+        private bool UpdateOrAddCommentNode(XElement memberNode, int id, string text, XNamespace ns)
+        {
+            if (memberNode == null) return false;
+
+            // Buscamos el subelemento con el índice exacto
+            var subElement = memberNode.Elements().FirstOrDefault(x => x.Name.LocalName == "Subelement" && x.Attribute("Path")?.Value == id.ToString());
+
+            // Si TIA Portal no exportó el Subelement (porque está vacío), lo creamos nosotros
+            if (subElement == null)
+            {
+                if (string.IsNullOrEmpty(text)) return false; // Si no hay texto y no existe, no hacemos nada
+
+                subElement = new XElement(ns + "Subelement", new XAttribute("Path", id.ToString()));
+                memberNode.Add(subElement);
+            }
+
+            var commentNode = subElement.Elements().FirstOrDefault(x => x.Name.LocalName == "Comment");
+
+            // Si no existe la etiqueta <Comment>, se la creamos
+            if (commentNode == null && !string.IsNullOrEmpty(text))
+            {
+                commentNode = new XElement(ns + "Comment");
+                subElement.AddFirst(commentNode); // Lo ponemos al principio del Subelement
+            }
+
+            if (commentNode != null)
+            {
+                var multiLangNode = commentNode.Elements().FirstOrDefault(x => x.Name.LocalName == "MultiLanguageText" && x.Attribute("Lang")?.Value == "es-ES");
+
+                if (multiLangNode != null)
+                {
+                    if (multiLangNode.Value != text)
+                    {
+                        multiLangNode.Value = text;
+                        return true;
+                    }
+                }
+                else if (!string.IsNullOrEmpty(text))
+                {
+                    commentNode.Add(new XElement(ns + "MultiLanguageText", new XAttribute("Lang", "es-ES"), text));
+                    return true;
+                }
+            }
+
+            return false;
         }
 
 

@@ -273,7 +273,7 @@ namespace ZC_ALM_TOOLS.ViewModels
 
 
                 StatusService.Set("Sincronizando constantes de usuario...", StatusType.Ok);
-                await Task.Delay(10);
+                await Task.Delay(50);
 
                 // CONSTANTES DE USUARIO
                 var deviceList = CurrentDevices.Cast<IDevice>()
@@ -284,13 +284,21 @@ namespace ZC_ALM_TOOLS.ViewModels
                 SelectedCategory.ConstantsStatus = okConst ? SynchronizationStatus.Ok : SynchronizationStatus.Error;
 
                 // COMPILACIÓN DEL DB
+                StatusService.Set("Compilando DB tras redimensionado...", StatusType.Ok);
+                await Task.Delay(50);
+
                 okComp = _tiaPlcService.CompileBlock(SelectedCategory.TiaDbName);
 
                 if (okComp)
                 {
+                    StatusService.Set("Actualizando comentarios del DB...", StatusType.Ok);
+                    await Task.Delay(50);
+
                     okDb = await _tiaPlcService.SyncDispDbComments(SelectedCategory.TiaDbName, SelectedCategory.TiaDbArrayName, deviceList);
                     SelectedCategory.DbStatus = okDb ? SynchronizationStatus.Ok : SynchronizationStatus.Error;
 
+                    StatusService.Set("Compilando DB tras actualizacion de comentarios...", StatusType.Ok);
+                    await Task.Delay(50);
                     _tiaPlcService.CompileBlock(SelectedCategory.TiaDbName);
                 }
                 else
@@ -419,83 +427,53 @@ namespace ZC_ALM_TOOLS.ViewModels
                 await Task.Delay(10);
 
 
-                var plcDict = ParsePlcXml(tempXmlPath);
+                var plcDict = XmlParserService.ParseDispTableXml(tempXmlPath);
 
                 // Obtenemos los dispositivos del Excel (los que ya están en la tabla)
+                // Obtenemos los dispositivos del Excel
                 var excelList = CurrentDevices.Cast<IDevice>().ToList();
-                bool allMatch = true;
-                int countMatch = 0, countMismatch = 0, countNew = 0;
 
-                foreach (var device in excelList)
-                {
-                    if (plcDict.TryGetValue(device.Numero, out string plcTagName))
+                // Llamamos al motor genérico de comparación
+                var result = ComparisonService.Compare(
+                    excelList, plcDict,
+                    d => d.Numero,                   // ID del dispositivo
+                    d => d.CPTag,                    // En dispositivos comparamos contra el CPTag
+                    d => d.Estado,                   // Leer estado
+                    (d, est) => d.Estado = est,      // Escribir estado
+                    (id, txt) =>                     // Cómo fabricar un fantasma de dispositivo
                     {
-                        bool match = plcTagName == device.CPTag;
-
-                        if (match)
-                        {
-                            device.Estado = "Sincronizado";
-                            countMatch++;
-                        }
-                        else
-                        {
-                            device.Estado = $"{plcTagName} -> {device.CPTag}";
-                            LogService.Write($"[DEVICE-VM] [ExecuteCompare] Diferencia en ID {device.Numero}: PLC '{plcTagName}' != Excel '{device.CPTag}'", true);
-                            allMatch = false;
-                            countMismatch++;
-                        }
-                        plcDict.Remove(device.Numero);
-                    }
-                    else
-                    {
-                        if (device.Estado != "Eliminar")
-                        {
-                            device.Estado = "Nuevo";
-                            LogService.Write($"[DEVICE-VM] [ExecuteCompare] ID {device.Numero} no existe en PLC (Nuevo)");
-                            allMatch = false;
-                            countNew++;
-                        }
-                    }
-                }
-
-                // Detectar sobrantes en PLC
-                if (plcDict.Count > 0)
-                {
-                    allMatch = false;
-                    LogService.Write($"[DEVICE-VM] [ExecuteCompare] Se han detectado {plcDict.Count} constantes en el PLC que no están en el Excel.", true);
-                    
-                    foreach (var extra in plcDict)
-                    {
-                        // Pedimos al servicio que nos cree el objeto correcto según la categoría
                         IDevice ghost = DataService.CreateEmptyDispData(SelectedCategory);
-
-                        // Rellenamos los datos del PLC
-                        ghost.Numero = extra.Key;
-                        ghost.Tag = extra.Value;
+                        ghost.Numero = id;
+                        ghost.Tag = txt;
                         ghost.Descripcion = "--- NO EXISTE EN EXCEL (Se borrará) ---";
                         ghost.Estado = "Eliminar";
-
-                        // Lo inyectamos en la lista visual
-                        CurrentDevices.Add(ghost);
-                        LogService.Write($"[DEVICE-VM] [ExecuteCompare] Sobrante en PLC -> ID {extra.Key}: {extra.Value}", true);
+                        return ghost;
                     }
+                );
+
+                // Inyectar fantasmas en la tabla
+                foreach (var ghost in result.Ghosts)
+                {
+                    CurrentDevices.Add(ghost);
+                    LogService.Write($"[DEVICE-VM] [ExecuteCompare] Sobrante en PLC -> ID {ghost.Numero}: {ghost.Tag}", true);
                 }
 
-                // 5. Resultado final
-                SelectedCategory.ConstantsStatus = allMatch ? SynchronizationStatus.Ok : SynchronizationStatus.Error;
+                // Actualizar estado del semáforo
+                SelectedCategory.ConstantsStatus = result.AllMatch ? SynchronizationStatus.Ok : SynchronizationStatus.Error;
 
-                LogService.Write($"[DEVICE-VM] [ExecuteCompare] RESUMEN: {countMatch} OK, {countMismatch} Diferentes, {countNew} Nuevos.");
+                LogService.Write($"[DEVICE-VM] [ExecuteCompare] RESUMEN: {result.MatchCount} OK, {result.MismatchCount} Diferentes, {result.NewCount} Nuevos, {result.GhostCount} Sobrantes.");
                 LogService.Write("[DEVICE-VM] [ExecuteCompare] COMPARACIÓN FINALIZADA");
 
-                if (allMatch)
+                // Resultado final en la barra de estado
+                if (result.AllMatch)
                 {
                     StatusService.Set("Comparación finalizada: Todo OK.", StatusType.Ok);
-                    
                 }
                 else
                 {
                     StatusService.Set("Comparación finalizada: Se detectaron diferencias.", StatusType.Warning);
                 }
+                
                 
             }
             catch (Exception ex)
@@ -512,45 +490,7 @@ namespace ZC_ALM_TOOLS.ViewModels
 
 
 
-        // ==================================================================================================================
-        // Método auxiliar para parsear el XML exportado por TIA Portal
-        private Dictionary<int, string> ParsePlcXml(string path)
-        {
-            var dic = new Dictionary<int, string>();
-            if (!File.Exists(path)) return dic;
-
-            try
-            {
-                XDocument doc = XDocument.Load(path);
-                // Buscamos nodos PlcUserConstant ignorando namespaces (LocalName)
-                var constants = doc.Descendants().Where(x => x.Name.LocalName.EndsWith("PlcUserConstant"));
-
-                foreach (var con in constants)
-                {
-                    XNamespace ns = con.Name.Namespace;
-                    var attrList = con.Element(ns + "AttributeList");
-                    if (attrList == null) continue;
-
-                    var name = attrList.Element(ns + "Name")?.Value;
-                    var val = attrList.Element(ns + "Value")?.Value;
-
-                    if (int.TryParse(val, out int id) && !string.IsNullOrEmpty(name))
-                    {
-                        if (!dic.ContainsKey(id)) dic.Add(id, name);
-                    }
-                }
-
-                LogService.Write($"[DEVICE-VM] [ParsePlcXml] Se han cargado {dic.Count} constantes desde el PLC.");
-
-            }
-            catch (Exception ex)
-            {
-                LogService.Write($"[DEVICE-VM] [ParsePlcXml] XML PARSE ERROR: {ex.Message}", true);
-            }
-
-            return dic;
-        }
-
+        
 
 
         // ==================================================================================================================

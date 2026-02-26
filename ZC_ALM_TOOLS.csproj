@@ -93,12 +93,14 @@
     <Compile Include="Models\SynchronizationStatus.cs" />
     <Compile Include="Models\TiaTarget.cs" />
     <Compile Include="Services\AppConfigService.cs" />
+    <Compile Include="Services\ComparisonService.cs" />
     <Compile Include="Services\DataService.cs" />
     <Compile Include="Services\LogService.cs" />
     <Compile Include="Services\StatusService.cs" />
     <Compile Include="Services\TiaDeviceScanner.cs" />
     <Compile Include="Services\TiaHmiService.cs" />
     <Compile Include="Services\TiaPlcService.cs" />
+    <Compile Include="Services\XmlParserService.cs" />
     <Compile Include="ViewModels\DevicesViewModel.cs" />
     <Compile Include="ViewModels\MainViewModel.cs" />
     <Compile Include="ViewModels\ParamsAlarmsViewModel.cs" />

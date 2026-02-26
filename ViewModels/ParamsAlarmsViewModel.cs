@@ -54,6 +54,15 @@ namespace ZC_ALM_TOOLS.ViewModels
             }
         }
 
+        private bool _selectSyncReales = true;
+        public bool SelectSyncReales { get => _selectSyncReales; set { _selectSyncReales = value; OnPropertyChanged(); } }
+
+        private bool _selectSyncEnteros = true;
+        public bool SelectSyncEnteros { get => _selectSyncEnteros; set { _selectSyncEnteros = value; OnPropertyChanged(); } }
+
+        private bool _selectSyncAlarmas = true;
+        public bool SelectSyncAlarmas { get => _selectSyncAlarmas; set { _selectSyncAlarmas = value; OnPropertyChanged(); } }
+
         // ==============================================================================
         // COMANDOS
         public RelayCommand SyncCommand { get; set; }
@@ -243,10 +252,10 @@ namespace ZC_ALM_TOOLS.ViewModels
                 LogService.Write($"[PARAMS-VM] [ExecuteCompare] Buscando tabla '{tableName}'...");
                 var table = _tiaPlcService.FindTagTableRecursively(tableName);
 
-                if (table == null)
-                {
-                    StatusService.Set($"Error: No se encuentra la tabla '{tableName}' en el PLC.", StatusType.Error);
-                    return;
+                if (table == null) 
+                { 
+                    StatusService.Set($"Error: No se encuentra la tabla '{tableName}' en el PLC.", StatusType.Error); 
+                    return; 
                 }
 
                 await Task.Delay(10);
@@ -344,173 +353,95 @@ namespace ZC_ALM_TOOLS.ViewModels
 
 
                 // Parseamos los XML
-                var dicReal = ParseDbCommentsXml(tempReal);
-                var dicInt = ParseDbCommentsXml(tempInt);
-                var dicAlm = ParseDbCommentsXml(tempAlm);
+                var dicReal = XmlParserService.ParseDbCommentsXml(tempReal);
+                var dicInt = XmlParserService.ParseDbCommentsXml(tempInt);
+                var dicAlm = XmlParserService.ParseDbCommentsXml(tempAlm);
 
                 bool allCommentsMatch = true;
-                int countMatch = 0, countMismatch = 0, countNew = 0;
 
                 // =========================================================
                 // 1. Cruzar Parámetros Reales
-                var excelRealList = CurrentRealParams.ToList();
-                foreach (var param in excelRealList)
+                var resReal = ComparisonService.Compare(
+                    CurrentRealParams.ToList(), 
+                    dicReal,
+                    p => p.Numero, 
+                    p => p.ComentarioDB, 
+                    p => p.Estado, 
+                    (p, est) => p.Estado = est,
+                    (id, txt) => new Parameter 
+                    { 
+                        Numero = id, 
+                        ComentarioDB = txt, 
+                        Descripcion = "--- NO EXISTE EN EXCEL ---", 
+                        DbNumber = dbNumReal, 
+                        Proceso = SelectedProcess.Nombre, Estado = "Eliminar" 
+                    }
+                );
+                foreach (var ghost in resReal.Ghosts) 
                 {
-                    if (dicReal.TryGetValue(param.Numero, out string plcComment))
-                    {
-                        if (plcComment == param.ComentarioDB)
-                        {
-                            param.Estado = "Sincronizado";
-                            countMatch++;
-                        }
-                        else
-                        {
-                            param.Estado = $"{plcComment} -> {param.ComentarioDB}";
-                            allCommentsMatch = false;
-                            countMismatch++;
-                        }
-                        dicReal.Remove(param.Numero);
-                    }
-                    else
-                    {
-                        if (param.Estado != "Eliminar")
-                        {
-                            param.Estado = "Nuevo";
-                            allCommentsMatch = false;
-                            countNew++;
-                        }
-                    }
+                    CurrentRealParams.Add(ghost); 
+                    LogService.Write($"[PARAMS-VM] [ExecuteCompare] Sobrante en PLC (REAL) -> ID {ghost.Numero}: {ghost.ComentarioDB}", true); 
                 }
 
-                if (dicReal.Count > 0)
-                {
-                    allCommentsMatch = false;
-                    foreach (var extra in dicReal)
-                    {
-                        CurrentRealParams.Add(new Parameter
-                        {
-                            Numero = extra.Key,
-                            ComentarioDB = extra.Value,
-                            Descripcion = "--- NO EXISTE EN EXCEL (Se borrará) ---",
-                            DbNumber = dbNumReal,
-                            Proceso = SelectedProcess.Nombre,
-                            Estado = "Eliminar"
-                        });
-                        LogService.Write($"[PARAMS-VM] [ExecuteCompare] Sobrante en PLC (REAL) -> ID {extra.Key}: {extra.Value}", true);
-                    }
-                }
-
-                LogService.Write($"[PARAMS-VM] [ExecuteCompare] RESUMEN REALES: {countMatch} OK, {countMismatch} Diferentes, {countNew} Nuevos, {dicReal.Count} Sobrantes.");
-
-                // Reset de contadores para el siguiente grupo
-                countMatch = 0; countMismatch = 0; countNew = 0;
+                LogService.Write($"[PARAMS-VM] [ExecuteCompare] RESUMEN REALES: {resReal.MatchCount} OK, {resReal.MismatchCount} Diferencias, {resReal.NewCount} Nuevos, {resReal.GhostCount} Sobrantes.");
+                if (!resReal.AllMatch) allCommentsMatch = false;
 
                 // =========================================================
                 // 2. Cruzar Parámetros Enteros
-                var excelIntList = CurrentIntParams.ToList();
-                foreach (var param in excelIntList)
-                {
-                    if (dicInt.TryGetValue(param.Numero, out string plcComment))
-                    {
-                        if (plcComment == param.ComentarioDB)
-                        {
-                            param.Estado = "Sincronizado";
-                            countMatch++;
-                        }
-                        else
-                        {
-                            param.Estado = $"{plcComment} -> {param.ComentarioDB}";
-                            allCommentsMatch = false;
-                            countMismatch++;
-                        }
-                        dicInt.Remove(param.Numero);
+                var resInt = ComparisonService.Compare(
+                    CurrentIntParams.ToList(), 
+                    dicInt,
+                    p => p.Numero, 
+                    p => p.ComentarioDB, 
+                    p => p.Estado, 
+                    (p, est) => p.Estado = est,
+                    (id, txt) => new Parameter 
+                    { 
+                        Numero = id, 
+                        ComentarioDB = txt, 
+                        Descripcion = "--- NO EXISTE EN EXCEL ---", 
+                        DbNumber = dbNumInt, 
+                        Proceso = SelectedProcess.Nombre, 
+                        Estado = "Eliminar" 
                     }
-                    else
-                    {
-                        if (param.Estado != "Eliminar")
-                        {
-                            param.Estado = "Nuevo";
-                            allCommentsMatch = false;
-                            countNew++;
-                        }
-                    }
+                );
+                foreach (var ghost in resInt.Ghosts) 
+                { 
+                    CurrentIntParams.Add(ghost); 
+                    LogService.Write($"[PARAMS-VM] [ExecuteCompare] Sobrante en PLC (INT) -> ID {ghost.Numero}: {ghost.ComentarioDB}", true); 
                 }
 
-                if (dicInt.Count > 0)
-                {
-                    allCommentsMatch = false;
-                    foreach (var extra in dicInt)
-                    {
-                        CurrentIntParams.Add(new Parameter
-                        {
-                            Numero = extra.Key,
-                            ComentarioDB = extra.Value,
-                            Descripcion = "--- NO EXISTE EN EXCEL (Se borrará) ---",
-                            DbNumber = dbNumInt,
-                            Proceso = SelectedProcess.Nombre,
-                            Estado = "Eliminar"
-                        });
-                        LogService.Write($"[PARAMS-VM] [ExecuteCompare] Sobrante en PLC (INT) -> ID {extra.Key}: {extra.Value}", true);
-                    }
-                }
-
-                LogService.Write($"[PARAMS-VM] [ExecuteCompare] RESUMEN ENTEROS: {countMatch} OK, {countMismatch} Diferentes, {countNew} Nuevos, {dicInt.Count} Sobrantes.");
-
-                // Reset de contadores para el siguiente grupo
-                countMatch = 0; countMismatch = 0; countNew = 0;
+                LogService.Write($"[PARAMS-VM] [ExecuteCompare] RESUMEN ENTEROS: {resInt.MatchCount} OK, {resInt.MismatchCount} Diferencias, {resInt.NewCount} Nuevos, {resInt.GhostCount} Sobrantes.");
+                if (!resInt.AllMatch) allCommentsMatch = false;
 
                 // =========================================================
                 // 3. Cruzar Alarmas
-                var excelAlmList = CurrentAlarms.ToList();
-                foreach (var alm in excelAlmList)
-                {
-                    if (dicAlm.TryGetValue(alm.Numero, out string plcComment))
-                    {
-                        if (plcComment == alm.ComentarioDB)
-                        {
-                            alm.Estado = "Sincronizado";
-                            countMatch++;
-                        }
-                        else
-                        {
-                            alm.Estado = $"{plcComment} -> {alm.ComentarioDB}";
-                            allCommentsMatch = false;
-                            countMismatch++;
-                        }
-                        dicAlm.Remove(alm.Numero);
+                var resAlm = ComparisonService.Compare(
+                    CurrentAlarms.ToList(), 
+                    dicAlm,
+                    a => a.Numero, 
+                    a => a.ComentarioDB, 
+                    a => a.Estado, 
+                    (a, est) => a.Estado = est,
+                    (id, txt) => new Alarms 
+                    { 
+                        Numero = id, 
+                        ComentarioDB = txt, 
+                        Descripcion = "--- NO EXISTE EN EXCEL ---", 
+                        NumDB = dbNumAlm,
+                        Proceso = SelectedProcess.Nombre, Estado = "Eliminar" 
                     }
-                    else
-                    {
-                        if (alm.Estado != "Eliminar")
-                        {
-                            alm.Estado = "Nuevo";
-                            allCommentsMatch = false;
-                            countNew++;
-                        }
-                    }
+                );
+                foreach (var ghost in resAlm.Ghosts) 
+                { 
+                    CurrentAlarms.Add(ghost); 
+                    LogService.Write($"[PARAMS-VM] [ExecuteCompare] Sobrante en PLC (ALM) -> ID {ghost.Numero}: {ghost.ComentarioDB}", true); 
                 }
 
-                if (dicAlm.Count > 0)
-                {
-                    allCommentsMatch = false;
-                    foreach (var extra in dicAlm)
-                    {
-                        CurrentAlarms.Add(new Alarms
-                        {
-                            Numero = extra.Key,
-                            ComentarioDB = extra.Value,
-                            Descripcion = "--- NO EXISTE EN EXCEL (Se borrará) ---",
-                            NumDB = dbNumAlm,
-                            Proceso = SelectedProcess.Nombre,
-                            Estado = "Eliminar"
-                        });
-                        LogService.Write($"[PARAMS-VM] [ExecuteCompare] Sobrante en PLC (ALM) -> ID {extra.Key}: {extra.Value}", true);
-                    }
-                }
+                LogService.Write($"[PARAMS-VM] [ExecuteCompare] RESUMEN ALARMAS: {resAlm.MatchCount} OK, {resAlm.MismatchCount} Diferencias, {resAlm.NewCount} Nuevos, {resAlm.GhostCount} Sobrantes.");
+                if (!resAlm.AllMatch) allCommentsMatch = false;
 
-                LogService.Write($"[PARAMS-VM] [ExecuteCompare] RESUMEN ALARMAS: {countMatch} OK, {countMismatch} Diferentes, {countNew} Nuevos, {dicAlm.Count} Sobrantes.");
-
-
+                
                 // ==============================================================================
                 // RESULTADO FINAL EN LA BARRA DE ESTADO
                 if (needResize || !allCommentsMatch)
@@ -544,26 +475,36 @@ namespace ZC_ALM_TOOLS.ViewModels
         // Método para ejecutar la sincronización
         private async void ExecuteSync()
         {
+
+            // Comprobar que el usuario ha seleccionado algo para sincronizar
+            if (!SelectSyncReales && !SelectSyncEnteros && !SelectSyncAlarmas)
+            {
+                StatusService.Set("Seleccione al menos un grupo de parámetros para sincronizar.", StatusType.Warning);
+                return;
+            }
+
+
             if (SelectedProcess == null || _tiaPlcService == null) return;
 
-            var confirm = MessageBox.Show($"¿Deseas sincronizar los parámetros de {SelectedProcess.Nombre}?\n(Modo Prueba: Solo exportará los DBs a XML)",
-                                          "Confirmar Sincronización", MessageBoxButton.YesNo, MessageBoxImage.Information);
-
-            if (confirm != MessageBoxResult.Yes) return;
+            if (SelectedProcess == null || _tiaPlcService == null) return;
 
             StatusService.SetBusy(true);
+            StatusService.Set("Iniciando sincronización con TIA Portal...", StatusType.Ok);
+            LogService.Write($"[PARAMS-VM] [ExecuteSync] Iniciando sincronización del proceso: {SelectedProcess.Nombre}");
 
             try
             {
-                StatusService.Set($"Inicio exportación de prueba: {SelectedProcess.Nombre} ---", StatusType.Ok);
-                LogService.Write($"[PARAMS-VM] [ExecuteSync] Inicio exportación de DBs: {SelectedProcess.Nombre} ---");
-
                 await Task.Delay(50);
 
-                // 1. Calcular nombres esperados de las variables N_MAX
+                // ==============================================================================
+                // FASE 1: PREPARACIÓN Y VALIDACIÓN DEL ENTORNO
+                // ==============================================================================
                 string tableName = $"{SelectedProcess.Id}_{SelectedProcess.Nombre}";
+                string constReal = $"{SelectedProcess.Id}{_processSettings.SuffixConstReal}";
+                string constInt = $"{SelectedProcess.Id}{_processSettings.SuffixConstInt}";
+                string constAlm = $"{SelectedProcess.Id}{_processSettings.SuffixConstAlm}";
+                string constAlmHmi = $"{SelectedProcess.Id}{_processSettings.SuffixConstAlmHmi}";
 
-                // 2. Calcular los NOMBRES EXACTOS de los DBs según la norma
                 int dbNumReal = CurrentRealParams.FirstOrDefault()?.DbNumber ?? -1;
                 int dbNumInt = CurrentIntParams.FirstOrDefault()?.DbNumber ?? -1;
                 int dbNumAlm = CurrentAlarms.FirstOrDefault()?.NumDB ?? -1;
@@ -572,84 +513,130 @@ namespace ZC_ALM_TOOLS.ViewModels
                 string dbNameInt = $"DB{dbNumInt}{_processSettings.SuffixDbInt}";
                 string dbNameAlm = $"DB{dbNumAlm}{_processSettings.SuffixDbAlm}";
 
-                // 3. Exportar a Temp
-                string tempDir = AppConfigService.TempPath;
-                string tempReal = Path.Combine(tempDir, "TEST_db_real.xml");
-                string tempInt = Path.Combine(tempDir, "TEST_db_int.xml");
-                string tempAlm = Path.Combine(tempDir, "TEST_db_alm.xml");
-
-                bool exportOk = true;
-
-                StatusService.Set($"Exportando Bloques de Datos a {tempDir}...", StatusType.Ok);
-
-                if (dbNumReal != -1) exportOk &= _tiaPlcService.ExportBlockToXml(dbNameReal, tempReal);
-                if (dbNumInt != -1) exportOk &= _tiaPlcService.ExportBlockToXml(dbNameInt, tempInt);
-                if (dbNumAlm != -1) exportOk &= _tiaPlcService.ExportBlockToXml(dbNameAlm, tempAlm);
-
-                if (exportOk)
+                // Validar que existen en el PLC los elementos que el usuario quiere sincronizar
+                if (_tiaPlcService.FindTagTableRecursively(tableName) == null)
                 {
-                    StatusService.Set("Exportación de prueba completada. Revisa la carpeta temporal.", StatusType.Ok);
-                    MessageBox.Show($"DBs exportados con éxito en la ruta:\n{tempDir}", "Exportación OK", MessageBoxButton.OK, MessageBoxImage.Information);
+                    StatusService.Set($"Error: No se encuentra la tabla '{tableName}' en el PLC.", StatusType.Error);
+                    return;
                 }
-                else
+                if (SelectSyncReales && dbNumReal != -1 && _tiaPlcService.FindBlockByName(dbNameReal) == null)
                 {
-                    StatusService.Set("Error al exportar los bloques. Asegúrate de que existan en el PLC.", StatusType.Error);
+                    StatusService.Set($"Error: No se encuentra el bloque '{dbNameReal}'.", StatusType.Error); return;
                 }
+                if (SelectSyncEnteros && dbNumInt != -1 && _tiaPlcService.FindBlockByName(dbNameInt) == null)
+                {
+                    StatusService.Set($"Error: No se encuentra el bloque '{dbNameInt}'.", StatusType.Error); return;
+                }
+                if (SelectSyncAlarmas && dbNumAlm != -1 && _tiaPlcService.FindBlockByName(dbNameAlm) == null)
+                {
+                    StatusService.Set($"Error: No se encuentra el bloque '{dbNameAlm}'.", StatusType.Error); return;
+                }
+
+                // ==============================================================================
+                // FASE 2: ESCRITURA DE CONSTANTES DE DIMENSIONADO (N_MAX)
+                // ==============================================================================
+                StatusService.Set("Comprobando y actualizando límites N_MAX...", StatusType.Ok);
+                await Task.Delay(50);
+
+                bool needsCompile = false;
+                int expectedAlmHmi = ((SelectedProcess.NumAlarmas / 16) - 1);
+
+                // Reales
+                if (SelectSyncReales && _tiaPlcService.ReadGlobalConstant(tableName, constReal) != SelectedProcess.MaxPReal)
+                {
+                    _tiaPlcService.SyncGlobalConstant(tableName, constReal, SelectedProcess.MaxPReal);
+                    SelectedProcess.StatusPReal = SynchronizationStatus.Ok;
+                    needsCompile = true;
+                }
+
+                // Enteros
+                if (SelectSyncEnteros && _tiaPlcService.ReadGlobalConstant(tableName, constInt) != SelectedProcess.MaxPInt)
+                {
+                    _tiaPlcService.SyncGlobalConstant(tableName, constInt, SelectedProcess.MaxPInt);
+                    SelectedProcess.StatusPInt = SynchronizationStatus.Ok;
+                    needsCompile = true;
+                }
+
+                // Alarmas y Alarmas HMI
+                if (SelectSyncAlarmas)
+                {
+                    if (_tiaPlcService.ReadGlobalConstant(tableName, constAlm) != SelectedProcess.NumAlarmas)
+                    {
+                        _tiaPlcService.SyncGlobalConstant(tableName, constAlm, SelectedProcess.NumAlarmas);
+                        SelectedProcess.StatusAlm = SynchronizationStatus.Ok;
+                        needsCompile = true;
+                    }
+                    if (_tiaPlcService.ReadGlobalConstant(tableName, constAlmHmi) != expectedAlmHmi)
+                    {
+                        _tiaPlcService.SyncGlobalConstant(tableName, constAlmHmi, expectedAlmHmi);
+                        SelectedProcess.StatusAlmHmi = SynchronizationStatus.Ok;
+                    }
+                }
+
+                // Si se ha tocado alguna constante, forzamos compilación para que los Arrays se estiren/encoja internamente
+                if (needsCompile)
+                {
+                    StatusService.Set("Compilando DBs tras redimensionado...", StatusType.Ok);
+                    await Task.Delay(50);
+                    if (SelectSyncReales && dbNumReal != -1) _tiaPlcService.CompileBlock(dbNameReal);
+                    if (SelectSyncEnteros && dbNumInt != -1) _tiaPlcService.CompileBlock(dbNameInt);
+                    if (SelectSyncAlarmas && dbNumAlm != -1) _tiaPlcService.CompileBlock(dbNameAlm);
+                }
+
+                // ==============================================================================
+                // FASE 3: INYECCIÓN DE COMENTARIOS (CIRUGÍA XML)
+                // ==============================================================================
+                StatusService.Set("Inyectando textos y comentarios en los DBs...", StatusType.Ok);
+                await Task.Delay(50);
+
+                bool commentsOk = true;
+
+                if (SelectSyncReales && dbNumReal != -1)
+                {
+                    commentsOk &= _tiaPlcService.SyncParamsComments(
+                        dbNameReal, "PReal", CurrentRealParams, p => p.Numero, p => p.ComentarioDB);
+                }
+
+                if (SelectSyncEnteros && dbNumInt != -1)
+                {
+                    commentsOk &= _tiaPlcService.SyncParamsComments(
+                        dbNameInt, "PInt", CurrentIntParams, p => p.Numero, p => p.ComentarioDB);
+                }
+
+                if (SelectSyncAlarmas && dbNumAlm != -1)
+                {
+                    // OJO: Llamamos al nuevo método SyncAlarmsComments y le decimos que busque el array "ALM"
+                    commentsOk &= _tiaPlcService.SyncAlarmsComments(
+                        dbNameAlm, "ALM", CurrentAlarms, a => a.Numero, a => a.ComentarioDB);
+                }
+
+                // ==============================================================================
+                // FASE 4: COMPILACIÓN FINAL (Obligatoria tras modificar un DB)
+                // ==============================================================================
+                StatusService.Set("Guardando y realizando compilación final...", StatusType.Ok);
+                await Task.Delay(50);
+
+                if (SelectSyncReales && dbNumReal != -1) _tiaPlcService.CompileBlock(dbNameReal);
+                if (SelectSyncEnteros && dbNumInt != -1) _tiaPlcService.CompileBlock(dbNameInt);
+                if (SelectSyncAlarmas && dbNumAlm != -1) _tiaPlcService.CompileBlock(dbNameAlm);
+
+                LogService.Write("[PARAMS-VM] [ExecuteSync] SINCRONIZACIÓN FINALIZADA CORRECTAMENTE.");
+                StatusService.Set("Sincronización finalizada con éxito.", StatusType.Ok);
+
+                // Forzamos un Compare automático para que los semáforos se pongan verdes
+                await ExecuteCompare();
             }
             catch (Exception ex)
             {
-                LogService.Write($"[PARAMS-VM] [ExecuteSync] Error Crítico: {ex.Message}", true);
-                StatusService.Set("Error durante la sincronización. Revisa el Log.", StatusType.Error);
+                StatusService.Set("Error crítico durante la sincronización. Revisa el Log.", StatusType.Error);
+                LogService.Write($"[PARAMS-VM] [ExecuteSync] Error crítico: {ex.Message}", true);
             }
             finally
             {
                 StatusService.SetBusy(false);
             }
+
         }
-
-        // ==================================================================================================================
-        // Método para parsear los DBs exportados y sacar los comentarios de los Arrays
-        private Dictionary<int, string> ParseDbCommentsXml(string path)
-        {
-            var dic = new Dictionary<int, string>();
-            if (!File.Exists(path)) return dic;
-
-            try
-            {
-                XDocument doc = XDocument.Load(path);
-
-                // Buscamos todos los Subelement que tengan atributo Path (índices de los Arrays)
-                var subelements = doc.Descendants().Where(x => x.Name.LocalName == "Subelement" && x.Attribute("Path") != null);
-
-                foreach (var sub in subelements)
-                {
-                    if (int.TryParse(sub.Attribute("Path").Value, out int id))
-                    {
-                        var commentNode = sub.Descendants().FirstOrDefault(x => x.Name.LocalName == "MultiLanguageText" && x.Attribute("Lang")?.Value == "es-ES");
-
-                        if (commentNode != null)
-                        {
-                            string comment = commentNode.Value;
-
-                            // Usamos ContainsKey por si hay otros arrays (como 'Vis') que repiten los índices. 
-                            // Solo nos interesa quedarnos con el primero que encuentre.
-                            if (!dic.ContainsKey(id))
-                            {
-                                dic.Add(id, comment);
-                            }
-                        }
-                    }
-                }
-                LogService.Write($"[PARAMS-VM] [ParseDbXml] Leídos {dic.Count} comentarios del archivo {Path.GetFileName(path)}");
-            }
-            catch (Exception ex)
-            {
-                LogService.Write($"[PARAMS-VM] [ParseDbXml] XML PARSE ERROR en {Path.GetFileName(path)}: {ex.Message}", true);
-            }
-
-            return dic;
-        }
-
 
 
         // ==================================================================================================================
