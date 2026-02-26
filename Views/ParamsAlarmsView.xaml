@@ -61,33 +61,33 @@
                     <ControlTemplate TargetType="ComboBox">
                         <Grid>
                             <Border x:Name="MainBorder" 
-                         Background="{TemplateBinding Background}" 
-                         BorderBrush="{TemplateBinding BorderBrush}" 
-                         BorderThickness="{TemplateBinding BorderThickness}" 
-                         CornerRadius="4"/>
+                                    Background="{TemplateBinding Background}" 
+                                    BorderBrush="{TemplateBinding BorderBrush}" 
+                                    BorderThickness="{TemplateBinding BorderThickness}" 
+                                    CornerRadius="4"/>
                             <Grid Margin="{TemplateBinding Padding}">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <ContentPresenter IsHitTestVisible="False" 
-                                       Content="{TemplateBinding SelectionBoxItem}"
-                                       ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
-                                       ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}"
-                                       VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
-                                       HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"/>
+                                                  Content="{TemplateBinding SelectionBoxItem}"
+                                                  ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                                  ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}"
+                                                  VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                  HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"/>
                                 <Path x:Name="Arrow" Grid.Column="1" 
-                           Data="M0,0 L4,4 L8,0" 
-                           Stroke="#666" StrokeThickness="2" 
-                           VerticalAlignment="Center" Margin="5,0,0,0"/>
+                                      Data="M0,0 L4,4 L8,0" 
+                                      Stroke="#666" StrokeThickness="2" 
+                                      VerticalAlignment="Center" Margin="5,0,0,0"/>
                             </Grid>
                             <ToggleButton Background="Transparent" BorderThickness="0" 
-                               IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"/>
+                                          IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"/>
                             <Popup x:Name="PART_Popup" AllowsTransparency="True" 
-                        IsOpen="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}}" 
-                        Placement="Bottom" PopupAnimation="Slide">
+                                   IsOpen="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}}" 
+                                   Placement="Bottom" PopupAnimation="Slide">
                                 <Border Background="White" BorderBrush="#D0D0D0" BorderThickness="1" 
-                             CornerRadius="4" MinWidth="{TemplateBinding ActualWidth}" MaxHeight="300">
+                                        CornerRadius="4" MinWidth="{TemplateBinding ActualWidth}" MaxHeight="300">
                                     <ScrollViewer>
                                         <ItemsPresenter SnapsToDevicePixels="True"/>
                                     </ScrollViewer>
@@ -105,6 +105,24 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+        </Style>
+
+        <Style x:Key="EstadoCellStyle" TargetType="TextBlock">
+            <Setter Property="Padding" Value="5,0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#F44336"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Estado}" Value="Sincronizado">
+                    <Setter Property="Foreground" Value="#4CAF50"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Estado}" Value="Pendiente">
+                    <Setter Property="Foreground" Value="#999999"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Estado}" Value="Nuevo">
+                    <Setter Property="Foreground" Value="#2196F3"/>
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
     </UserControl.Resources>
 
@@ -132,10 +150,11 @@
                 </ComboBox>
 
                 <Separator Margin="0,0,0,20" Background="#DDD"/>
-
-                <Button Command="{Binding CompareCommand}" 
-                        Content="🔍 Comparar y Validar PLC"
-                        Height="40" Margin="0,0,0,15"
+                <TextBlock Text="WORKFLOW DE SINCRONIZACIÓN" FontWeight="Bold" Foreground="#005B96" Margin="0,0,0,10"/>
+                <TextBlock Text="Paso 1: Comprobaciones" FontWeight="SemiBold" Margin="0,5,0,2" Foreground="#444"/>
+                <Button Command="{Binding CompareCommand}"
+                        Content="Comparar con PLC"
+                        Height="40" Margin="0,0,0,10"
                         Background="#007ACC" BorderThickness="0" Foreground="White" FontWeight="Bold"
                         Cursor="Hand">
                     <Button.Resources>
@@ -144,6 +163,20 @@
                         </Style>
                     </Button.Resources>
                 </Button>
+                <TextBlock Text="Paso 2: Actualización" FontWeight="SemiBold" Margin="0,5,0,2" Foreground="#444"/>
+                <Button Command="{Binding SyncCommand}" 
+                        Content="Sincronizar parametros y alarmas" 
+                        Height="40" Margin="0,0,0,10"
+                        Background="#007ACC" BorderThickness="0" Foreground="White" FontWeight="Bold"
+                        Cursor="Hand">
+                    <Button.Resources>
+                        <Style TargetType="Border">
+                            <Setter Property="CornerRadius" Value="4"/>
+                        </Style>
+                    </Button.Resources>
+                </Button>
+                <TextBlock Text="*Sincroniza N_MAX y Comentarios DB" FontSize="10" Foreground="#888" TextWrapping="Wrap" HorizontalAlignment="Center"/>
+                
                 <Separator Margin="0,0,0,20" Background="#DDD"/>
             </StackPanel>
         </Border>
@@ -191,7 +224,8 @@
                 <TabItem Header="Parámetros Reales">
                     <DataGrid ItemsSource="{Binding CurrentRealParams}"
                               AutoGenerateColumns="False" 
-                              CanUserAddRows="False" 
+                              CanUserAddRows="False"  
+                              IsReadOnly="True"
                               GridLinesVisibility="Horizontal"
                               HorizontalGridLinesBrush="#EEE"
                               HeadersVisibility="Column"
@@ -213,11 +247,10 @@
                         </DataGrid.Resources>
 
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="ID" Binding="{Binding Numero}" Width="60" ElementStyle="{StaticResource CeldaCentrada}"/>
                             <DataGridTextColumn Header="DB" Binding="{Binding DbNumber}" Width="80" ElementStyle="{StaticResource CeldaCentrada}"/>
-                            <DataGridTextColumn Header="Producto" Binding="{Binding Producto}" Width="Auto" ElementStyle="{StaticResource CeldaCentrada}"/>
-                            <DataGridTextColumn Header="Tipo" Binding="{Binding Tipo}" Width="Auto" ElementStyle="{StaticResource CeldaCentrada}"/>
-                            <DataGridTextColumn Header="Descripción" Binding="{Binding Descripcion}" Width="*" FontWeight="Bold" ElementStyle="{StaticResource CeldaCentrada}"/>
+                            <DataGridTextColumn Header="Numero" Binding="{Binding Numero}" Width="60" ElementStyle="{StaticResource CeldaCentrada}"/>
+                            <DataGridTextColumn Header="Descripción" Binding="{Binding ComentarioDB}" Width="Auto" ElementStyle="{StaticResource CeldaCentrada}"/>
+                            <DataGridTextColumn Header="Estado" Binding="{Binding Estado}" Width="Auto" ElementStyle="{StaticResource EstadoCellStyle}"/>
                         </DataGrid.Columns>
                     </DataGrid>
                 </TabItem>
@@ -225,7 +258,8 @@
                 <TabItem Header="Parámetros Enteros">
                     <DataGrid ItemsSource="{Binding CurrentIntParams}"
                               AutoGenerateColumns="False" 
-                              CanUserAddRows="False" 
+                              CanUserAddRows="False"  
+                              IsReadOnly="True"
                               GridLinesVisibility="Horizontal"
                               HorizontalGridLinesBrush="#EEE"
                               HeadersVisibility="Column"
@@ -247,11 +281,10 @@
                         </DataGrid.Resources>
 
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="ID" Binding="{Binding Numero}" Width="60" ElementStyle="{StaticResource CeldaCentrada}"/>
                             <DataGridTextColumn Header="DB" Binding="{Binding DbNumber}" Width="80" ElementStyle="{StaticResource CeldaCentrada}"/>
-                            <DataGridTextColumn Header="Producto" Binding="{Binding Producto}" Width="Auto" ElementStyle="{StaticResource CeldaCentrada}"/>
-                            <DataGridTextColumn Header="Tipo" Binding="{Binding Tipo}" Width="Auto" ElementStyle="{StaticResource CeldaCentrada}"/>
-                            <DataGridTextColumn Header="Descripción" Binding="{Binding Descripcion}" Width="*" FontWeight="Bold" ElementStyle="{StaticResource CeldaCentrada}"/>
+                            <DataGridTextColumn Header="Numero" Binding="{Binding Numero}" Width="60" ElementStyle="{StaticResource CeldaCentrada}"/>
+                            <DataGridTextColumn Header="Descripción" Binding="{Binding ComentarioDB}" Width="Auto" ElementStyle="{StaticResource CeldaCentrada}"/>
+                            <DataGridTextColumn Header="Estado" Binding="{Binding Estado}" Width="Auto" ElementStyle="{StaticResource EstadoCellStyle}"/>
                         </DataGrid.Columns>
                     </DataGrid>
                 </TabItem>
@@ -261,6 +294,7 @@
                     <DataGrid ItemsSource="{Binding CurrentAlarms}"
                               AutoGenerateColumns="False" 
                               CanUserAddRows="False" 
+                              IsReadOnly="True"
                               GridLinesVisibility="Horizontal"
                               HorizontalGridLinesBrush="#EEE"
                               HeadersVisibility="Column"
@@ -274,45 +308,18 @@
                                 <Setter Property="BorderThickness" Value="0,0,0,1"/>
                                 <Setter Property="BorderBrush" Value="#DDD"/>
                             </Style>
+
+                            <Style TargetType="TextBlock" x:Key="CeldaCentrada">
+                                <Setter Property="Padding" Value="5,0"/>
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                            </Style>
                         </DataGrid.Resources>
 
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="Nº Alarma" Binding="{Binding Numero}" Width="80">
-                                <DataGridTextColumn.ElementStyle>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Padding" Value="5,0"/>
-                                        <Setter Property="VerticalAlignment" Value="Center"/>
-                                    </Style>
-                                </DataGridTextColumn.ElementStyle>
-                            </DataGridTextColumn>
-
-                            <DataGridTextColumn Header="Nº DB TIA" Binding="{Binding NumDB}" Width="80" FontWeight="Bold">
-                                <DataGridTextColumn.ElementStyle>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Padding" Value="5,0"/>
-                                        <Setter Property="VerticalAlignment" Value="Center"/>
-                                        <Setter Property="Foreground" Value="#007ACC"/>
-                                    </Style>
-                                </DataGridTextColumn.ElementStyle>
-                            </DataGridTextColumn>
-
-                            <DataGridTextColumn Header="Descripción" Binding="{Binding Descripcion}" Width="300">
-                                <DataGridTextColumn.ElementStyle>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Padding" Value="5,0"/>
-                                        <Setter Property="VerticalAlignment" Value="Center"/>
-                                    </Style>
-                                </DataGridTextColumn.ElementStyle>
-                            </DataGridTextColumn>
-
-                            <DataGridTextColumn Header="Comentario DB" Binding="{Binding ComentarioDB}" Width="*">
-                                <DataGridTextColumn.ElementStyle>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Padding" Value="5,0"/>
-                                        <Setter Property="VerticalAlignment" Value="Center"/>
-                                    </Style>
-                                </DataGridTextColumn.ElementStyle>
-                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="DB" Binding="{Binding DbNumber}" Width="80" ElementStyle="{StaticResource CeldaCentrada}"/>
+                            <DataGridTextColumn Header="Numero" Binding="{Binding Numero}" Width="60" ElementStyle="{StaticResource CeldaCentrada}"/>
+                            <DataGridTextColumn Header="Descripción" Binding="{Binding ComentarioDB}" Width="Auto" ElementStyle="{StaticResource CeldaCentrada}"/>
+                            <DataGridTextColumn Header="Estado" Binding="{Binding Estado}" Width="Auto" ElementStyle="{StaticResource EstadoCellStyle}"/>
                         </DataGrid.Columns>
                     </DataGrid>
                 </TabItem>

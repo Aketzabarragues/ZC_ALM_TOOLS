@@ -73,12 +73,19 @@
 	</Devices>
 	<DeviceSettings>
 		<ConfigTableName>000_Config_Dispositivos</ConfigTableName>
-		<DeviceDataConfigXml>config_disp.xml</DeviceDataConfigXml>
+		<DeviceDataConfigXml Name="Disp_N_Max">config_disp.xml</DeviceDataConfigXml>
 	</DeviceSettings>
 	<ProcessSettings>
 		<ProcessXml Name="Procesos">procesos.xml</ProcessXml>
 		<PRealXml Name="P_Real">preal.xml</PRealXml>
 		<PIntXml Name="P_Int">pint.xml</PIntXml>
 		<AlarmXml Name="Alarmas">alarmas.xml</AlarmXml>
+		<SuffixConstReal>_N_MAX_PREAL</SuffixConstReal>
+		<SuffixConstInt>_N_MAX_PINT</SuffixConstInt>
+		<SuffixConstAlm>_N_MAX_ALM</SuffixConstAlm>
+		<SuffixConstAlmHmi>_N_MAX_ALM_HMI</SuffixConstAlmHmi>		
+		<SuffixDbReal>_PREAL</SuffixDbReal>
+		<SuffixDbInt>_PINT</SuffixDbInt>
+		<SuffixDbAlm>_ALM</SuffixDbAlm>
 	</ProcessSettings>
 </AppConfig>

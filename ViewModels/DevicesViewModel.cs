@@ -82,15 +82,13 @@ namespace ZC_ALM_TOOLS.ViewModels
         }
 
 
+
+        // ==================================================================================================================
         // Método puente para el botón Comparar
         private async void ExecuteCompareCommand()
         {
             await ExecuteCompare(false);
         }
-
-
-
-
 
 
 
@@ -171,7 +169,7 @@ namespace ZC_ALM_TOOLS.ViewModels
                 }
             }
 
-            UpdateDimensionInfo();
+            RefreshView();
         }
 
 

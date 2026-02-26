@@ -160,10 +160,11 @@ namespace ZC_ALM_TOOLS.ViewModels
             if (SelectedTarget != null && SelectedTarget.SoftwareObject is PlcSoftware plc)
             {
 
-                _tiaPlcService.UpdatePlc(plc); 
+                _tiaPlcService.UpdatePlc(plc);
 
                 DevicesVM?.NotifyPlcChanged(SelectedTarget.Name);
-// PENDIENTE PONER EL DE PROCESOS
+                ParamsAlarmsVM?.NotifyPlcChanged(SelectedTarget.Name);
+                // PENDIENTE PONER EL DE PROCESOS
 
                 UpdateStatus($"Objetivo cambiado a: {SelectedTarget.Name}");
             }

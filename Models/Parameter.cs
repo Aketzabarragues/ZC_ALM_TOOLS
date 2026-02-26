@@ -3,8 +3,11 @@ using ZC_ALM_TOOLS.Core;
 
 namespace ZC_ALM_TOOLS.Models
 {
-    public class Parameter
+    public class Parameter : ObservableObject
     {
+
+        // ==================================================================================================================
+        // Propiedades de identificación y Excel   
         public string Uid { get; set; }
         public int Numero { get; set; }
         public string Proceso { get; set; }
@@ -14,6 +17,17 @@ namespace ZC_ALM_TOOLS.Models
         public string Descripcion { get; set; }
         public string ComentarioDB { get; set; }
         public string Visibilidad { get; set; }
+
+
+        // ==================================================================================================================
+        // Propiedades de estado
+        private string _estado = "Pendiente";
+        public string Estado
+        {
+            get => _estado;
+            set { _estado = value; OnPropertyChanged(); }
+        }
+
 
         public static Parameter FromXml(XElement x) => new Parameter
         {

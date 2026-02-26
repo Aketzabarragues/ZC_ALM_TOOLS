@@ -256,6 +256,40 @@ namespace ZC_ALM_TOOLS.Core
 
 
         // ==================================================================================================================
+        // Exportar un bloque (DB, FC, FB) a XML
+        public bool ExportBlockToXml(string blockName, string destinationPath)
+        {
+            try
+            {
+                var block = FindBlockByName(blockName);
+                if (block == null)
+                {
+                    LogService.Write($"[TIA-SERVICE] [ExportBlockToXml] No se encontró el bloque '{blockName}'.", true);
+                    return false;
+                }
+
+                // Asegurarnos de que no haya un archivo viejo "molestando"
+                if (File.Exists(destinationPath))
+                {
+                    File.Delete(destinationPath);
+                }
+
+                // Exportar el bloque usando la API nativa de Openness
+                block.Export(new FileInfo(destinationPath), ExportOptions.WithDefaults);
+
+                LogService.Write($"[TIA-SERVICE] [ExportBlockToXml] Bloque '{blockName}' exportado correctamente a {destinationPath}");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                LogService.Write($"[TIA-SERVICE] [ExportBlockToXml] Error exportando bloque '{blockName}': {ex.Message}", true);
+                return false;
+            }
+        }
+
+
+
+        // ==================================================================================================================
         // Sincroniza el valor de una constante global de dimensionado
         public bool SyncGlobalConstant(string tableName, string constantName, int newValue)
         {
@@ -377,6 +411,8 @@ namespace ZC_ALM_TOOLS.Core
         }
 
 
+
+
         // ==================================================================================================================
         // Buscar bloque recursivamente
         private PlcBlock FindBlockRecursively(PlcBlockGroup group, string name)
@@ -391,6 +427,10 @@ namespace ZC_ALM_TOOLS.Core
             }
             return null;
         }
+
+
+
+
 
     }
 }

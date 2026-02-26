@@ -8,14 +8,28 @@ using ZC_ALM_TOOLS.Core;
 
 namespace ZC_ALM_TOOLS.Models
 {
-    public class Alarms
+    public class Alarms : ObservableObject
     {
+
+        // ==================================================================================================================
+        // Propiedades de identificación y Excel   
         public string UID { get; set; }
         public int Numero { get; set; }
         public string Proceso { get; set; }
         public int NumDB { get; set; }
         public string Descripcion { get; set; }
         public string ComentarioDB { get; set; }
+
+
+        // ==================================================================================================================
+        // Propiedades de estado
+        private string _estado = "Pendiente";
+        public string Estado
+        {
+            get => _estado;
+            set { _estado = value; OnPropertyChanged(); }
+        }
+
 
         public static Alarms FromXml(XElement x) => new Alarms
         {
