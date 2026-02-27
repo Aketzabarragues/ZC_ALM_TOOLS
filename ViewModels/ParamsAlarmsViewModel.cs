@@ -510,19 +510,23 @@ namespace ZC_ALM_TOOLS.ViewModels
 
                 bool commentsOk = true;
 
+                var validReals = CurrentRealParams.Where(p => p.Estado != "Eliminar").ToList();
+                var validInts = CurrentIntParams.Where(p => p.Estado != "Eliminar").ToList();
+                var validAlarms = CurrentAlarms.Where(a => a.Estado != "Eliminar").ToList();
+
                 if (SelectSyncReales && env.DbNumReal != -1)
                 {
-                    commentsOk &= _tiaPlcService.SyncParamsAlarmsDbComments(env.DbNameReal, "PReal", CurrentRealParams, p => p.Numero, p => p.ComentarioDB, true);
+                    commentsOk &= _tiaPlcService.SyncParamsAlarmsDbComments(env.DbNameReal, "PReal", validReals, p => p.Numero, p => p.ComentarioDB, true);
                 }
 
                 if (SelectSyncEnteros && env.DbNumInt != -1)
                 {
-                    commentsOk &= _tiaPlcService.SyncParamsAlarmsDbComments(env.DbNameInt, "PInt", CurrentIntParams, p => p.Numero, p => p.ComentarioDB, true);
+                    commentsOk &= _tiaPlcService.SyncParamsAlarmsDbComments(env.DbNameInt, "PInt", validInts, p => p.Numero, p => p.ComentarioDB, true);
                 }
 
                 if (SelectSyncAlarmas && env.DbNumAlm != -1)
                 {
-                    commentsOk &= _tiaPlcService.SyncParamsAlarmsDbComments(env.DbNameAlm, "ALM", CurrentAlarms, a => a.Numero, a => a.ComentarioDB);
+                    commentsOk &= _tiaPlcService.SyncParamsAlarmsDbComments(env.DbNameAlm, "ALM", validAlarms, a => a.Numero, a => a.ComentarioDB);
                 }
 
                 // ==============================================================================
