@@ -36,7 +36,7 @@ namespace ZC_ALM_TOOLS.ViewModels
         private int _currentPlcNMax = 0;
 
 
-        // Colección visual para el DataGrid. Usamos 'object' para admitir cualquier modelo (Disp_V, Disp_M, etc.)
+        // Colección visual para el DataGrid.
         public ObservableCollection<object> CurrentDevices { get; set; } = new ObservableCollection<object>();
 
         // Lista de categorías (ComboBox)

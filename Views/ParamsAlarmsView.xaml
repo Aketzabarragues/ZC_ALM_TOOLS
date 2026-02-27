@@ -193,8 +193,7 @@
                 <CheckBox Content="Alarmas" IsChecked="{Binding SelectSyncAlarmas}" Margin="5,0,0,15" Foreground="#333" Cursor="Hand"/>
 
                 <TextBlock Text="*Sincroniza N_MAX y Comentarios DB" FontSize="10" Foreground="#888" TextWrapping="Wrap" HorizontalAlignment="Center"/>
-
-                <Separator Margin="0,0,0,20" Background="#DDD"/>
+                
             </StackPanel>
         </Border>
 

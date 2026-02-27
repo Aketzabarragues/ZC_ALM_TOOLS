@@ -177,15 +177,16 @@
             <TabControl Grid.Row="1" Margin="10" 
                         IsEnabled="{Binding IsDataLoaded}"
                         Background="White" BorderBrush="#D0D0D0">
+                <TabItem Header="🏭 Generador de procesos">
+                    <views:ProcessGeneratorView DataContext="{Binding ProcessGeneratorVM}"/>
+                </TabItem>
                 <TabItem Header="🔧 Dispositivos">
                     <views:DevicesView DataContext="{Binding DevicesVM}"/>
                 </TabItem>
-                <TabItem Header="🏭 Parametros y alarmas">
+                <TabItem Header="🚨 Parametros y alarmas">
                     <views:ParamsAlarmsView DataContext="{Binding ParamsAlarmsVM}"/>
                 </TabItem>
-                <TabItem Header="🚨 Generador de procesos">
-                    <views:ProcessGeneratorView DataContext="{Binding ProcessGeneratorVM}"/>
-                </TabItem>
+                
             </TabControl>
         </Grid>
         

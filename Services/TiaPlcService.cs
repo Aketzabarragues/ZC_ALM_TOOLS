@@ -529,7 +529,7 @@ namespace ZC_ALM_TOOLS.Core
 
 
         // ==================================================================================================================
-        // Metodo publico para buscar bloque
+        // Metodo publico para buscar bloque por nombre
         public PlcBlock FindBlockByName(string blockName)
         {
             if (_currentPlc == null) return null;
@@ -541,7 +541,7 @@ namespace ZC_ALM_TOOLS.Core
 
 
         // ==================================================================================================================
-        // Buscar bloque recursivamente
+        // Buscar bloque recursivamente por nombre
         private PlcBlock FindBlockRecursively(PlcBlockGroup group, string name)
         {
             var block = group.Blocks.Find(name);
@@ -557,6 +557,47 @@ namespace ZC_ALM_TOOLS.Core
 
 
 
+
+        // ==================================================================================================================
+        // Metodo publico para buscar bloque por numero
+        public PlcBlock FindBlockByNumber(int number, string blockType)
+        {
+            if (_currentPlc == null) return null;
+            return FindBlockByNumberRecursively(_currentPlc.BlockGroup, number, blockType.ToUpper());
+        }
+
+
+
+
+        // ==================================================================================================================
+        // Buscar bloque recursivamente por numero
+        private PlcBlock FindBlockByNumberRecursively(PlcBlockGroup group, int number, string blockType)
+        {
+            // Recorremos todos los bloques de la carpeta actual
+            foreach (var block in group.Blocks)
+            {
+                // TIA Portal guarda el número del bloque en la propiedad 'Number'
+                if (block.Number == number)
+                {
+                    // Si el número coincide, verificamos que sea del tipo correcto (FC, FB, DB)
+                    // Openness usa clases específicas para cada tipo de bloque
+                    if (blockType == "DB" && (block is GlobalDB || block is InstanceDB || block is ArrayDB)) return block;
+                    if (blockType == "FC" && block is FC) return block;
+                    if (blockType == "FB" && block is FB) return block;
+                    if (blockType == "OB" && block is OB) return block;
+                }
+            }
+
+            // Si no está en esta carpeta, buscamos en las subcarpetas de forma recursiva
+            foreach (var subFolder in group.Groups)
+            {
+                var found = FindBlockByNumberRecursively(subFolder, number, blockType);
+                if (found != null) return found;
+            }
+
+            // Si terminamos de buscar en todas partes y no está, devolvemos null (Vía libre)
+            return null;
+        }
 
 
     }

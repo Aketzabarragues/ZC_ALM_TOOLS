@@ -1,14 +1,37 @@
 ﻿using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using Siemens.Engineering.Safety;
 using ZC_ALM_TOOLS.Core;
 using ZC_ALM_TOOLS.Models;
 using ZC_ALM_TOOLS.Services;
 
 namespace ZC_ALM_TOOLS.ViewModels
 {
+    public class ProjectedBlock : ObservableObject
+    {
+        public string Tipo { get; set; }
+        public int NumeroProyectado { get; set; }
+        public string NombreProyectado { get; set; }
+        public string ArchivoOrigen { get; set; }
+
+        private SynchronizationStatus _estado = SynchronizationStatus.Pending;
+        public SynchronizationStatus Estado
+        {
+            get => _estado;
+            set { _estado = value; OnPropertyChanged(); }
+        }
+
+        private string _mensaje = "Esperando comprobación...";
+        public string Mensaje
+        {
+            get => _mensaje;
+            set { _mensaje = value; OnPropertyChanged(); }
+        }
+    }
+
     public class ProcessGeneratorViewModel : ObservableObject
     {
         private TiaPlcService _tiaPlcService;
@@ -16,7 +39,6 @@ namespace ZC_ALM_TOOLS.ViewModels
         private Dictionary<string, List<object>> _engineeringCache;
         private ConfigGlobalSettings _globalSettings;
 
-        // --- UI Properties ---
         public ObservableCollection<Process> Processes { get; set; } = new ObservableCollection<Process>();
 
         private Process _selectedProcess;
@@ -27,7 +49,7 @@ namespace ZC_ALM_TOOLS.ViewModels
             {
                 _selectedProcess = value;
                 OnPropertyChanged();
-                CheckProcessExistence(); // Comprobamos si existe en el PLC al seleccionarlo
+                UpdateProjections(); // Al cambiar, solo rellena la tabla (sin consultar TIA)
             }
         }
 
@@ -41,33 +63,213 @@ namespace ZC_ALM_TOOLS.ViewModels
             {
                 _selectedTemplate = value;
                 OnPropertyChanged();
-                CheckProcessExistence(); // Re-validamos si cambia la plantilla
+                UpdateProjections(); // Al cambiar, solo rellena la tabla
             }
         }
 
-        private string _statusMessage = "Seleccione un proceso...";
-        public string StatusMessage { get => _statusMessage; set { _statusMessage = value; OnPropertyChanged(); } }
-
-        private string _statusColor = "Transparent";
-        public string StatusColor { get => _statusColor; set { _statusColor = value; OnPropertyChanged(); } }
+        public ObservableCollection<ProjectedBlock> ProjectedBlocks { get; set; } = new ObservableCollection<ProjectedBlock>();
 
         private bool _canGenerate = false;
         public bool CanGenerate { get => _canGenerate; set { _canGenerate = value; OnPropertyChanged(); } }
 
-        // --- Commands ---
+        // Comandos
+        public RelayCommand CompareCommand { get; set; }
         public RelayCommand GenerateCommand { get; set; }
         public RelayCommand RefreshTemplatesCommand { get; set; }
 
         public ProcessGeneratorViewModel()
         {
+            // El botón Comparar solo se habilita si hay bloques en la lista
+            CompareCommand = new RelayCommand(ExecuteCompare, () => ProjectedBlocks.Count > 0);
             GenerateCommand = new RelayCommand(ExecuteGenerate, () => CanGenerate);
             RefreshTemplatesCommand = new RelayCommand(() => LoadTemplates(_globalSettings));
         }
 
+        // ==================================================================================================================
+        // 1. RELLENAR LA TABLA (AUTOMÁTICO) - No interacciona con TIA Portal
+        private void UpdateProjections()
+        {
+            ProjectedBlocks.Clear();
+            CanGenerate = false;
+
+            if (SelectedProcess == null || string.IsNullOrEmpty(SelectedTemplate) || _globalSettings == null)
+            {
+                StatusService.Set("Esperando selección de proceso y plantilla...", StatusType.Warning);
+                return;
+            }
+
+            if (!int.TryParse(SelectedProcess.Id, out int processId)) return;
+
+            string templateIdStr = SelectedTemplate.Split('_')[0];
+            if (!int.TryParse(templateIdStr, out int templateId)) return;
+
+            string templateRootPath = Path.Combine(_globalSettings.ProcessTemplatePath, SelectedTemplate);
+            string bloquesPath = Path.Combine(templateRootPath, "Bloques");
+
+            if (!Directory.Exists(bloquesPath))
+            {
+                StatusService.Set($"Falta la carpeta 'Bloques' en la plantilla.", StatusType.Error);
+                return;
+            }
+
+            // Escaneo de archivos
+            Regex regex = new Regex(@"^(FC|FB|DB)(\d+)", RegexOptions.IgnoreCase);
+            string[] archivosXml = Directory.GetFiles(bloquesPath, "*.xml", SearchOption.AllDirectories);
+
+            foreach (var archivoPath in archivosXml)
+            {
+                string nombreArchivo = Path.GetFileNameWithoutExtension(archivoPath);
+                Match match = regex.Match(nombreArchivo);
+
+                if (match.Success)
+                {
+                    string tipoBloque = match.Groups[1].Value.ToUpper();
+                    int numeroOriginal = int.Parse(match.Groups[2].Value);
+                    int numeroProyectado = numeroOriginal - templateId + processId;
+
+                    ProjectedBlocks.Add(new ProjectedBlock
+                    {
+                        Tipo = tipoBloque,
+                        NumeroProyectado = numeroProyectado,
+                        NombreProyectado = $"{tipoBloque}{numeroProyectado}",
+                        ArchivoOrigen = nombreArchivo + ".xml",
+                        Estado = SynchronizationStatus.Pending,
+                        Mensaje = "Pendiente de comprobar..."
+                    });
+                }
+            }
+
+            // Tabla de variables
+            ProjectedBlocks.Add(new ProjectedBlock
+            {
+                Tipo = "Tabla",
+                NumeroProyectado = 0,
+                NombreProyectado = $"{SelectedProcess.Id}_{SelectedProcess.Nombre}",
+                ArchivoOrigen = "Generación Dinámica",
+                Estado = SynchronizationStatus.Pending,
+                Mensaje = "Pendiente de comprobar..."
+            });
+
+            StatusService.Set($"Lista cargada. Pulsa 'Comparar con PLC' para validar los {ProjectedBlocks.Count} elementos.", StatusType.Ok);
+        }
+
+        // ==================================================================================================================
+        // 2. LA COMPARACIÓN CON TIA PORTAL (Botón)
+        private async void ExecuteCompare()
+        {
+            if (_tiaPlcService == null || ProjectedBlocks.Count == 0) return;
+
+            StatusService.SetBusy(true);
+            StatusService.Set("Validando contra TIA Portal...", StatusType.Ok);
+            bool hayColisiones = false;
+
+            // 1. CHECK DEL MANIFIESTO (Bloques estándar)
+            string templateRootPath = Path.Combine(_globalSettings.ProcessTemplatePath, SelectedTemplate);
+            string dependenciesFile = Path.Combine(templateRootPath, "dependencias.txt");
+
+            if (File.Exists(dependenciesFile))
+            {
+                var lineas = File.ReadAllLines(dependenciesFile);
+                foreach (var dependecia in lineas)
+                {
+                    string depLimpia = dependecia.Trim();
+                    if (string.IsNullOrEmpty(depLimpia)) continue;
+
+                    if (_tiaPlcService.FindBlockByName(depLimpia) == null)
+                    {
+                        StatusService.Set($"Error: Falta el bloque '{depLimpia}' en el PLC (Dependencia de la plantilla).", StatusType.Error);
+                        StatusService.SetBusy(false);
+                        CanGenerate = false;
+                        return;
+                    }
+                }
+            }
+
+            // 2. BUCLE DE MATRÍCULAS
+            foreach (var bloque in ProjectedBlocks)
+            {
+                bloque.Estado = SynchronizationStatus.Pending;
+                bloque.Mensaje = "Comprobando...";
+                await Task.Delay(50); // Refresco visual
+
+                if (bloque.Tipo == "Tabla")
+                {
+                    if (_tiaPlcService.FindTagTableRecursively(bloque.NombreProyectado) != null)
+                    {
+                        bloque.Estado = SynchronizationStatus.Error;
+                        bloque.Mensaje = "La tabla ya existe";
+                        hayColisiones = true;
+                    }
+                    else
+                    {
+                        bloque.Estado = SynchronizationStatus.Ok;
+                        bloque.Mensaje = "Libre";
+                    }
+                }
+                else
+                {
+                    var existente = _tiaPlcService.FindBlockByNumber(bloque.NumeroProyectado, bloque.Tipo);
+                    if (existente != null)
+                    {
+                        bloque.Estado = SynchronizationStatus.Error;
+                        bloque.Mensaje = $"El bloque ya existe";
+                        hayColisiones = true;
+                    }
+                    else
+                    {
+                        bloque.Estado = SynchronizationStatus.Ok;
+                        bloque.Mensaje = "Libre";
+                    }
+                }
+            }
+
+            if (hayColisiones)
+            {
+                StatusService.Set("Colisiones detectadas. Revisa la lista en pantalla.", StatusType.Error);
+                CanGenerate = false;
+            }
+            else
+            {
+                StatusService.Set($"Vía libre. {ProjectedBlocks.Count} elementos listos para proyectar.", StatusType.Ok);
+                CanGenerate = true;
+            }
+
+            StatusService.SetBusy(false);
+        }
+
+        // ==================================================================================================================
+        // 3. LA GENERACIÓN (Botón final)
+        private async void ExecuteGenerate()
+        {
+            StatusService.SetBusy(true);
+            StatusService.Set($"Generando proceso {SelectedProcess.Nombre}...", StatusType.Warning);
+            LogService.Write($"[GENERATOR-VM] === INICIANDO GENERACIÓN DEL PROCESO {SelectedProcess.Nombre} ===");
+
+            try
+            {
+                await Task.Delay(500); // Simulamos trabajo por ahora
+
+                // TODO: FASE 2 -> Modificar XMLs de la plantilla e inyectar tabla de variables.
+
+                StatusService.Set("¡Generación completada con éxito!", StatusType.Ok);
+            }
+            catch (System.Exception ex)
+            {
+                StatusService.Set($"Error al generar: {ex.Message}", StatusType.Error);
+                LogService.Write($"[GENERATOR-VM] Error Crítico: {ex.Message}", true);
+            }
+            finally
+            {
+                StatusService.SetBusy(false);
+            }
+        }
+
+        // ==================================================================================================================
+        // METODOS AUXILIARES
         public void SetTiaService(TiaPlcService tiaPlcService)
         {
             _tiaPlcService = tiaPlcService;
-            CheckProcessExistence();
+            UpdateProjections();
         }
 
         public void LoadData(Dictionary<string, List<object>> cache, ConfigProcessSettings settings, ConfigGlobalSettings globalSettings)
@@ -88,114 +290,38 @@ namespace ZC_ALM_TOOLS.ViewModels
             if (Processes.Count > 0 && SelectedProcess == null)
                 SelectedProcess = Processes[0];
             else
-                CheckProcessExistence();
+                UpdateProjections();
         }
 
-
-
-
-
-
+        public void NotifyPlcChanged(string plcName)
+        {
+            // Si cambian de PLC, obligamos a que vuelvan a comparar
+            foreach (var block in ProjectedBlocks)
+            {
+                block.Estado = SynchronizationStatus.Pending;
+                block.Mensaje = "PLC cambiado. Vuelva a comparar.";
+            }
+            CanGenerate = false;
+        }
 
         public void LoadTemplates(ConfigGlobalSettings globalSettings)
         {
             Templates.Clear();
 
-            if (globalSettings == null || string.IsNullOrEmpty(globalSettings.ProcessTemplatePath)) return;
+            if (globalSettings != null) _globalSettings = globalSettings;
+            if (_globalSettings == null || string.IsNullOrEmpty(_globalSettings.ProcessTemplatePath)) return;
 
-            string templatePath = globalSettings.ProcessTemplatePath;
+            string templatePath = _globalSettings.ProcessTemplatePath;
 
-            if (System.IO.Directory.Exists(templatePath))
+            if (Directory.Exists(templatePath))
             {
-                // Leemos solo las carpetas del primer nivel (ej. "21990_PLANTILLA")
-                var directories = System.IO.Directory.GetDirectories(templatePath);
-                foreach (var dir in directories)
-                {
-                    Templates.Add(System.IO.Path.GetFileName(dir));
-                }
-
-                if (Templates.Count > 0)
-                {
-                    SelectedTemplate = Templates[0]; // Seleccionamos la primera por defecto
-                }
+                var directories = Directory.GetDirectories(templatePath);
+                foreach (var dir in directories) Templates.Add(Path.GetFileName(dir));
+                if (Templates.Count > 0) SelectedTemplate = Templates[0];
             }
             else
             {
-                LogService.Write($"[GENERATOR-VM] ¡ATENCIÓN! No existe la ruta de plantillas: {templatePath}", true);
-                StatusMessage = $"Ruta de plantillas no encontrada: {templatePath}";
-                StatusColor = "#FFF3CD";
-            }
-        }
-
-        // ==============================================================================
-        // MÉTODOS DE VALIDACIÓN
-        // ==============================================================================
-        public void NotifyPlcChanged(string plcName)
-        {
-            CheckProcessExistence();
-        }
-
-        private void CheckProcessExistence()
-        {
-            if (SelectedProcess == null || _tiaPlcService == null || _processSettings == null)
-            {
-                StatusMessage = "Esperando conexión...";
-                StatusColor = "#E0E0E0"; // Gris
-                CanGenerate = false;
-                return;
-            }
-
-            // Convertimos el ID (string) a entero de forma segura
-            if (int.TryParse(SelectedProcess.Id, out int processId))
-            {
-                int expectedDbNumber = processId + 3000;
-                string expectedDbName = $"DB{expectedDbNumber}{_processSettings.SuffixDbReal}"; // ej. DB3100_PREAL
-
-                LogService.Write($"[GENERATOR-VM] Buscando si existe el bloque {expectedDbName} para el proceso {SelectedProcess.Nombre}...");
-
-                var existingBlock = _tiaPlcService.FindBlockByName(expectedDbName);
-
-                if (existingBlock != null)
-                {
-                    StatusMessage = $"El proceso {SelectedProcess.Nombre} ya existe en el PLC (Se detectó {expectedDbName}).";
-                    StatusColor = "#F2DEDE"; // Rojo claro
-                    CanGenerate = false; // Bloqueamos el botón
-                }
-                else
-                {
-                    StatusMessage = $"El proceso {SelectedProcess.Nombre} no existe. Listo para ser generado.";
-                    StatusColor = "#DFF0D8"; // Verde claro
-                    CanGenerate = true; // Habilitamos el botón
-                }
-            }
-            else
-            {
-                StatusMessage = $"Error: El ID del proceso '{SelectedProcess.Id}' no es un número válido.";
-                StatusColor = "#FFF3CD"; // Naranja clarito
-                CanGenerate = false;
-            }
-        }
-
-        // ==============================================================================
-        // MÉTODOS DE ACCIÓN (FASE 2 en adelante)
-        // ==============================================================================
-        private async void ExecuteGenerate()
-        {
-            StatusService.SetBusy(true);
-            StatusService.Set($"Generando proceso {SelectedProcess.Nombre}...", StatusType.Ok);
-            LogService.Write($"[GENERATOR-VM] === INICIANDO GENERACIÓN DEL PROCESO {SelectedProcess.Nombre} ===");
-
-            try
-            {
-                await Task.Delay(500); // Simulamos trabajo por ahora
-
-                // TODO: FASE 2 -> Modificar XMLs de la plantilla e inyectar tabla de variables.
-
-                StatusService.Set("¡Generación (Simulada) completada!", StatusType.Ok);
-            }
-            finally
-            {
-                StatusService.SetBusy(false);
+                StatusService.Set($"Ruta de plantillas no encontrada: {templatePath}", StatusType.Warning);
             }
         }
     }
