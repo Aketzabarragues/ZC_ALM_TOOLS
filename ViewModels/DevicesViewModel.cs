@@ -189,18 +189,14 @@ namespace ZC_ALM_TOOLS.ViewModels
             try
             {
                 // Obtener valor del Excel
-                int excelVal = 0;
-                if (_engineeringCache.TryGetValue(_deviceSettings.Disp_N_Max, out var limitsList))
-                {
-                    var limitItem = limitsList.Cast<Disp_Config>()
-                        .FirstOrDefault(x => x.Nombre == SelectedCategory.GlobalConfigKey);
-                    excelVal = limitItem?.Valor ?? 0;
-                }
+                var env = new DevicesEnvironment(SelectedCategory, _deviceSettings, _engineeringCache, _tiaPlcService, validatePlc: false);
+                int excelVal = env.ExcelNMax;
 
                 DimensionInfo = $"Dimensión: Excel ({excelVal}) | PLC (Consultando...)";
                 DimensionColor = "LightGray";
 
                 await Task.Delay(50);
+
                 // Obtener valor del PLC (Consultar TIA o usar Caché)
                 if (!_plcCache.TryGetValue(SelectedCategory.Name, out _currentPlcNMax))
                 {
@@ -239,37 +235,27 @@ namespace ZC_ALM_TOOLS.ViewModels
 
             try
             {
+
+                var env = new DevicesEnvironment(SelectedCategory, _deviceSettings, _engineeringCache, _tiaPlcService, validatePlc: true);
+                if (!env.IsValid) return;
+
                 StatusService.Set($"Inicio sincronización: {SelectedCategory.Name} ---", StatusType.Ok);
                 LogService.Write($"[DEVICE-VM] [ExecuteSync] Inicio sincronización: {SelectedCategory.Name} ---");
 
-                // N_MAX. Buscamos la carpeta de límites ("Disp_N_Max")
-                if (_engineeringCache.TryGetValue(_deviceSettings.Disp_N_Max, out var limits))
+                okNMax = _tiaPlcService.SyncGlobalConstant(_deviceSettings.ConfigTableName, SelectedCategory.PlcCountConstant, env.ExcelNMax);
+
+                SelectedCategory.NMaxStatus = okNMax ? SynchronizationStatus.Ok : SynchronizationStatus.Error;
+
+                if (!okNMax)
                 {
-                    // Buscamos el límite específico de esta categoría (ej. "Num_Disp_M")
-                    var limitItem = limits.Cast<Disp_Config>()
-                                          .FirstOrDefault(x => x.Nombre == SelectedCategory.GlobalConfigKey);
-
-                    if (limitItem != null)
-                    {
-                        int excelVal = limitItem.Valor;
-
-                        // Sincronizamos con la tabla dinámica definida en el XML Maestro
-                        okNMax = _tiaPlcService.SyncGlobalConstant(_deviceSettings.ConfigTableName, SelectedCategory.PlcCountConstant, excelVal);
-
-                        SelectedCategory.NMaxStatus = okNMax ? SynchronizationStatus.Ok : SynchronizationStatus.Error;
-
-                        if (!okNMax)
-                        {
-                            MessageBox.Show("Error crítico al sincronizar N_MAX. Se aborta el proceso.");
-                            return;
-                        }
-
-                        // Actualizamos caché de PLC y UI para que la barra se ponga verde
-                        _plcCache[SelectedCategory.Name] = excelVal;
-                        _currentPlcNMax = excelVal;
-                        UpdateDimensionInfo();
-                    }
+                    MessageBox.Show("Error crítico al sincronizar N_MAX. Se aborta el proceso.");
+                    return;
                 }
+
+                // Actualizamos caché de PLC y UI para que la barra se ponga verde
+                _plcCache[SelectedCategory.Name] = env.ExcelNMax;
+                _currentPlcNMax = env.ExcelNMax;
+                UpdateDimensionInfo();
 
 
                 StatusService.Set("Sincronizando constantes de usuario...", StatusType.Ok);
@@ -379,10 +365,13 @@ namespace ZC_ALM_TOOLS.ViewModels
 
                 RefreshView();
 
+                var env = new DevicesEnvironment(SelectedCategory, _deviceSettings, _engineeringCache, _tiaPlcService, validatePlc: true);
+                if (!env.IsValid) return;
+
                 LogService.Write($"[DEVICE-VM] [ExecuteCompare] Iniciando comparación: {SelectedCategory.Name} ---");
                 StatusService.Set("Comparando datos con TIA Portal...", StatusType.Ok);
 
-                await Task.Delay(10);
+                await Task.Delay(50);
 
                 // Reset de estados
                 SelectedCategory.NMaxStatus = SynchronizationStatus.Pending;
@@ -393,20 +382,9 @@ namespace ZC_ALM_TOOLS.ViewModels
                 StatusService.Set("Comprobando dimensión N_MAX...", StatusType.Ok);
                 UpdateDimensionInfo();
 
-                int excelVal = 0;
-                if (_engineeringCache.TryGetValue(_deviceSettings.Disp_N_Max, out var limits))
-                {
-                    var limitItem = limits.Cast<Disp_Config>()
-                                          .FirstOrDefault(x => x.Nombre == SelectedCategory.GlobalConfigKey);
-                    if (limitItem != null)
-                    {
-                        excelVal = limitItem.Valor;
-                    }
-                }
-
-                bool nMaxMatch = (excelVal == _currentPlcNMax);
+                bool nMaxMatch = (env.ExcelNMax == _currentPlcNMax);
                 SelectedCategory.NMaxStatus = nMaxMatch ? SynchronizationStatus.Ok : SynchronizationStatus.Error;
-                LogService.Write($"[DEVICE-VM] [ExecuteCompare] N_MAX -> Excel: {excelVal} | PLC: {_currentPlcNMax} ({(nMaxMatch ? "OK" : "ERROR")})");
+                LogService.Write($"[DEVICE-VM] [ExecuteCompare] N_MAX -> Excel: {env.ExcelNMax} | PLC: {_currentPlcNMax} ({(nMaxMatch ? "OK" : "ERROR")})");
 
                 // Exportar y Parsear PLC
                 string tempXmlPath = Path.Combine(AppConfigService.TempPath, "plc_export.xml");

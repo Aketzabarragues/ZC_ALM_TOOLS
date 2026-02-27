@@ -80,6 +80,7 @@
     <Compile Include="Models\ConfigDeviceCategory.cs" />
     <Compile Include="Models\ConfigDeviceSettings.cs" />
     <Compile Include="Models\ConfigGlobalSettings.cs" />
+    <Compile Include="Models\DevicesEnvironment.cs" />
     <Compile Include="Models\Disp_Config.cs" />
     <Compile Include="Models\Disp_M_VF.cs" />
     <Compile Include="Models\Disp_SA.cs" />
@@ -90,6 +91,7 @@
     <Compile Include="Models\IDevice.cs" />
     <Compile Include="Models\Parameter.cs" />
     <Compile Include="Models\ConfigProcessSettings.cs" />
+    <Compile Include="Models\ParamsAlarmsEnvironment.cs" />
     <Compile Include="Models\SynchronizationStatus.cs" />
     <Compile Include="Models\TiaTarget.cs" />
     <Compile Include="Services\AppConfigService.cs" />

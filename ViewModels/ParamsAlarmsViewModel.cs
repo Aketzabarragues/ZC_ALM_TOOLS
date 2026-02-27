@@ -164,17 +164,7 @@ namespace ZC_ALM_TOOLS.ViewModels
                 var filtradasAlarmas = alarms.Cast<Alarms>().Where(a => a.Proceso == SelectedProcess.Nombre);
                 foreach (var a in filtradasAlarmas) CurrentAlarms.Add(a);
             }
-
-            // Reseteamos el estado de los modelos en caché para que vuelvan a salir grises ("Pendiente")
-            foreach (var list in _engineeringCache.Values)
-            {
-                foreach (var item in list)
-                {
-                    if (item is Parameter p) p.Estado = "Pendiente";
-                    if (item is Alarms a) a.Estado = "Pendiente";
-                }
-            }
-
+                        
             LogService.Write($"[PARAMS-VM] [RefreshView] Tablas actualizadas. PReal: {CurrentRealParams.Count} | PInt: {CurrentIntParams.Count} | Alarmas: {CurrentAlarms.Count}");
         }
 
@@ -221,6 +211,9 @@ namespace ZC_ALM_TOOLS.ViewModels
             if (SelectedProcess == null || _tiaPlcService == null) return;
 
             StatusService.SetBusy(true);
+
+            RefreshView();
+
             StatusService.Set("Comparando datos con TIA Portal...", StatusType.Ok);
 
             SelectedProcess.StatusPReal = SynchronizationStatus.Pending;
@@ -232,62 +225,19 @@ namespace ZC_ALM_TOOLS.ViewModels
             {
                 await Task.Delay(50);
 
-                // Calcular nombres esperados de las variables N_MAX
-                string tableName = $"{SelectedProcess.Id}_{SelectedProcess.Nombre}";
-                string constReal = $"{SelectedProcess.Id}{_processSettings.SuffixConstReal}";
-                string constInt = $"{SelectedProcess.Id}{_processSettings.SuffixConstInt}";
-                string constAlm = $"{SelectedProcess.Id}{_processSettings.SuffixConstAlm}";
-                string constAlmHmi = $"{SelectedProcess.Id}{_processSettings.SuffixConstAlmHmi}";
+                var env = new ParamsAlarmsEnvironment(
+                    SelectedProcess, _processSettings,
+                    CurrentRealParams, CurrentIntParams, CurrentAlarms,
+                    _tiaPlcService, forSync: false);
 
-                // Calcular los NOMBRES EXACTOS de los DBs según la norma del Excel
-                int dbNumReal = CurrentRealParams.FirstOrDefault()?.DbNumber ?? -1;
-                int dbNumInt = CurrentIntParams.FirstOrDefault()?.DbNumber ?? -1;
-                int dbNumAlm = CurrentAlarms.FirstOrDefault()?.NumDB ?? -1;
-
-                string dbNameReal = $"DB{dbNumReal}{_processSettings.SuffixDbReal}";
-                string dbNameInt = $"DB{dbNumInt}{_processSettings.SuffixDbInt}";
-                string dbNameAlm = $"DB{dbNumAlm}{_processSettings.SuffixDbAlm}";
-
-                // Búsqueda de Tablas y DBs por NOMBRE ESTRICTO
-                LogService.Write($"[PARAMS-VM] [ExecuteCompare] Buscando tabla '{tableName}'...");
-                var table = _tiaPlcService.FindTagTableRecursively(tableName);
-
-                if (table == null) 
-                { 
-                    StatusService.Set($"Error: No se encuentra la tabla '{tableName}' en el PLC.", StatusType.Error); 
-                    return; 
-                }
-
-                await Task.Delay(10);
-
-                if (dbNumReal != -1 && _tiaPlcService.FindBlockByName(dbNameReal) == null)
-                {
-                    StatusService.Set($"Error: No se encuentra el bloque '{dbNameReal}' en el PLC.", StatusType.Error);
-                    return;
-                }
-
-                await Task.Delay(10);
-
-                if (dbNumInt != -1 && _tiaPlcService.FindBlockByName(dbNameInt) == null)
-                {
-                    StatusService.Set($"Error: No se encuentra el bloque '{dbNameInt}' en el PLC.", StatusType.Error);
-                    return;
-                }
-
-                await Task.Delay(10);
-
-                if (dbNumAlm != -1 && _tiaPlcService.FindBlockByName(dbNameAlm) == null)
-                {
-                    StatusService.Set($"Error: No se encuentra el bloque '{dbNameAlm}' en el PLC.", StatusType.Error);
-                    return;
-                }
+                if (!env.IsValid) return;
 
                 // COMPARACIÓN DE CONSTANTES (N_MAX)
                 LogService.Write("[PARAMS-VM] [ExecuteCompare] Leyendo capacidades N_MAX...");
-                int plcMaxReal = _tiaPlcService.ReadGlobalConstant(tableName, constReal);
-                int plcMaxInt = _tiaPlcService.ReadGlobalConstant(tableName, constInt);
-                int plcMaxAlm = _tiaPlcService.ReadGlobalConstant(tableName, constAlm);
-                int plcMaxAlmHmi = _tiaPlcService.ReadGlobalConstant(tableName, constAlmHmi);
+                int plcMaxReal = _tiaPlcService.ReadGlobalConstant(env.TableName, env.ConstReal);
+                int plcMaxInt = _tiaPlcService.ReadGlobalConstant(env.TableName, env.ConstInt);
+                int plcMaxAlm = _tiaPlcService.ReadGlobalConstant(env.TableName, env.ConstAlm);
+                int plcMaxAlmHmi = _tiaPlcService.ReadGlobalConstant(env.TableName , env.ConstAlmHmi);
 
                 // Calculo de constante para alarmas HMI
                 int expectedAlmHmi = ((SelectedProcess.NumAlarmas / 16) - 1);
@@ -321,9 +271,9 @@ namespace ZC_ALM_TOOLS.ViewModels
                 StatusService.Set("Compilando Bloques de Datos en TIA Portal...", StatusType.Ok);
                 await Task.Delay(50);
 
-                if (dbNumReal != -1) _tiaPlcService.CompileBlock(dbNameReal);
-                if (dbNumInt != -1) _tiaPlcService.CompileBlock(dbNameInt);
-                if (dbNumAlm != -1) _tiaPlcService.CompileBlock(dbNameAlm);
+                if (env.DbNumReal != -1) _tiaPlcService.CompileBlock(env.DbNameReal);
+                if (env.DbNumInt != -1) _tiaPlcService.CompileBlock(env.DbNameInt);
+                if (env.DbNumAlm != -1) _tiaPlcService.CompileBlock(env.DbNameAlm);
 
 
                 // ==============================================================================
@@ -338,9 +288,9 @@ namespace ZC_ALM_TOOLS.ViewModels
                 string tempAlm = Path.Combine(tempDir, "db_alm.xml");
 
                 bool exportOk = true;
-                if (dbNumReal != -1) exportOk &= _tiaPlcService.ExportBlockToXml(dbNameReal, tempReal);
-                if (dbNumInt != -1) exportOk &= _tiaPlcService.ExportBlockToXml(dbNameInt, tempInt);
-                if (dbNumAlm != -1) exportOk &= _tiaPlcService.ExportBlockToXml(dbNameAlm, tempAlm);
+                if (env.DbNumReal != -1) exportOk &= _tiaPlcService.ExportBlockToXml(env.DbNameReal, tempReal);
+                if (env.DbNumInt != -1) exportOk &= _tiaPlcService.ExportBlockToXml(env.DbNameInt, tempInt);
+                if (env.DbNumAlm != -1) exportOk &= _tiaPlcService.ExportBlockToXml(env.DbNameAlm, tempAlm);
 
                 if (!exportOk)
                 {
@@ -373,7 +323,7 @@ namespace ZC_ALM_TOOLS.ViewModels
                         Numero = id, 
                         ComentarioDB = txt, 
                         Descripcion = "--- NO EXISTE EN EXCEL ---", 
-                        DbNumber = dbNumReal, 
+                        DbNumber = env.DbNumReal, 
                         Proceso = SelectedProcess.Nombre, Estado = "Eliminar" 
                     }
                 );
@@ -400,7 +350,7 @@ namespace ZC_ALM_TOOLS.ViewModels
                         Numero = id, 
                         ComentarioDB = txt, 
                         Descripcion = "--- NO EXISTE EN EXCEL ---", 
-                        DbNumber = dbNumInt, 
+                        DbNumber = env.DbNumInt, 
                         Proceso = SelectedProcess.Nombre, 
                         Estado = "Eliminar" 
                     }
@@ -428,7 +378,7 @@ namespace ZC_ALM_TOOLS.ViewModels
                         Numero = id, 
                         ComentarioDB = txt, 
                         Descripcion = "--- NO EXISTE EN EXCEL ---", 
-                        NumDB = dbNumAlm,
+                        NumDB = env.DbNumAlm,
                         Proceso = SelectedProcess.Nombre, Estado = "Eliminar" 
                     }
                 );
@@ -486,8 +436,6 @@ namespace ZC_ALM_TOOLS.ViewModels
 
             if (SelectedProcess == null || _tiaPlcService == null) return;
 
-            if (SelectedProcess == null || _tiaPlcService == null) return;
-
             StatusService.SetBusy(true);
             StatusService.Set("Iniciando sincronización con TIA Portal...", StatusType.Ok);
             LogService.Write($"[PARAMS-VM] [ExecuteSync] Iniciando sincronización del proceso: {SelectedProcess.Nombre}");
@@ -499,38 +447,13 @@ namespace ZC_ALM_TOOLS.ViewModels
                 // ==============================================================================
                 // FASE 1: PREPARACIÓN Y VALIDACIÓN DEL ENTORNO
                 // ==============================================================================
-                string tableName = $"{SelectedProcess.Id}_{SelectedProcess.Nombre}";
-                string constReal = $"{SelectedProcess.Id}{_processSettings.SuffixConstReal}";
-                string constInt = $"{SelectedProcess.Id}{_processSettings.SuffixConstInt}";
-                string constAlm = $"{SelectedProcess.Id}{_processSettings.SuffixConstAlm}";
-                string constAlmHmi = $"{SelectedProcess.Id}{_processSettings.SuffixConstAlmHmi}";
+                var env = new ParamsAlarmsEnvironment(
+                    SelectedProcess, _processSettings,
+                    CurrentRealParams, CurrentIntParams, CurrentAlarms,
+                    _tiaPlcService, forSync: true,
+                    SelectSyncReales, SelectSyncEnteros, SelectSyncAlarmas);
 
-                int dbNumReal = CurrentRealParams.FirstOrDefault()?.DbNumber ?? -1;
-                int dbNumInt = CurrentIntParams.FirstOrDefault()?.DbNumber ?? -1;
-                int dbNumAlm = CurrentAlarms.FirstOrDefault()?.NumDB ?? -1;
-
-                string dbNameReal = $"DB{dbNumReal}{_processSettings.SuffixDbReal}";
-                string dbNameInt = $"DB{dbNumInt}{_processSettings.SuffixDbInt}";
-                string dbNameAlm = $"DB{dbNumAlm}{_processSettings.SuffixDbAlm}";
-
-                // Validar que existen en el PLC los elementos que el usuario quiere sincronizar
-                if (_tiaPlcService.FindTagTableRecursively(tableName) == null)
-                {
-                    StatusService.Set($"Error: No se encuentra la tabla '{tableName}' en el PLC.", StatusType.Error);
-                    return;
-                }
-                if (SelectSyncReales && dbNumReal != -1 && _tiaPlcService.FindBlockByName(dbNameReal) == null)
-                {
-                    StatusService.Set($"Error: No se encuentra el bloque '{dbNameReal}'.", StatusType.Error); return;
-                }
-                if (SelectSyncEnteros && dbNumInt != -1 && _tiaPlcService.FindBlockByName(dbNameInt) == null)
-                {
-                    StatusService.Set($"Error: No se encuentra el bloque '{dbNameInt}'.", StatusType.Error); return;
-                }
-                if (SelectSyncAlarmas && dbNumAlm != -1 && _tiaPlcService.FindBlockByName(dbNameAlm) == null)
-                {
-                    StatusService.Set($"Error: No se encuentra el bloque '{dbNameAlm}'.", StatusType.Error); return;
-                }
+                if (!env.IsValid) return;
 
                 // ==============================================================================
                 // FASE 2: ESCRITURA DE CONSTANTES DE DIMENSIONADO (N_MAX)
@@ -542,17 +465,15 @@ namespace ZC_ALM_TOOLS.ViewModels
                 int expectedAlmHmi = ((SelectedProcess.NumAlarmas / 16) - 1);
 
                 // Reales
-                if (SelectSyncReales && _tiaPlcService.ReadGlobalConstant(tableName, constReal) != SelectedProcess.MaxPReal)
+                if (SelectSyncReales && _tiaPlcService.SyncGlobalConstant(env.TableName, env.ConstReal, SelectedProcess.MaxPReal))
                 {
-                    _tiaPlcService.SyncGlobalConstant(tableName, constReal, SelectedProcess.MaxPReal);
                     SelectedProcess.StatusPReal = SynchronizationStatus.Ok;
                     needsCompile = true;
                 }
 
                 // Enteros
-                if (SelectSyncEnteros && _tiaPlcService.ReadGlobalConstant(tableName, constInt) != SelectedProcess.MaxPInt)
+                if (SelectSyncEnteros && _tiaPlcService.SyncGlobalConstant(env.TableName, env.ConstInt, SelectedProcess.MaxPInt))
                 {
-                    _tiaPlcService.SyncGlobalConstant(tableName, constInt, SelectedProcess.MaxPInt);
                     SelectedProcess.StatusPInt = SynchronizationStatus.Ok;
                     needsCompile = true;
                 }
@@ -560,15 +481,13 @@ namespace ZC_ALM_TOOLS.ViewModels
                 // Alarmas y Alarmas HMI
                 if (SelectSyncAlarmas)
                 {
-                    if (_tiaPlcService.ReadGlobalConstant(tableName, constAlm) != SelectedProcess.NumAlarmas)
+                    if (_tiaPlcService.SyncGlobalConstant(env.TableName, env.ConstAlm, SelectedProcess.NumAlarmas))
                     {
-                        _tiaPlcService.SyncGlobalConstant(tableName, constAlm, SelectedProcess.NumAlarmas);
                         SelectedProcess.StatusAlm = SynchronizationStatus.Ok;
                         needsCompile = true;
                     }
-                    if (_tiaPlcService.ReadGlobalConstant(tableName, constAlmHmi) != expectedAlmHmi)
+                    if (_tiaPlcService.SyncGlobalConstant(env.TableName, env.ConstAlmHmi, expectedAlmHmi))
                     {
-                        _tiaPlcService.SyncGlobalConstant(tableName, constAlmHmi, expectedAlmHmi);
                         SelectedProcess.StatusAlmHmi = SynchronizationStatus.Ok;
                     }
                 }
@@ -578,9 +497,9 @@ namespace ZC_ALM_TOOLS.ViewModels
                 {
                     StatusService.Set("Compilando DBs tras redimensionado...", StatusType.Ok);
                     await Task.Delay(50);
-                    if (SelectSyncReales && dbNumReal != -1) _tiaPlcService.CompileBlock(dbNameReal);
-                    if (SelectSyncEnteros && dbNumInt != -1) _tiaPlcService.CompileBlock(dbNameInt);
-                    if (SelectSyncAlarmas && dbNumAlm != -1) _tiaPlcService.CompileBlock(dbNameAlm);
+                    if (SelectSyncReales && env.DbNumReal != -1) _tiaPlcService.CompileBlock(env.DbNameReal);
+                    if (SelectSyncEnteros && env.DbNumInt != -1) _tiaPlcService.CompileBlock(env.DbNameInt);
+                    if (SelectSyncAlarmas && env.DbNumAlm != -1) _tiaPlcService.CompileBlock(env.DbNameAlm);
                 }
 
                 // ==============================================================================
@@ -591,23 +510,19 @@ namespace ZC_ALM_TOOLS.ViewModels
 
                 bool commentsOk = true;
 
-                if (SelectSyncReales && dbNumReal != -1)
+                if (SelectSyncReales && env.DbNumReal != -1)
                 {
-                    commentsOk &= _tiaPlcService.SyncParamsComments(
-                        dbNameReal, "PReal", CurrentRealParams, p => p.Numero, p => p.ComentarioDB);
+                    commentsOk &= _tiaPlcService.SyncParamsAlarmsDbComments(env.DbNameReal, "PReal", CurrentRealParams, p => p.Numero, p => p.ComentarioDB, true);
                 }
 
-                if (SelectSyncEnteros && dbNumInt != -1)
+                if (SelectSyncEnteros && env.DbNumInt != -1)
                 {
-                    commentsOk &= _tiaPlcService.SyncParamsComments(
-                        dbNameInt, "PInt", CurrentIntParams, p => p.Numero, p => p.ComentarioDB);
+                    commentsOk &= _tiaPlcService.SyncParamsAlarmsDbComments(env.DbNameInt, "PInt", CurrentIntParams, p => p.Numero, p => p.ComentarioDB, true);
                 }
 
-                if (SelectSyncAlarmas && dbNumAlm != -1)
+                if (SelectSyncAlarmas && env.DbNumAlm != -1)
                 {
-                    // OJO: Llamamos al nuevo método SyncAlarmsComments y le decimos que busque el array "ALM"
-                    commentsOk &= _tiaPlcService.SyncAlarmsComments(
-                        dbNameAlm, "ALM", CurrentAlarms, a => a.Numero, a => a.ComentarioDB);
+                    commentsOk &= _tiaPlcService.SyncParamsAlarmsDbComments(env.DbNameAlm, "ALM", CurrentAlarms, a => a.Numero, a => a.ComentarioDB);
                 }
 
                 // ==============================================================================
@@ -616,15 +531,13 @@ namespace ZC_ALM_TOOLS.ViewModels
                 StatusService.Set("Guardando y realizando compilación final...", StatusType.Ok);
                 await Task.Delay(50);
 
-                if (SelectSyncReales && dbNumReal != -1) _tiaPlcService.CompileBlock(dbNameReal);
-                if (SelectSyncEnteros && dbNumInt != -1) _tiaPlcService.CompileBlock(dbNameInt);
-                if (SelectSyncAlarmas && dbNumAlm != -1) _tiaPlcService.CompileBlock(dbNameAlm);
+                if (SelectSyncReales && env.DbNumReal != -1) _tiaPlcService.CompileBlock(env.DbNameReal);
+                if (SelectSyncEnteros && env.DbNumInt != -1) _tiaPlcService.CompileBlock(env.DbNameInt);
+                if (SelectSyncAlarmas && env.DbNumAlm != -1) _tiaPlcService.CompileBlock(env.DbNameAlm);
 
                 LogService.Write("[PARAMS-VM] [ExecuteSync] SINCRONIZACIÓN FINALIZADA CORRECTAMENTE.");
                 StatusService.Set("Sincronización finalizada con éxito.", StatusType.Ok);
 
-                // Forzamos un Compare automático para que los semáforos se pongan verdes
-                await ExecuteCompare();
             }
             catch (Exception ex)
             {
@@ -633,6 +546,7 @@ namespace ZC_ALM_TOOLS.ViewModels
             }
             finally
             {
+                await ExecuteCompare();
                 StatusService.SetBusy(false);
             }
 

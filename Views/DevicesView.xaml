@@ -107,6 +107,39 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <Style x:Key="EstadoCellStyle" TargetType="TextBlock">
+            <Setter Property="Padding" Value="5,0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Foreground" Value="#333333"/>
+
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Estado}" Value="Sincronizado">
+                    <Setter Property="Foreground" Value="Green"/>
+                    <Setter Property="FontWeight" Value="Bold"/>
+                </DataTrigger>
+
+                <DataTrigger Binding="{Binding Estado, Converter={StaticResource ContainsConverter}, ConverterParameter='->'}" Value="True">
+                    <Setter Property="Foreground" Value="OrangeRed"/>
+                    <Setter Property="FontWeight" Value="Bold"/>
+                </DataTrigger>
+
+                <DataTrigger Binding="{Binding Estado}" Value="Nuevo">
+                    <Setter Property="Foreground" Value="DodgerBlue"/>
+                    <Setter Property="FontWeight" Value="Bold"/>
+                </DataTrigger>
+
+                <DataTrigger Binding="{Binding Estado}" Value="Eliminar">
+                    <Setter Property="Foreground" Value="Red"/>
+                    <Setter Property="FontWeight" Value="Bold"/>
+                </DataTrigger>
+
+                <DataTrigger Binding="{Binding Estado}" Value="Pendiente">
+                    <Setter Property="Foreground" Value="#999999"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
     </UserControl.Resources>
     <Grid Background="White">
         <Grid.ColumnDefinitions>
@@ -231,33 +264,16 @@
                         <Setter Property="BorderThickness" Value="0,0,0,1"/>
                         <Setter Property="BorderBrush" Value="#DDD"/>
                     </Style>
+                    <Style TargetType="TextBlock" x:Key="CeldaCentrada">
+                        <Setter Property="Padding" Value="5,0"/>
+                        <Setter Property="VerticalAlignment" Value="Center"/>
+                    </Style>
                 </DataGrid.Resources>
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="Nº" Binding="{Binding Numero}" Width="50"/>
-                    <DataGridTextColumn Header="Tag" Binding="{Binding Tag}" Width="180" FontWeight="Bold"/>
-                    <DataGridTextColumn Header="Descripción" Binding="{Binding Descripcion}" Width="*"/>
-                    <DataGridTextColumn Header="Estado" Binding="{Binding Estado}" IsReadOnly="True" Width="220">
-                        <DataGridTextColumn.ElementStyle>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="Padding" Value="5,0"/>
-                                <Setter Property="VerticalAlignment" Value="Center"/>
-                                <Style.Triggers>
-                                    <Trigger Property="Text" Value="Sincronizado">
-                                        <Setter Property="Foreground" Value="Green"/>
-                                        <Setter Property="FontWeight" Value="Bold"/>
-                                    </Trigger>
-                                    <DataTrigger Binding="{Binding Estado, Converter={StaticResource ContainsConverter}, ConverterParameter='->'}" Value="True">
-                                        <Setter Property="Foreground" Value="OrangeRed"/>
-                                        <Setter Property="FontWeight" Value="Bold"/>
-                                    </DataTrigger>
-                                    <Trigger Property="Text" Value="Nuevo">
-                                        <Setter Property="Foreground" Value="DodgerBlue"/>
-                                        <Setter Property="FontWeight" Value="Bold"/>
-                                    </Trigger>
-                                </Style.Triggers>
-                            </Style>
-                        </DataGridTextColumn.ElementStyle>
-                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Nº" Binding="{Binding Numero}" Width="50" ElementStyle="{StaticResource CeldaCentrada}"/>
+                    <DataGridTextColumn Header="Tag" Binding="{Binding Tag}" Width="180" FontWeight="Bold" ElementStyle="{StaticResource CeldaCentrada}"/>
+                    <DataGridTextColumn Header="Descripción" Binding="{Binding Descripcion}" Width="*" ElementStyle="{StaticResource CeldaCentrada}"/>
+                    <DataGridTextColumn Header="Estado" Binding="{Binding Estado}" Width="220" ElementStyle="{StaticResource EstadoCellStyle}"/>
                 </DataGrid.Columns>
             </DataGrid>
         </Grid>
