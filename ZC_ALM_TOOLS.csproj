@@ -106,6 +106,7 @@
     <Compile Include="ViewModels\DevicesViewModel.cs" />
     <Compile Include="ViewModels\MainViewModel.cs" />
     <Compile Include="ViewModels\ParamsAlarmsViewModel.cs" />
+    <Compile Include="ViewModels\ProcessGeneratorViewModel.cs" />
     <Compile Include="Views\MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
     </Compile>
@@ -116,6 +117,9 @@
     </Compile>
     <Compile Include="Views\ParamsAlarmsView.xaml.cs">
       <DependentUpon>ParamsAlarmsView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\ProcessGeneratorView.xaml.cs">
+      <DependentUpon>ProcessGeneratorView.xaml</DependentUpon>
     </Compile>
   </ItemGroup>
   <ItemGroup>
@@ -136,6 +140,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Views\ParamsAlarmsView.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\ProcessGeneratorView.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

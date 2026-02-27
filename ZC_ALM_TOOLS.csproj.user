@@ -2,8 +2,7 @@
 <Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
     <StartAction>Project</StartAction>
-    <StartProgram>
-    </StartProgram>
+    <StartProgram>C:\Program Files\Siemens\Automation\Portal V18\Bin\Siemens.Automation.Portal.exe</StartProgram>
     <StartWorkingDirectory>
     </StartWorkingDirectory>
     <StartArguments>

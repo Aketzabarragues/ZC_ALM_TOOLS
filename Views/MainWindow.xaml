@@ -183,8 +183,8 @@
                 <TabItem Header="🏭 Parametros y alarmas">
                     <views:ParamsAlarmsView DataContext="{Binding ParamsAlarmsVM}"/>
                 </TabItem>
-                <TabItem Header="🚨 Alarmas">
-                    <TextBlock Text="Módulo de Alarmas" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <TabItem Header="🚨 Generador de procesos">
+                    <views:ProcessGeneratorView DataContext="{Binding ProcessGeneratorVM}"/>
                 </TabItem>
             </TabControl>
         </Grid>

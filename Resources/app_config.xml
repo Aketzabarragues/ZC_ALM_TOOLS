@@ -2,6 +2,7 @@
 <AppConfig>
 	<GlobalSettings>
 		<ExtractorExePath>C:\Program Files\Siemens\Automation\Portal V18\AddIns\ZC_ALM_TOOLS\ZC_Extractor.exe</ExtractorExePath>
+		<ProcessTemplatePath>C:\Plantilla</ProcessTemplatePath>
 	</GlobalSettings>
 	<Devices>
 		<DeviceCategory Name="Entrada Digital">

@@ -48,7 +48,7 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
-        
+
         <Style x:Key="ModernComboBoxStyle" TargetType="ComboBox">
             <Setter Property="Height" Value="35"/>
             <Setter Property="Padding" Value="10,0"/>
@@ -66,6 +66,7 @@
                             BorderBrush="{TemplateBinding BorderBrush}" 
                             BorderThickness="{TemplateBinding BorderThickness}" 
                             CornerRadius="4"/>
+
                             <Grid Margin="{TemplateBinding Padding}">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
@@ -82,8 +83,15 @@
                               Stroke="#666" StrokeThickness="2" 
                               VerticalAlignment="Center" Margin="5,0,0,0"/>
                             </Grid>
-                            <ToggleButton Background="Transparent" BorderThickness="0" 
-                                  IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"/>
+
+                            <ToggleButton IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border Background="Transparent" />
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+
                             <Popup x:Name="PART_Popup" AllowsTransparency="True" 
                            IsOpen="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}}" 
                            Placement="Bottom" PopupAnimation="Slide">
@@ -95,12 +103,15 @@
                                 </Border>
                             </Popup>
                         </Grid>
+
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="MainBorder" Property="BorderBrush" Value="#007ACC"/>
+                                <Setter TargetName="MainBorder" Property="Background" Value="White"/>
                             </Trigger>
                             <Trigger Property="IsFocused" Value="True">
                                 <Setter TargetName="MainBorder" Property="BorderBrush" Value="#007ACC"/>
+                                <Setter TargetName="MainBorder" Property="Background" Value="White"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>

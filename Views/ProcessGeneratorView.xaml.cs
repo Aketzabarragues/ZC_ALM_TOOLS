@@ -2,13 +2,11 @@
 
 namespace ZC_ALM_TOOLS.Views
 {
-    public partial class ParamsAlarmsView : UserControl
+    public partial class ProcessGeneratorView : UserControl
     {
-        public ParamsAlarmsView()
+        public ProcessGeneratorView()
         {
             InitializeComponent();
-        }        
-
-
+        }
     }
 }

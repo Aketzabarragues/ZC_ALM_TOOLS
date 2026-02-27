@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using Microsoft.Win32;
 using Siemens.Engineering;
+using Siemens.Engineering.Safety;
 using Siemens.Engineering.SW;
 using ZC_ALM_TOOLS.Core;
 using ZC_ALM_TOOLS.Models;
@@ -58,6 +59,7 @@ namespace ZC_ALM_TOOLS.ViewModels
         // ViewModels y Configuración
         public DevicesViewModel DevicesVM { get; set; }
         public ParamsAlarmsViewModel ParamsAlarmsVM { get; set; }
+        public ProcessGeneratorViewModel ProcessGeneratorVM { get; set; }
 
         // Variable que indica que esta ejecutandose algo
         private bool _isBusy;
@@ -125,7 +127,11 @@ namespace ZC_ALM_TOOLS.ViewModels
             ParamsAlarmsVM = new ParamsAlarmsViewModel();
             ParamsAlarmsVM.SetTiaService(_tiaPlcService);
 
-            // Evento para actualizar el mensaje de estado
+            ProcessGeneratorVM = new ProcessGeneratorViewModel();
+            ProcessGeneratorVM.SetTiaService(_tiaPlcService);
+            ProcessGeneratorVM.LoadTemplates(_configGlobalSettings);
+
+            // Evento para actualizar el mensaje de estado                    
             StatusService.OnStatusChanged += UpdateStatus;
             StatusService.OnBusyChanged += (busy) => IsBusy = busy;
 
@@ -154,7 +160,7 @@ namespace ZC_ALM_TOOLS.ViewModels
 
                 DevicesVM?.NotifyPlcChanged(SelectedTarget.Name);
                 ParamsAlarmsVM?.NotifyPlcChanged(SelectedTarget.Name);
-                // PENDIENTE PONER EL DE PROCESOS
+                ProcessGeneratorVM?.NotifyPlcChanged(SelectedTarget.Name);
 
                 UpdateStatus($"Objetivo cambiado a: {SelectedTarget.Name}");
             }
@@ -214,6 +220,7 @@ namespace ZC_ALM_TOOLS.ViewModels
                         // Actualizar ViewModels
                         DevicesVM.LoadData(_engineeringCache, _configDeviceSettings);
                         ParamsAlarmsVM.LoadData(_engineeringCache, _configProcessesSettings);
+                        ProcessGeneratorVM.LoadData(_engineeringCache, _configProcessesSettings, _configGlobalSettings);
 
                         IsDataLoaded = true;
                         UpdateStatus("Listo. Todos los módulos cargados.");
