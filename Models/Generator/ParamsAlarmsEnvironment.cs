@@ -47,7 +47,7 @@ namespace ZC_ALM_TOOLS.Models
 
             DbNumReal = reales.FirstOrDefault()?.DbNumber ?? -1;
             DbNumInt = enteros.FirstOrDefault()?.DbNumber ?? -1;
-            DbNumAlm = alarmas.FirstOrDefault()?.NumDB ?? -1;
+            DbNumAlm = alarmas.FirstOrDefault()?.DbNumber ?? -1;
 
             DbNameReal = $"DB{DbNumReal}{settings.SuffixDbReal}";
             DbNameInt = $"DB{DbNumInt}{settings.SuffixDbInt}";

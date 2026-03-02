@@ -378,7 +378,7 @@ namespace ZC_ALM_TOOLS.ViewModels
                         Numero = id, 
                         ComentarioDB = txt, 
                         Descripcion = "--- NO EXISTE EN EXCEL ---", 
-                        NumDB = env.DbNumAlm,
+                        DbNumber = env.DbNumAlm,
                         Proceso = SelectedProcess.Nombre, Estado = "Eliminar" 
                     }
                 );

@@ -16,7 +16,7 @@ namespace ZC_ALM_TOOLS.Models
         public string UID { get; set; }
         public int Numero { get; set; }
         public string Proceso { get; set; }
-        public int NumDB { get; set; }
+        public int DbNumber { get; set; }
         public string Descripcion { get; set; }
         public string ComentarioDB { get; set; }
 
@@ -36,7 +36,7 @@ namespace ZC_ALM_TOOLS.Models
             UID = DataHelper.GetXmlVal(x, "UID"),
             Numero = DataHelper.GetXmlInt(x, "Numero"),
             Proceso = DataHelper.GetXmlVal(x, "Proceso"),
-            NumDB = DataHelper.GetXmlInt(x, "Num.DB"), // Fíjate en el punto, como en el XML
+            DbNumber = DataHelper.GetXmlInt(x, "Num.DB"), // Fíjate en el punto, como en el XML
             Descripcion = DataHelper.GetXmlVal(x, "Descripcion"),
             ComentarioDB = DataHelper.GetXmlVal(x, "ComentarioDB")
         };

@@ -76,50 +76,53 @@
     <Compile Include="Core\DataHelper.cs" />
     <Compile Include="Core\ObservableObject.cs" />
     <Compile Include="Core\RelayCommand.cs" />
-    <Compile Include="Models\Alarms.cs" />
-    <Compile Include="Models\ConfigDeviceCategory.cs" />
-    <Compile Include="Models\ConfigDeviceSettings.cs" />
-    <Compile Include="Models\ConfigGlobalSettings.cs" />
-    <Compile Include="Models\DevicesEnvironment.cs" />
-    <Compile Include="Models\Disp_Config.cs" />
-    <Compile Include="Models\Disp_M_VF.cs" />
-    <Compile Include="Models\Disp_SA.cs" />
-    <Compile Include="Models\Disp_EA.cs" />
-    <Compile Include="Models\Disp_ED.cs" />
-    <Compile Include="Models\Disp_M.cs" />
-    <Compile Include="Models\Disp_V.cs" />
-    <Compile Include="Models\IDevice.cs" />
-    <Compile Include="Models\Parameter.cs" />
-    <Compile Include="Models\ConfigProcessSettings.cs" />
-    <Compile Include="Models\ParamsAlarmsEnvironment.cs" />
-    <Compile Include="Models\SynchronizationStatus.cs" />
-    <Compile Include="Models\TiaTarget.cs" />
-    <Compile Include="Services\AppConfigService.cs" />
-    <Compile Include="Services\ComparisonService.cs" />
-    <Compile Include="Services\DataService.cs" />
-    <Compile Include="Services\LogService.cs" />
-    <Compile Include="Services\StatusService.cs" />
-    <Compile Include="Services\TiaDeviceScanner.cs" />
-    <Compile Include="Services\TiaHmiService.cs" />
-    <Compile Include="Services\TiaPlcService.cs" />
-    <Compile Include="Services\XmlParserService.cs" />
-    <Compile Include="ViewModels\DevicesViewModel.cs" />
-    <Compile Include="ViewModels\MainViewModel.cs" />
-    <Compile Include="ViewModels\ParamsAlarmsViewModel.cs" />
-    <Compile Include="ViewModels\ProcessGeneratorViewModel.cs" />
-    <Compile Include="Views\MainWindow.xaml.cs">
-      <DependentUpon>MainWindow.xaml</DependentUpon>
+    <Compile Include="Models\Generator\Alarms.cs" />
+    <Compile Include="Models\Common\ConfigDeviceCategory.cs" />
+    <Compile Include="Models\Common\ConfigDeviceSettings.cs" />
+    <Compile Include="Models\Common\ConfigGlobalSettings.cs" />
+    <Compile Include="Models\Generator\DevicesEnvironment.cs" />
+    <Compile Include="Models\Generator\Disp_Config.cs" />
+    <Compile Include="Models\Generator\Disp_M_VF.cs" />
+    <Compile Include="Models\Generator\Disp_SA.cs" />
+    <Compile Include="Models\Generator\Disp_EA.cs" />
+    <Compile Include="Models\Generator\Disp_ED.cs" />
+    <Compile Include="Models\Generator\Disp_M.cs" />
+    <Compile Include="Models\Generator\Disp_V.cs" />
+    <Compile Include="Models\Generator\IDevice.cs" />
+    <Compile Include="Models\Generator\Parameter.cs" />
+    <Compile Include="Models\Common\ConfigProcessSettings.cs" />
+    <Compile Include="Models\Generator\ParamsAlarmsEnvironment.cs" />
+    <Compile Include="Models\Common\SynchronizationStatus.cs" />
+    <Compile Include="Models\Common\TiaTarget.cs" />
+    <Compile Include="Services\Common\AppConfigService.cs" />
+    <Compile Include="Services\Common\ComparisonService.cs" />
+    <Compile Include="Services\Generator\DataService.cs" />
+    <Compile Include="Services\Common\LogService.cs" />
+    <Compile Include="Services\Common\StatusService.cs" />
+    <Compile Include="Services\TiaPortal\TiaDeviceScanner.cs" />
+    <Compile Include="Services\TiaPortal\TiaHmiService.cs" />
+    <Compile Include="Services\TiaPortal\TiaPlcService.cs" />
+    <Compile Include="Services\Common\XmlParserService.cs" />
+    <Compile Include="ViewModels\Generator\DevicesViewModel.cs" />
+    <Compile Include="ViewModels\Generator\GeneratorMainViewModel.cs" />
+    <Compile Include="ViewModels\Generator\ParamsAlarmsViewModel.cs" />
+    <Compile Include="ViewModels\Generator\ProcessGeneratorViewModel.cs" />
+    <Compile Include="Views\Generator\GeneratorMainWindow.xaml.cs">
+      <DependentUpon>GeneratorMainWindow.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Models\Process.cs" />
+    <Compile Include="Models\Generator\Process.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Views\DevicesView.xaml.cs">
+    <Compile Include="Views\Generator\DevicesView.xaml.cs">
       <DependentUpon>DevicesView.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Views\ParamsAlarmsView.xaml.cs">
+    <Compile Include="Views\Generator\ParamsAlarmsView.xaml.cs">
       <DependentUpon>ParamsAlarmsView.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Views\ProcessGeneratorView.xaml.cs">
+    <Compile Include="Views\Generator\ProcessGeneratorView.xaml.cs">
       <DependentUpon>ProcessGeneratorView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Vci\VciMainWindow.xaml.cs">
+      <DependentUpon>VciMainWindow.xaml</DependentUpon>
     </Compile>
   </ItemGroup>
   <ItemGroup>
@@ -131,24 +134,32 @@
     <None Include="app.config" />
   </ItemGroup>
   <ItemGroup>
-    <Page Include="Views\MainWindow.xaml">
+    <Page Include="Views\Generator\GeneratorMainWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Views\DevicesView.xaml">
+    <Page Include="Views\Generator\DevicesView.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Views\ParamsAlarmsView.xaml">
+    <Page Include="Views\Generator\ParamsAlarmsView.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Views\ProcessGeneratorView.xaml">
+    <Page Include="Views\Generator\ProcessGeneratorView.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\Vci\VciMainWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <Folder Include="Models\Vci\" />
+    <Folder Include="Services\Vci\" />
+    <Folder Include="ViewModels\Vci\" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>"C:\Program Files\Siemens\Automation\Portal V18\PublicAPI\V18.AddIn\Siemens.Engineering.AddIn.Publisher.exe" -f "$(SolutionDir)\Config.xml" -v -c</PostBuildEvent>

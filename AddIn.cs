@@ -1,4 +1,5 @@
 ﻿using System.Linq;
+using System.Windows;
 using Siemens.Engineering;
 using Siemens.Engineering.AddIn.Menu;
 using Siemens.Engineering.SW;
@@ -14,40 +15,110 @@ namespace ZC_ALM_TOOLS
 
         private const string s_DisplayNameOfAddIn = "ZC ALM TOOLS";
         private readonly TiaPortal _tiaPortal;
-                
+        private static bool _isAnyToolOpen = false;
+
+
+
+
         public AddIn(TiaPortal tiaportal) : base(s_DisplayNameOfAddIn)
         {
             _tiaPortal = tiaportal;          
         }
 
         
+
+
         protected override void BuildContextMenuItems(ContextMenuAddInRoot addInRootSubmenu)
         {
+
             addInRootSubmenu.Items.AddActionItem<IEngineeringObject>(
-                "ZC ALM TOOLS",
-                StartApplication,
+                "ZC Generador de Proyectos",
+                StartGeneratorTool,
                 OnCheckIfContextIsValid);
+
+            addInRootSubmenu.Items.AddActionItem<IEngineeringObject>(
+                "ZC Auditoría VCI",
+                StartVciTool,
+                OnCheckIfContextIsValid);
+
         }
+
+
+
 
         private MenuStatus OnCheckIfContextIsValid(MenuSelectionProvider<IEngineeringObject> selectionProvider)
         {
             return _tiaPortal.Projects.Any() ? MenuStatus.Enabled : MenuStatus.Hidden;
         }
 
-        private void StartApplication(MenuSelectionProvider<IEngineeringObject> selectionProvider)
+
+
+
+        // =====================================================================================
+        // GENERADOR DE PROYECTOS
+        private void StartGeneratorTool(MenuSelectionProvider<IEngineeringObject> selectionProvider)
         {
-            // 1. Obtenemos el proyecto activo
-            var project = _tiaPortal.Projects.FirstOrDefault();
-            if (project == null) return;
+            if (!TryAcquireLock()) return;
 
-            // 2. Opcional: Obtenemos lo que el usuario tenía seleccionado 
-            // por si queremos usarlo como "favorito" más tarde.
-            var selection = selectionProvider.GetSelection().FirstOrDefault();
+            try
+            {
+                var project = _tiaPortal.Projects.FirstOrDefault();
+                if (project == null) return;
 
-            // 3. Lanzamos la MainWindow pasando el PROYECTO completo
-            // Nota: Esto te dará error de compilación hasta que ajustemos el constructor de MainWindow en la Fase 3/4.
-            MainWindow window = new MainWindow(_tiaPortal, project);
-            window.ShowDialog();
+                GeneratorMainWindow window = new GeneratorMainWindow(_tiaPortal, project);
+                window.ShowDialog();
+            }
+            finally
+            {
+                ReleaseLock();
+            }
+        }
+
+
+
+
+        // =====================================================================================
+        // AUDITOR VCI
+        private void StartVciTool(MenuSelectionProvider<IEngineeringObject> selectionProvider)
+        {
+            if (!TryAcquireLock()) return;
+
+            try
+            {
+                var project = _tiaPortal.Projects.FirstOrDefault();
+                if (project == null) return;
+
+                // ATENCIÓN: Esta ventana aún no existe, deberás crearla en el siguiente paso
+                VciMainWindow window = new VciMainWindow(_tiaPortal, project);
+                window.ShowDialog();
+            }
+            finally
+            {
+                ReleaseLock();
+            }
+        }
+
+
+
+
+        // =====================================================================================
+        // MÉTODOS DE CONTROL DE CONCURRENCIA
+        private bool TryAcquireLock()
+        {
+            if (_isAnyToolOpen)
+            {
+                MessageBox.Show("Ya hay una herramienta de ZC Tools abierta en este momento.\n\nPor favor, ciérrala antes de abrir otra para evitar conflictos.",
+                                "Herramienta en uso", MessageBoxButton.OK, MessageBoxImage.Information);
+                return false;
+            }
+
+            _isAnyToolOpen = true;
+            return true;
+        }
+
+        private void ReleaseLock()
+        {
+            _isAnyToolOpen = false;
         }
 
 

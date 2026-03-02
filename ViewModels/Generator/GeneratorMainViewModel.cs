@@ -18,7 +18,7 @@ using ZC_ALM_TOOLS.Services;
 namespace ZC_ALM_TOOLS.ViewModels
 {
 
-    public class MainViewModel : ObservableObject
+    public class GeneratorMainViewModel : ObservableObject
     {
 
         // =================================================================================================================
@@ -89,7 +89,7 @@ namespace ZC_ALM_TOOLS.ViewModels
 
         // ==================================================================================================================
         // CONSTRUCTOR
-        public MainViewModel(TiaPortal tiaPortal, Project project)
+        public GeneratorMainViewModel(TiaPortal tiaPortal, Project project)
         {
             LogService.Clear();
             LogService.Write("[MAIN-VM] [MainViewModel] Inicializando MainViewModel...");
