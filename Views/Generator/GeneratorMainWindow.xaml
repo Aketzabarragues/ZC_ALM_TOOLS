@@ -6,8 +6,9 @@
         xmlns:views="clr-namespace:ZC_ALM_TOOLS.Views"
         xmlns:models="clr-namespace:ZC_ALM_TOOLS.Models"
         mc:Ignorable="d"
-        Title="ZC Tools - TIA Portal Add-In" Height="800" Width="1500"
+        Title="ZC Generador de Proyectos" Height="800" Width="1500"
         WindowStartupLocation="CenterScreen" Background="#F0F0F0">
+    
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
         <Style x:Key="SettingsButtonStyle" TargetType="Button">
@@ -79,7 +80,7 @@
     </Window.Resources>
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="150"/>
+            <ColumnDefinition Width="180"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
