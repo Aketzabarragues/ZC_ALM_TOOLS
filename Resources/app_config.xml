@@ -81,6 +81,7 @@
 		<PRealXml Name="P_Real">preal.xml</PRealXml>
 		<PIntXml Name="P_Int">pint.xml</PIntXml>
 		<AlarmXml Name="Alarmas">alarmas.xml</AlarmXml>
+		<StageXml Name="Etapas">etapas.xml</StageXml>
 		<SuffixConstReal>_N_MAX_PREAL</SuffixConstReal>
 		<SuffixConstInt>_N_MAX_PINT</SuffixConstInt>
 		<SuffixConstAlm>_N_MAX_ALM</SuffixConstAlm>
