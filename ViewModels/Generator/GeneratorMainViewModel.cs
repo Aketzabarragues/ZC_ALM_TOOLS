@@ -334,6 +334,7 @@ namespace ZC_ALM_TOOLS.ViewModels
             expectedFiles.Add(_configProcessesSettings.ProcessXml);
             expectedFiles.Add(_configProcessesSettings.PRealXml);
             expectedFiles.Add(_configProcessesSettings.PIntXml);
+            expectedFiles.Add(_configProcessesSettings.StageXml);
             expectedFiles.Add(_configDeviceSettings.DeviceDataConfigXml);
 
             for (int i = 0; i < 150; i++)
@@ -420,6 +421,14 @@ namespace ZC_ALM_TOOLS.ViewModels
                     var data = DataService.LoadAlarms(pathAlm);
                     _engineeringCache[_configProcessesSettings.AlarmName] = data.Cast<object>().ToList();
                 }
+
+                string pathStages = Path.Combine(folderPath, _configProcessesSettings.StageXml);
+                if (File.Exists(pathStages))
+                {
+                    var data = DataService.LoadStages(pathStages);
+                    _engineeringCache[_configProcessesSettings.StageName] = data.Cast<object>().ToList();
+                }
+
             }
 
         }

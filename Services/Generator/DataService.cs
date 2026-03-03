@@ -52,6 +52,38 @@ namespace ZC_ALM_TOOLS.Services
 
 
         // ==================================================================================================================
+        // Carga la lista de etapas desde etapas.xml
+        public static List<ProcessStage> LoadStages(string path)
+        {
+            var list = new List<ProcessStage>();
+
+            if (!File.Exists(path))
+            {
+                LogService.Write($"[DATA-SERVICE] [LoadStages] No se encuentra etapas.xml: {path}", true);
+                return list;
+            }
+
+            try
+            {
+                XDocument doc = XDocument.Load(path);
+                // Buscamos los nodos <Etapa> y usamos el método FromXml del modelo
+                list = doc.Descendants("Etapa")
+                          .Select(x => ProcessStage.FromXml(x))
+                          .ToList();
+
+                LogService.Write($"[DATA-SERVICE] [LoadStages] Cargadas {list.Count} etapas.");
+            }
+            catch (Exception ex)
+            {
+                LogService.Write($"[DATA-SERVICE] [LoadStages] Error leyendo etapas.xml: {ex.Message}", true);
+            }
+
+            return list;
+        }
+
+
+
+        // ==================================================================================================================
         // Carga una lista de parámetros (ya sean Reales o Enteros)
         public static List<Parameter> LoadParameters(string path)
         {
@@ -98,7 +130,7 @@ namespace ZC_ALM_TOOLS.Services
             try
             {
                 XDocument doc = XDocument.Load(path);
-                // Buscamos los nodos <Alarma> del XML
+                // Buscamos los nodos <Alarma> y usamos el método FromXml del modelo
                 list = doc.Descendants("Alarma")
                           .Select(x => Alarms.FromXml(x))
                           .ToList();

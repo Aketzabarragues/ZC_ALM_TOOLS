@@ -13,6 +13,8 @@ namespace ZC_ALM_TOOLS.Models
         public string PIntName { get; set; }
         public string AlarmXml { get; set; }
         public string AlarmName { get; set; }
+        public string StageXml { get; set; }
+        public string StageName { get; set; }
 
 
         public string SuffixConstReal { get; set; }
@@ -31,11 +33,13 @@ namespace ZC_ALM_TOOLS.Models
             PRealXml = DataHelper.GetXmlVal(x, "PRealXml"),
             PIntXml = DataHelper.GetXmlVal(x, "PIntXml"),
             AlarmXml = DataHelper.GetXmlVal(x, "AlarmXml"),
+            StageXml = DataHelper.GetXmlVal(x, "StageXml"),
 
             ProcessName = x.Element("ProcessXml")?.Attribute("Name")?.Value ?? "Procesos",
             PRealName = x.Element("PRealXml")?.Attribute("Name")?.Value ?? "P_Real",
             PIntName = x.Element("PIntXml")?.Attribute("Name")?.Value ?? "P_Int",
             AlarmName = x.Element("AlarmXml")?.Attribute("Name")?.Value ?? "Alarmas",
+            StageName = x.Element("StageXml")?.Attribute("Name")?.Value ?? "Etapas",
 
             SuffixConstReal = DataHelper.GetXmlVal(x, "SuffixConstReal"),
             SuffixConstInt = DataHelper.GetXmlVal(x, "SuffixConstInt"),

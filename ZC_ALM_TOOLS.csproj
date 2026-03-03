@@ -94,6 +94,7 @@
     <Compile Include="Models\Generator\ParamsAlarmsEnvironment.cs" />
     <Compile Include="Models\Common\SynchronizationStatus.cs" />
     <Compile Include="Models\Common\TiaTarget.cs" />
+    <Compile Include="Models\Generator\ProcessStage.cs" />
     <Compile Include="Services\Common\AppConfigService.cs" />
     <Compile Include="Services\Common\ComparisonService.cs" />
     <Compile Include="Services\Generator\DataService.cs" />

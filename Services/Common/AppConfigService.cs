@@ -53,8 +53,7 @@ namespace ZC_ALM_TOOLS.Services
         // Crear el archivo de configuracion si no existe
         private static void CreateAppConfigFile(string targetPath)
         {
-            // El nombre del recurso suele ser: NombreProyecto.NombreArchivo.xml
-            // Puedes ver el nombre exacto usando: Assembly.GetExecutingAssembly().GetManifestResourceNames()
+
             var assembly = Assembly.GetExecutingAssembly();
             string resourceName = "ZC_ALM_TOOLS.Resources.app_config.xml";
 

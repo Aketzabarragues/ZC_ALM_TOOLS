@@ -21,8 +21,6 @@ namespace ZC_ALM_TOOLS.Models
         public string Cuadro { get; set; }
         public string Observaciones { get; set; }
         public string CPTag { get; set; }
-        public string CPTipo { get; set; }
-        public int CPNum { get; set; }
         public string CPComentario { get; set; }
 
         // Propiedad para la interfaz (con notificación de cambio)
@@ -47,8 +45,6 @@ namespace ZC_ALM_TOOLS.Models
             Cuadro = DataHelper.GetXmlVal(x, "Cuadro"),
             Observaciones = DataHelper.GetXmlVal(x, "Observaciones"),
             CPTag = DataHelper.GetXmlVal(x, "CP.Tag"),
-            CPTipo = DataHelper.GetXmlVal(x, "CP.Tipo"),
-            CPNum = DataHelper.GetXmlInt(x, "CP.Num."),
             CPComentario = DataHelper.GetXmlVal(x, "CP.Comentario")
         };
     }
