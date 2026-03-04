@@ -166,7 +166,7 @@
                                        Foreground="#555" FontWeight="Medium" FontStyle="Italic"/>
                         </StackPanel>
                     </StackPanel>
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">                        
                         <Button Command="{Binding ConfigSettingsCommand}"
                                 Style="{StaticResource SettingsButtonStyle}"
                                 ToolTip="Editar configuracion"

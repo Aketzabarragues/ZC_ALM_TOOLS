@@ -86,7 +86,6 @@ namespace ZC_ALM_TOOLS.ViewModels
         public RelayCommand ConfigSettingsCommand { get; set; }
 
 
-
         // ==================================================================================================================
         // CONSTRUCTOR
         public GeneratorMainViewModel(TiaPortal tiaPortal, Project project)
@@ -471,9 +470,6 @@ namespace ZC_ALM_TOOLS.ViewModels
             else if (type == StatusType.Error)
                 StatusColor = "Red";
         }
-
-
-
 
     }
 }
