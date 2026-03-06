@@ -1,16 +1,16 @@
 ﻿using System.Windows;
+using System.Windows.Controls;
 using Siemens.Engineering;
 using ZC_ALM_TOOLS.ViewModels.Vci;
 
 namespace ZC_ALM_TOOLS.Views.Vci
 {
 
-    public partial class VciMainView : Window
+    public partial class VciMainView : UserControl
     {
-        public VciMainView(TiaPortal tiaPortal, Project project)
+        public VciMainView()
         {
             InitializeComponent();
-            this.DataContext = new VciMainViewModel(tiaPortal, project);
         }
     }
 }

@@ -130,8 +130,8 @@
     <Compile Include="Views\Generator\ProcessGeneratorView.xaml.cs">
       <DependentUpon>ProcessGeneratorView.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Views\ToolMainWindow.xaml.cs">
-      <DependentUpon>ToolMainWindow.xaml</DependentUpon>
+    <Compile Include="Views\MainWindow.xaml.cs">
+      <DependentUpon>MainWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="Views\Vci\VciAuditView.xaml.cs">
       <DependentUpon>VciAuditView.xaml</DependentUpon>
@@ -168,7 +168,7 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Views\ToolMainWindow.xaml">
+    <Page Include="Views\MainWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

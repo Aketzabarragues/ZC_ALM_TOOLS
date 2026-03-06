@@ -1,11 +1,7 @@
 ﻿using System.Linq;
-using System.Windows;
 using Siemens.Engineering;
 using Siemens.Engineering.AddIn.Menu;
-using Siemens.Engineering.SW;
 using ZC_ALM_TOOLS.Views;
-using ZC_ALM_TOOLS.Views.Generator;
-using ZC_ALM_TOOLS.Views.Vci;
 
 namespace ZC_ALM_TOOLS
 {
@@ -58,7 +54,7 @@ namespace ZC_ALM_TOOLS
             var project = _tiaPortal.Projects.FirstOrDefault();
             if (project == null) return;
             
-            GeneratorMainView window = new GeneratorMainView(_tiaPortal, project);
+            MainWindow window = new MainWindow(_tiaPortal, project);
             window.ShowDialog();
 
         }

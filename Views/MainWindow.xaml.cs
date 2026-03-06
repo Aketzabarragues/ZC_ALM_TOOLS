@@ -12,17 +12,22 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using Siemens.Engineering;
+using ZC_ALM_TOOLS.ViewModels;
 
 namespace ZC_ALM_TOOLS.Views
 {
     /// <summary>
     /// Lógica de interacción para MainWindow.xaml
     /// </summary>
-    public partial class ToolMainWindow : MainWindow
+    public partial class MainWindow : Window
     {
-        public ToolMainWindow()
+        public MainWindow(TiaPortal tiaPortal, Project project)
         {
             InitializeComponent();
+
+            // Instanciamos el cerebro global y se lo pasamos a la vista
+            this.DataContext = new MainViewModel(tiaPortal, project);
         }
     }
 }
