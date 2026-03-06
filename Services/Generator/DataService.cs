@@ -5,8 +5,11 @@ using System.Linq;
 using System.Reflection;
 using System.Xml.Linq;
 using ZC_ALM_TOOLS.Models;
+using ZC_ALM_TOOLS.Models.Common;
+using ZC_ALM_TOOLS.Models.Generator;
+using ZC_ALM_TOOLS.Services.Common;
 
-namespace ZC_ALM_TOOLS.Services
+namespace ZC_ALM_TOOLS.Services.Generator
 {
 
 

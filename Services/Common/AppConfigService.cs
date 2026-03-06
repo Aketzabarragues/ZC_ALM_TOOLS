@@ -3,12 +3,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Windows.Controls;
 using System.Xml.Linq;
 using ZC_ALM_TOOLS.Models;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.TextBox;
+using ZC_ALM_TOOLS.Models.Common;
 
-namespace ZC_ALM_TOOLS.Services
+namespace ZC_ALM_TOOLS.Services.Common
 {
     public static class AppConfigService
     {

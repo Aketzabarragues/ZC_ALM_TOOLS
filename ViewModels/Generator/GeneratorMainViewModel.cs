@@ -9,10 +9,11 @@ using Microsoft.Win32;
 using Siemens.Engineering;
 using Siemens.Engineering.SW;
 using ZC_ALM_TOOLS.Core;
-using ZC_ALM_TOOLS.Models;
-using ZC_ALM_TOOLS.Services;
+using ZC_ALM_TOOLS.Models.Common;
+using ZC_ALM_TOOLS.Services.Common;
+using ZC_ALM_TOOLS.Services.TiaPortal;
 
-namespace ZC_ALM_TOOLS.ViewModels
+namespace ZC_ALM_TOOLS.ViewModels.Generator
 {
 
     public class GeneratorMainViewModel : ObservableObject

@@ -7,8 +7,11 @@ using Siemens.Engineering.Hmi.Tag;
 using Siemens.Engineering.HW.Features;
 using ZC_ALM_TOOLS.Core; // Asegúrate de tener acceso a LogService
 using ZC_ALM_TOOLS.Models;
+using ZC_ALM_TOOLS.Models.Common;
+using ZC_ALM_TOOLS.Models.Generator;
+using ZC_ALM_TOOLS.Services.Common;
 
-namespace ZC_ALM_TOOLS.Services
+namespace ZC_ALM_TOOLS.Services.TiaPortal
 {
     public class TiaHmiService
     {

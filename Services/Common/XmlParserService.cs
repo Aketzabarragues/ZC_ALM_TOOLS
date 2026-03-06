@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Xml.Linq;
 
-namespace ZC_ALM_TOOLS.Services
+namespace ZC_ALM_TOOLS.Services.Common
 {
     public static class XmlParserService
     {

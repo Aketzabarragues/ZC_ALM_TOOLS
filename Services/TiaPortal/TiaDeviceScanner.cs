@@ -6,8 +6,9 @@ using Siemens.Engineering.HW;
 using Siemens.Engineering.HW.Features;
 using Siemens.Engineering.SW;
 using ZC_ALM_TOOLS.Models;
+using ZC_ALM_TOOLS.Models.Common;
 
-namespace ZC_ALM_TOOLS.Services
+namespace ZC_ALM_TOOLS.Services.TiaPortal
 {
     public static class TiaDeviceScanner
     {

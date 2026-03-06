@@ -1,13 +1,14 @@
 ﻿using System.Windows;
 using Siemens.Engineering;
 using ZC_ALM_TOOLS.ViewModels;
+using ZC_ALM_TOOLS.ViewModels.Generator;
 
-namespace ZC_ALM_TOOLS.Views
+namespace ZC_ALM_TOOLS.Views.Generator
 {
-    public partial class GeneratorMainWindow : Window
+    public partial class GeneratorMainView : Window
     {
         
-        public GeneratorMainWindow(TiaPortal tiaPortal, Project project)
+        public GeneratorMainView(TiaPortal tiaPortal, Project project)
         {
             InitializeComponent();
 

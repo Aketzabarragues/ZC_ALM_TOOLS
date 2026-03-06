@@ -112,11 +112,12 @@
     <Compile Include="ViewModels\Generator\GeneratorMainViewModel.cs" />
     <Compile Include="ViewModels\Generator\ParamsAlarmsViewModel.cs" />
     <Compile Include="ViewModels\Generator\ProcessGeneratorViewModel.cs" />
+    <Compile Include="ViewModels\MainViewModel.cs" />
     <Compile Include="ViewModels\Vci\VciAuditViewModel.cs" />
     <Compile Include="ViewModels\Vci\VciMainViewModel.cs" />
     <Compile Include="ViewModels\Vci\VciMappingViewModel.cs" />
-    <Compile Include="Views\Generator\GeneratorMainWindow.xaml.cs">
-      <DependentUpon>GeneratorMainWindow.xaml</DependentUpon>
+    <Compile Include="Views\Generator\GeneratorMainView.xaml.cs">
+      <DependentUpon>GeneratorMainView.xaml</DependentUpon>
     </Compile>
     <Compile Include="Models\Generator\Process.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -129,11 +130,14 @@
     <Compile Include="Views\Generator\ProcessGeneratorView.xaml.cs">
       <DependentUpon>ProcessGeneratorView.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Views\ToolMainWindow.xaml.cs">
+      <DependentUpon>ToolMainWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Views\Vci\VciAuditView.xaml.cs">
       <DependentUpon>VciAuditView.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Views\Vci\VciMainWindow.xaml.cs">
-      <DependentUpon>VciMainWindow.xaml</DependentUpon>
+    <Compile Include="Views\Vci\VciMainView.xaml.cs">
+      <DependentUpon>VciMainView.xaml</DependentUpon>
     </Compile>
     <Compile Include="Views\Vci\VciMappingView.xaml.cs">
       <DependentUpon>VciMappingView.xaml</DependentUpon>
@@ -148,7 +152,7 @@
     <None Include="app.config" />
   </ItemGroup>
   <ItemGroup>
-    <Page Include="Views\Generator\GeneratorMainWindow.xaml">
+    <Page Include="Views\Generator\GeneratorMainView.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -164,11 +168,15 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="Views\ToolMainWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Views\Vci\VciAuditView.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Views\Vci\VciMainWindow.xaml">
+    <Page Include="Views\Vci\VciMainView.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

@@ -1,19 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Data.SqlClient;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
-using System.Windows;
-using System.Xml.Linq;
-using Siemens.Engineering.HW;
 using ZC_ALM_TOOLS.Core;
-using ZC_ALM_TOOLS.Models;
-using ZC_ALM_TOOLS.Services;
+using ZC_ALM_TOOLS.Models.Common;
+using ZC_ALM_TOOLS.Models.Generator;
+using ZC_ALM_TOOLS.Services.Common;
+using ZC_ALM_TOOLS.Services.TiaPortal;
 
-namespace ZC_ALM_TOOLS.ViewModels
+namespace ZC_ALM_TOOLS.ViewModels.Generator
 {
 
     // ViewModel que gestiona la pestaña de procesos

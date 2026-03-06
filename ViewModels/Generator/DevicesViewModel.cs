@@ -5,14 +5,12 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Forms.Design;
-using System.Xml.Linq;
-using Siemens.Engineering.Hmi;
 using ZC_ALM_TOOLS.Core;
-using ZC_ALM_TOOLS.Models;
-using ZC_ALM_TOOLS.Services;
+using ZC_ALM_TOOLS.Models.Common;
+using ZC_ALM_TOOLS.Services.Common;
+using ZC_ALM_TOOLS.Services.TiaPortal;
 
-namespace ZC_ALM_TOOLS.ViewModels
+namespace ZC_ALM_TOOLS.ViewModels.Generator
 {
     // ViewModel que gestiona la pestaña de detalles (tabla de dispositivos, comparaciones y sincronización)
     public class DevicesViewModel : ObservableObject

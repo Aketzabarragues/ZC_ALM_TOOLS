@@ -5,9 +5,9 @@ using ZC_ALM_TOOLS.ViewModels.Vci;
 namespace ZC_ALM_TOOLS.Views.Vci
 {
 
-    public partial class VciMainWindow : Window
+    public partial class VciMainView : Window
     {
-        public VciMainWindow(TiaPortal tiaPortal, Project project)
+        public VciMainView(TiaPortal tiaPortal, Project project)
         {
             InitializeComponent();
             this.DataContext = new VciMainViewModel(tiaPortal, project);

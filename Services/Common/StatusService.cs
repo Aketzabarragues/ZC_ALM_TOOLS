@@ -4,7 +4,7 @@
 
 
 
-namespace ZC_ALM_TOOLS.Services
+namespace ZC_ALM_TOOLS.Services.Common
 {
 
     public enum StatusType { Ok, Warning, Error }

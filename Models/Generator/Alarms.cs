@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using ZC_ALM_TOOLS.Core;
 
-namespace ZC_ALM_TOOLS.Models
+namespace ZC_ALM_TOOLS.Models.Generator
 {
     public class Alarms : ObservableObject
     {

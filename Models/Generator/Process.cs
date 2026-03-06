@@ -1,7 +1,8 @@
 ﻿using System.Xml.Linq;
 using ZC_ALM_TOOLS.Core;
+using ZC_ALM_TOOLS.Models.Common;
 
-namespace ZC_ALM_TOOLS.Models
+namespace ZC_ALM_TOOLS.Models.Generator
 {
     public class Process : ObservableObject
     {

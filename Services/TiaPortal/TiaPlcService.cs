@@ -13,9 +13,11 @@ using Siemens.Engineering.SW;
 using Siemens.Engineering.SW.Blocks;
 using Siemens.Engineering.SW.Tags;
 using ZC_ALM_TOOLS.Models;
+using ZC_ALM_TOOLS.Models.Generator;
 using ZC_ALM_TOOLS.Services;
+using ZC_ALM_TOOLS.Services.Common;
 
-namespace ZC_ALM_TOOLS.Core
+namespace ZC_ALM_TOOLS.Services.TiaPortal
 {
 
     

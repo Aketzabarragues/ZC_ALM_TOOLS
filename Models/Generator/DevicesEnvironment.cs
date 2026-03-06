@@ -1,9 +1,12 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using ZC_ALM_TOOLS.Core;
+using ZC_ALM_TOOLS.Models.Common;
 using ZC_ALM_TOOLS.Services;
+using ZC_ALM_TOOLS.Services.Common;
+using ZC_ALM_TOOLS.Services.TiaPortal;
 
-namespace ZC_ALM_TOOLS.Models
+namespace ZC_ALM_TOOLS.Models.Generator
 {
     public class DevicesEnvironment
     {

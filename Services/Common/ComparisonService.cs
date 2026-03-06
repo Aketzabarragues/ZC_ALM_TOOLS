@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace ZC_ALM_TOOLS.Services
+namespace ZC_ALM_TOOLS.Services.Common
 {
     // Esta clase guardará el resumen de la comparación y los fantasmas encontrados
     public class ComparisonResult<T>

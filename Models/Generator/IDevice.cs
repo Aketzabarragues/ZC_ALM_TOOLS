@@ -1,4 +1,4 @@
-﻿namespace ZC_ALM_TOOLS.Models
+﻿namespace ZC_ALM_TOOLS.Models.Generator
 {
     // Interfaz común para que el sistema maneje cualquier dispositivo del Excel
     public interface IDevice

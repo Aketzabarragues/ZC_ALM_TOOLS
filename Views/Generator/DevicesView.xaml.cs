@@ -1,7 +1,7 @@
 ﻿using System.Windows.Controls;
 using ZC_ALM_TOOLS.ViewModels;
 
-namespace ZC_ALM_TOOLS.Views
+namespace ZC_ALM_TOOLS.Views.Generator
 {
     public partial class DevicesView : UserControl
     {

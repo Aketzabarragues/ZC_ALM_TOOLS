@@ -5,10 +5,12 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using ZC_ALM_TOOLS.Core;
-using ZC_ALM_TOOLS.Models;
-using ZC_ALM_TOOLS.Services;
+using ZC_ALM_TOOLS.Models.Common;
+using ZC_ALM_TOOLS.Models.Generator;
+using ZC_ALM_TOOLS.Services.Common;
+using ZC_ALM_TOOLS.Services.TiaPortal;
 
-namespace ZC_ALM_TOOLS.ViewModels
+namespace ZC_ALM_TOOLS.ViewModels.Generator
 {
     public class ProjectedBlock : ObservableObject
     {

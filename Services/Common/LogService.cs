@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 
-namespace ZC_ALM_TOOLS.Services
+namespace ZC_ALM_TOOLS.Services.Common
 {
     public static class LogService
     {

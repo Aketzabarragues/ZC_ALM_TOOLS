@@ -1,7 +1,7 @@
 ﻿using System.Xml.Linq;
 using ZC_ALM_TOOLS.Core;
 
-namespace ZC_ALM_TOOLS.Models
+namespace ZC_ALM_TOOLS.Models.Common
 {
     public class ConfigDeviceSettings
     {
