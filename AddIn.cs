@@ -4,6 +4,7 @@ using Siemens.Engineering;
 using Siemens.Engineering.AddIn.Menu;
 using Siemens.Engineering.SW;
 using ZC_ALM_TOOLS.Views;
+using ZC_ALM_TOOLS.Views.Vci;
 
 namespace ZC_ALM_TOOLS
 {
