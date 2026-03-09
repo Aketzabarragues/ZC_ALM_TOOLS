@@ -28,7 +28,10 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
     {
         private PlcSoftware _currentPlc;
 
-
+        // Diccionarios de caché en RAM
+        private Dictionary<string, PlcBlock> _blocksByNameCache;
+        private Dictionary<string, PlcBlock> _blocksByNumberCache;
+        private bool _isCacheBuilt = false;
 
 
         // ==================================================================================================================
@@ -37,6 +40,73 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
         {
 
         }
+
+
+
+
+
+
+
+
+
+
+        // ==================================================================================================================
+        // Exportar el contenido de la caché a un archivo TXT para análisis
+        public void DumpCacheToTxt(string filePath)
+        {
+            try
+            {
+                if (!_isCacheBuilt)
+                {
+                    LogService.Write("[TIA-PLC-SERVICE] [DumpCache] La caché no está construida, ignorando volcado.");
+                    return;
+                }
+
+                using (StreamWriter writer = new StreamWriter(filePath))
+                {
+                    writer.WriteLine("=========================================================");
+                    writer.WriteLine("             VOLCADO DE CACHÉ DE TIA PORTAL              ");
+                    writer.WriteLine("=========================================================");
+                    writer.WriteLine($"Fecha de volcado: {DateTime.Now}");
+                    writer.WriteLine($"PLC: {_currentPlc?.Name}");
+                    writer.WriteLine("=========================================================\n");
+
+                    writer.WriteLine($"=== CACHÉ POR NOMBRE ({_blocksByNameCache?.Count ?? 0} Bloques) ===");
+                    if (_blocksByNameCache != null)
+                    {
+                        foreach (var kvp in _blocksByNameCache.OrderBy(x => x.Key))
+                        {
+                            writer.WriteLine($"[Nombre] {kvp.Key,-35} | [Num] {kvp.Value.Number,-5} | [Tipo API] {kvp.Value.GetType().Name}");
+                        }
+                    }
+
+                    writer.WriteLine("\n");
+                    writer.WriteLine($"=== CACHÉ POR TIPO/NÚMERO ({_blocksByNumberCache?.Count ?? 0} Bloques) ===");
+                    if (_blocksByNumberCache != null)
+                    {
+                        foreach (var kvp in _blocksByNumberCache.OrderBy(x => x.Key))
+                        {
+                            writer.WriteLine($"[Clave] {kvp.Key,-10} | [Nombre TIA] {kvp.Value.Name,-30} | [Tipo API] {kvp.Value.GetType().Name}");
+                        }
+                    }
+                }
+                LogService.Write($"[TIA-PLC-SERVICE] [DumpCache] Caché exportada exitosamente a: {filePath}");
+            }
+            catch (Exception ex)
+            {
+                LogService.Write($"[TIA-PLC-SERVICE] [DumpCache] Error exportando la caché: {ex.Message}", true);
+            }
+        }
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -355,8 +425,87 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
         // Asignacion de PLC seleccionado
         public void UpdatePlc(PlcSoftware plcSoftware)
         {
-            _currentPlc = plcSoftware;
+            if (_currentPlc != plcSoftware)
+            {
+                _currentPlc = plcSoftware;
+
+                // Si cambiamos de PLC, destruimos la caché antigua
+                _isCacheBuilt = false;
+                _blocksByNameCache?.Clear();
+                _blocksByNumberCache?.Clear();
+                LogService.Write("[TIA-PLC-SERVICE] PLC modificado. Caché invalidada.");
+            }
         }
+
+
+
+        // ==================================================================================================================
+        // Construye el índice completo del PLC en memoria RAM
+        public void BuildBlockCache()
+        {
+            if (_currentPlc == null) return;
+
+            _blocksByNameCache = new Dictionary<string, PlcBlock>(StringComparer.OrdinalIgnoreCase);
+            _blocksByNumberCache = new Dictionary<string, PlcBlock>(StringComparer.OrdinalIgnoreCase);
+
+            LogService.Write("[TIA-PLC-SERVICE] Indexando todos los bloques del PLC en memoria...");
+
+            PopulateCacheRecursively(_currentPlc.BlockGroup);
+
+            _isCacheBuilt = true;
+            LogService.Write($"[TIA-PLC-SERVICE] Indexación completa: {_blocksByNameCache.Count} bloques guardados en caché.");
+        }
+
+
+        private void PopulateCacheRecursively(PlcBlockGroup group)
+        {
+            foreach (var block in group.Blocks)
+            {
+                // 1. Indexar por Nombre
+                if (!_blocksByNameCache.ContainsKey(block.Name))
+                {
+                    _blocksByNameCache.Add(block.Name, block);
+                }
+
+                // 2. Indexar por Tipo y Número (Ej: "DB-100")
+                string type = "";
+                if (block is GlobalDB || block is InstanceDB || block is ArrayDB) type = "DB";
+                else if (block is FC) type = "FC";
+                else if (block is FB) type = "FB";
+                else if (block is OB) type = "OB";
+
+                if (!string.IsNullOrEmpty(type))
+                {
+                    string key = $"{type}-{block.Number}";
+                    if (!_blocksByNumberCache.ContainsKey(key))
+                    {
+                        _blocksByNumberCache.Add(key, block);
+                    }
+                }
+            }
+
+            // Llamada recursiva a las subcarpetas para leerlo todo
+            foreach (var subFolder in group.Groups)
+            {
+                PopulateCacheRecursively(subFolder);
+            }
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -535,8 +684,13 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
         public PlcBlock FindBlockByName(string blockName)
         {
             if (_currentPlc == null) return null;
-            // Le pasamos la carpeta raíz del PLC y el nombre que queremos buscar
-            return FindBlockRecursively(_currentPlc.BlockGroup, blockName);
+            if (!_isCacheBuilt) BuildBlockCache(); // Lazy Loading: Si no hay caché, la crea
+
+            if (_blocksByNameCache != null && _blocksByNameCache.TryGetValue(blockName, out PlcBlock foundBlock))
+            {
+                return foundBlock;
+            }
+            return null;
         }
 
 
@@ -565,7 +719,15 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
         public PlcBlock FindBlockByNumber(int number, string blockType)
         {
             if (_currentPlc == null) return null;
-            return FindBlockByNumberRecursively(_currentPlc.BlockGroup, number, blockType.ToUpper());
+            if (!_isCacheBuilt) BuildBlockCache(); // Lazy Loading: Si no hay caché, la crea
+
+            string key = $"{blockType.ToUpper()}-{number}";
+
+            if (_blocksByNumberCache != null && _blocksByNumberCache.TryGetValue(key, out PlcBlock foundBlock))
+            {
+                return foundBlock;
+            }
+            return null;
         }
 
 

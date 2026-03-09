@@ -78,6 +78,12 @@
                     </StackPanel>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+
+                    <Button Command="{Binding DumpCacheCommand}"
+                            Style="{StaticResource SettingsButtonStyle}"
+                            ToolTip="Exportar Caché del PLC a un archivo TXT"
+                            Content="🖨️" Margin="0,0,10,0"/>
+                    
                     <Button Command="{Binding ConfigSettingsCommand}"
                             Style="{StaticResource SettingsButtonStyle}"
                             ToolTip="Editar configuracion"

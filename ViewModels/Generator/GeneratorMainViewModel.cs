@@ -83,7 +83,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
         // Comandos
         public RelayCommand LoadDataCommand { get; set; }
         public RelayCommand ConfigSettingsCommand { get; set; }
-
+        public RelayCommand DumpCacheCommand { get; set; }
 
         // ==================================================================================================================
         // CONSTRUCTOR
@@ -140,10 +140,84 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
             // Mapeo de comandos
             LoadDataCommand = new RelayCommand(LoadExcelAndGenerateJson);
             ConfigSettingsCommand = new RelayCommand(OpenSettingsEditor);
+            DumpCacheCommand = new RelayCommand(ExecuteDumpCache);
 
             // Inicializar estado
             IsDataLoaded = false;
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+        // ==================================================================================================================
+        // Exportar volcado de caché a TXT
+        private void ExecuteDumpCache()
+        {
+            if (!IsDataLoaded)
+            {
+                MessageBox.Show("Debes cargar los datos primero para que la caché se haya indexado.", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            SaveFileDialog saveFileDialog = new SaveFileDialog
+            {
+                Filter = "Text Files (*.txt)|*.txt",
+                Title = "Guardar volcado de la Caché",
+                FileName = $"TiaCacheDump_{SelectedTarget?.Name}.txt"
+            };
+
+            if (saveFileDialog.ShowDialog() == true)
+            {
+                StatusService.SetBusy(true);
+                UpdateStatus("Exportando volcado de caché...");
+                _tiaPlcService.DumpCacheToTxt(saveFileDialog.FileName);
+                UpdateStatus("Caché exportada correctamente.", StatusType.Ok);
+                StatusService.SetBusy(false);
+            }
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -153,8 +227,17 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
         {
             if (SelectedTarget != null && SelectedTarget.SoftwareObject is PlcSoftware plc)
             {
-
                 _tiaPlcService.UpdatePlc(plc);
+
+                // Si los datos del Excel ya están cargados y el usuario cambia de PLC,
+                // reconstruimos la caché automáticamente para el nuevo PLC.
+                if (IsDataLoaded)
+                {
+                    StatusService.SetBusy(true);
+                    UpdateStatus($"Indexando bloques de {SelectedTarget.Name}...");
+                    await Task.Run(() => _tiaPlcService.BuildBlockCache());
+                    StatusService.SetBusy(false);
+                }
 
                 DevicesVM?.NotifyPlcChanged(SelectedTarget.Name);
                 ParamsAlarmsVM?.NotifyPlcChanged(SelectedTarget.Name);
@@ -219,6 +302,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                         DevicesVM.LoadData(_engineeringCache, _configDeviceSettings);
                         ParamsAlarmsVM.LoadData(_engineeringCache, _configProcessesSettings);
                         ProcessGeneratorVM.LoadData(_engineeringCache, _configProcessesSettings, _configGlobalSettings);
+
+                        UpdateStatus("Indexando bloques del PLC en memoria RAM...");
+                        _tiaPlcService.BuildBlockCache();
 
                         IsDataLoaded = true;
                         UpdateStatus("Listo. Todos los módulos cargados.");
