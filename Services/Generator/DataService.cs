@@ -194,7 +194,7 @@ namespace ZC_ALM_TOOLS.Services.Generator
                 XDocument doc = XDocument.Load(path);
 
                 // Construimos el nombre de la clase dinámicamente
-                string className = $"ZC_ALM_TOOLS.Models.{category.ModelClass}";
+                string className = $"ZC_ALM_TOOLS.Models.Generator.{category.ModelClass}";
                 Type modelType = Type.GetType(className);
 
                 if (modelType == null)

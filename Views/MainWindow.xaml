@@ -6,9 +6,11 @@
         xmlns:vGenerator="clr-namespace:ZC_ALM_TOOLS.Views.Generator"
         xmlns:vVci="clr-namespace:ZC_ALM_TOOLS.Views.Vci"
         Title="ZC Engineering Suite" Height="850" Width="1600"
-        WindowStartupLocation="CenterScreen">
+        WindowStartupLocation="CenterScreen" Background="#F5F6F8">
 
     <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+
         <DataTemplate DataType="{x:Type vmGenerator:GeneratorMainViewModel}">
             <vGenerator:GeneratorMainView />
         </DataTemplate>
@@ -16,67 +18,104 @@
         <DataTemplate DataType="{x:Type vmVci:VciMainViewModel}">
             <vVci:VciMainView />
         </DataTemplate>
+
+        <Style x:Key="MenuButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="10"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="5" Margin="5,0">
+                            <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#2a3680"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
     </Window.Resources>
 
-    <Grid Background="#F0F0F0">
+    <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="120"/>
-            <ColumnDefinition Width="200"/>
+            <ColumnDefinition Width="140"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <Grid.RowDefinitions>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="30"/>
-        </Grid.RowDefinitions>
-
-        <Border Grid.Column="0" Grid.RowSpan="2" Background="#19215d">
+        <Border Grid.Column="0" Background="#19215d">
             <StackPanel Margin="0,20">
-                <Button Command="{Binding ShowGeneratorCommand}" ToolTip="Generador" Background="Transparent" BorderThickness="0" Margin="0,10">
-                    <Border>
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="⚙️" FontSize="15" Foreground="White"/>
-                            <TextBlock Text="Procesos" FontSize="15" Foreground="White"/>
-                        </StackPanel>
-                    </Border>
-                                
+                <TextBlock Text="ZC ALM Tools" Foreground="White" FontWeight="Bold" FontSize="18" HorizontalAlignment="Center" Margin="0,0,0,30"/>
+
+                <Button Command="{Binding ShowGeneratorCommand}" ToolTip="Generador de Procesos" Style="{StaticResource MenuButtonStyle}" Margin="0,5">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="⚙️" FontSize="16" Margin="0,0,10,0"/>
+                        <TextBlock Text="Procesos" FontSize="14" Foreground="White" VerticalAlignment="Center"/>
+                    </StackPanel>
                 </Button>
-                <Button Command="{Binding ShowVciCommand}" ToolTip="Auditoría VCI" Background="Transparent" BorderThickness="0" Margin="0,10">
-                    
-                    <Border>
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="🔍" FontSize="15" Foreground="White"/>
-                            <TextBlock Text="VCI" FontSize="15" Foreground="White"/>
-                        </StackPanel>
-                    </Border>
+
+                <Button Command="{Binding ShowVciCommand}" ToolTip="Auditoría VCI" Style="{StaticResource MenuButtonStyle}" Margin="0,5">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="🔍" FontSize="16" Margin="0,0,10,0"/>
+                        <TextBlock Text="VCI" FontSize="14" Foreground="White" VerticalAlignment="Center"/>
+                    </StackPanel>
                 </Button>
             </StackPanel>
         </Border>
 
-        <Border Grid.Column="1" Background="White" BorderBrush="#DDD" BorderThickness="0,0,1,0">
-            <StackPanel>
-                <Border Background="#EEE" Padding="10">
-                    <TextBlock Text="DISPOSITIVOS" FontWeight="Bold" FontSize="10"/>
-                </Border>
-                <ListBox ItemsSource="{Binding PlcTargets}" SelectedItem="{Binding SelectedTarget}" BorderThickness="0">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding Name}" Padding="5"/>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-            </StackPanel>
-        </Border>
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="50"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="30"/>
+            </Grid.RowDefinitions>
 
-        <ContentControl Grid.Column="2" Content="{Binding CurrentView}" Margin="10"/>
+            <Border Grid.Row="0" Background="White" BorderBrush="#DDD" BorderThickness="0,0,0,1">
+                <Grid>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <TextBlock Text="Objetivo PLC:" Foreground="#666" VerticalAlignment="Center" Margin="0,0,10,0" FontWeight="SemiBold"/>
 
-        <StatusBar Grid.Row="1" Grid.Column="1" Grid.ColumnSpan ="2" Background="#E9ECEF">
-            <StatusBarItem>
-                <StackPanel Orientation="Horizontal">
-                    <Ellipse Width="10" Height="10" Fill="{Binding StatusColor}" Margin="5,0"/>
-                    <TextBlock Text="{Binding StatusMessage}"/>
-                </StackPanel>
-            </StatusBarItem>
-        </StatusBar>
+                        <ComboBox ItemsSource="{Binding PlcTargets}" 
+                                  SelectedItem="{Binding SelectedTarget}" 
+                                  Width="220" Height="30" FontSize="14" 
+                                  Background="#F8F9FA" BorderBrush="#CCC" Padding="5,3">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="💻 "/>
+                                        <TextBlock Text="{Binding Name}"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <ContentControl Grid.Row="1" Content="{Binding CurrentView}" Margin="10"/>
+
+            <StatusBar Grid.Row="2" Background="#E9ECEF" BorderBrush="#CED4DA" BorderThickness="0,1,0,0">
+                <StatusBarItem>
+                    <StackPanel Orientation="Horizontal">
+                        <Ellipse Width="10" Height="10" Fill="{Binding StatusColor}" Margin="5,0,10,0"/>
+                        <TextBlock Text="{Binding StatusMessage}" FontWeight="Medium" Foreground="#333"/>
+                    </StackPanel>
+                </StatusBarItem>
+
+                <StatusBarItem HorizontalAlignment="Right" Margin="0,0,10,0">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Trabajando..." FontSize="11" Foreground="#666" Margin="0,0,10,0" VerticalAlignment="Center"
+                                   Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}"/>
+                        <ProgressBar Width="150" Height="14" IsIndeterminate="True" Foreground="#007ACC" BorderThickness="0"
+                                     Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}"/>
+                    </StackPanel>
+                </StatusBarItem>
+            </StatusBar>
+        </Grid>
     </Grid>
 </Window>
