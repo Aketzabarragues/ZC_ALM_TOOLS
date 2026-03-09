@@ -10,6 +10,7 @@ using Siemens.Engineering;
 using Siemens.Engineering.SW;
 using ZC_ALM_TOOLS.Core;
 using ZC_ALM_TOOLS.Models.Common;
+using ZC_ALM_TOOLS.Models.TiaPortal;
 using ZC_ALM_TOOLS.Services.Common;
 using ZC_ALM_TOOLS.Services.Generator;
 using ZC_ALM_TOOLS.Services.TiaPortal;
@@ -214,7 +215,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
         // ==================================================================================================================
         // Método para actualizar el PLC de trabajo cuando el usuario cambia la selección
-        private async void UpdateActiveService()
+        private void UpdateActiveService()
         {
             if (SelectedTarget != null && SelectedTarget.SoftwareObject is PlcSoftware plc)
             {
@@ -226,7 +227,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                 {
                     StatusService.SetBusy(true);
                     StatusService.Set($"Indexando bloques de {SelectedTarget.Name}...", StatusType.Ok);
-                    await Task.Run(() => _tiaPlcService.BuildBlockCache());
+                    _tiaPlcService.BuildBlockCache();
                     StatusService.SetBusy(false);
                 }
 

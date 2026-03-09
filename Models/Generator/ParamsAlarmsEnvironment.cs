@@ -59,7 +59,7 @@ namespace ZC_ALM_TOOLS.Models.Generator
             // 2. Validación directa contra TIA Portal
             LogService.Write($"[PARAMS-ALARMS-ENVIRONMENT] Buscando tabla '{TableName}' y DBs asociados...");
 
-            if (tiaPlcService.FindTagTableRecursively(TableName) == null)
+            if (tiaPlcService.FindTagTableByName(TableName) == null)
             {
                 StatusService.Set($"Error: No se encuentra la tabla '{TableName}' en el PLC.", StatusType.Error);
                 return; // Se queda IsValid = false

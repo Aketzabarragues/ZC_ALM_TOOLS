@@ -41,13 +41,13 @@ namespace ZC_ALM_TOOLS.Models.Generator
             // 2. Validación temprana contra TIA Portal (Early Return)
             LogService.Write($"[DEVICES-ENVIRONMENT] Validando entorno PLC para categoría '{category.Name}'...");
 
-            if (tiaPlcService.FindTagTableRecursively(settings.ConfigTableName) == null)
+            if (tiaPlcService.FindTagTableByName(settings.ConfigTableName) == null)
             {
                 StatusService.Set($"Error: No se encuentra la tabla de constantes '{settings.ConfigTableName}'.", StatusType.Error);
                 return;
             }
 
-            if (tiaPlcService.FindTagTableRecursively(category.TiaTable) == null)
+            if (tiaPlcService.FindTagTableByName(category.TiaTable) == null)
             {
                 StatusService.Set($"Error: No se encuentra la tabla de variables '{category.TiaTable}'.", StatusType.Error);
                 return;

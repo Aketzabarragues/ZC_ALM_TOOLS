@@ -7,6 +7,7 @@ using Siemens.Engineering.HW.Features;
 using Siemens.Engineering.SW;
 using ZC_ALM_TOOLS.Models;
 using ZC_ALM_TOOLS.Models.Common;
+using ZC_ALM_TOOLS.Models.TiaPortal;
 
 namespace ZC_ALM_TOOLS.Services.TiaPortal
 {

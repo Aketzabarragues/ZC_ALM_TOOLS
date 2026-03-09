@@ -14,6 +14,7 @@ using Siemens.Engineering.SW.Blocks;
 using Siemens.Engineering.SW.Tags;
 using ZC_ALM_TOOLS.Models;
 using ZC_ALM_TOOLS.Models.Generator;
+using ZC_ALM_TOOLS.Models.TiaPortal;
 using ZC_ALM_TOOLS.Services;
 using ZC_ALM_TOOLS.Services.Common;
 
@@ -29,8 +30,8 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
         private PlcSoftware _currentPlc;
 
         // Diccionarios de caché en RAM
-        private Dictionary<string, PlcBlock> _blocksByNameCache;
-        private Dictionary<string, PlcBlock> _blocksByNumberCache;
+        private List<CachedPlcBlock> _plcCache;
+        private List<CachedPlcTagTable> _tagTableCache;
         private bool _isCacheBuilt = false;
 
 
@@ -56,11 +57,7 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
         {
             try
             {
-                if (!_isCacheBuilt)
-                {
-                    LogService.Write("[TIA-PLC-SERVICE] [DumpCache] La caché no está construida, ignorando volcado.");
-                    return;
-                }
+                if (!_isCacheBuilt || _plcCache == null) return;
 
                 using (StreamWriter writer = new StreamWriter(filePath))
                 {
@@ -69,24 +66,21 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                     writer.WriteLine("=========================================================");
                     writer.WriteLine($"Fecha de volcado: {DateTime.Now}");
                     writer.WriteLine($"PLC: {_currentPlc?.Name}");
+                    writer.WriteLine($"Total Bloques: {_plcCache.Count}");
                     writer.WriteLine("=========================================================\n");
 
-                    writer.WriteLine($"=== CACHÉ POR NOMBRE ({_blocksByNameCache?.Count ?? 0} Bloques) ===");
-                    if (_blocksByNameCache != null)
+                    // Ordenamos la lista alfabéticamente solo para imprimirla bonita
+                    foreach (var item in _plcCache.OrderBy(b => b.Name))
                     {
-                        foreach (var kvp in _blocksByNameCache.OrderBy(x => x.Key))
-                        {
-                            writer.WriteLine($"[Nombre] {kvp.Key,-35} | [Num] {kvp.Value.Number,-5} | [Tipo API] {kvp.Value.GetType().Name}");
-                        }
+                        writer.WriteLine($"[Nombre] {item.Name,-35} | [Num] {item.Number,-5} | [Tipo API] {item.ApiType,-12} | [Ruta] {item.FolderPath}");
                     }
 
-                    writer.WriteLine("\n");
-                    writer.WriteLine($"=== CACHÉ POR TIPO/NÚMERO ({_blocksByNumberCache?.Count ?? 0} Bloques) ===");
-                    if (_blocksByNumberCache != null)
+                    writer.WriteLine("\n=== TABLAS DE VARIABLES ===");
+                    if (_tagTableCache != null)
                     {
-                        foreach (var kvp in _blocksByNumberCache.OrderBy(x => x.Key))
+                        foreach (var item in _tagTableCache.OrderBy(t => t.Name))
                         {
-                            writer.WriteLine($"[Clave] {kvp.Key,-10} | [Nombre TIA] {kvp.Value.Name,-30} | [Tipo API] {kvp.Value.GetType().Name}");
+                            writer.WriteLine($"[Nombre] {item.Name,-35} | [Ruta] {item.FolderPath}");
                         }
                     }
                 }
@@ -123,7 +117,7 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
             try
             {
                 LogService.Write($"[TIA-PLC-SERVICE] [SyncUserConstants]  === SINCRONIZANDO IDs: {tableName} ===");
-                var table = FindTagTableRecursively(tableName);
+                var table = FindTagTableByName(tableName);
                 if (table == null) throw new Exception($"La tabla '{tableName}' no existe.");
 
                 // Eliminar las que sobran en TIA
@@ -180,10 +174,10 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
         {
             try
             {
-                LogService.Write($"[TIA-PLC-SERVICE] [SyncDbComments] === INICIANDO SINCRONIZACION DE COMENTARIOS: {dbName} ===");
 
                 // 1. Localizar el bloque
-                var genericBlock = FindBlockRecursively(_currentPlc.BlockGroup, dbName);
+                LogService.Write($"[TIA-PLC-SERVICE] [CompileBlock] Buscando bloque '{dbName}' para compilar...");
+                var genericBlock = FindBlockByName(dbName);
                 var db = genericBlock as GlobalDB;
 
                 if (db == null)
@@ -255,6 +249,11 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                 else if (parent is PlcBlockGroup root)
                     root.Blocks.Import(new FileInfo(xmlPath), ImportOptions.Override);
 
+
+                PlcBlock newBlock = (parent is PlcBlockUserGroup f) ? f.Blocks.Find(dbName) : ((PlcBlockGroup)parent).Blocks.Find(dbName);
+                var cachedItem = _plcCache.FirstOrDefault(b => b.Name.Equals(dbName, StringComparison.OrdinalIgnoreCase));
+                if (cachedItem != null && newBlock != null) cachedItem.Block = newBlock;
+
                 LogService.Write($"[TIA-PLC-SERVICE] [SyncDbComments] ¡ÉXITO! Bloque {dbName} actualizado correctamente.");
                 return true;
             }
@@ -277,7 +276,7 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
             try
             {
                 if (File.Exists(xmlPath)) File.Delete(xmlPath);
-                var table = FindTagTableRecursively(tableName);
+                var table = FindTagTableByName(tableName);
                 if (table == null) return false;
 
                 table.Export(new FileInfo(xmlPath), ExportOptions.WithDefaults);
@@ -346,8 +345,17 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                 {
                     LogService.Write($"[TIA-PLC-SERVICE] [SyncParamsAlarmsDbComments] XML modificado. Guardando e importando...");
                     doc.Save(tempPath);
-                    var group = block.Parent as PlcBlockGroup;
-                    group.Blocks.Import(new FileInfo(tempPath), ImportOptions.Override);
+
+                    var parent = block.Parent;
+                    if (parent is PlcBlockUserGroup folder)
+                        folder.Blocks.Import(new FileInfo(tempPath), ImportOptions.Override);
+                    else if (parent is PlcBlockGroup root)
+                        root.Blocks.Import(new FileInfo(tempPath), ImportOptions.Override);
+
+                    PlcBlock newBlock = (parent is PlcBlockUserGroup f) ? f.Blocks.Find(blockName) : ((PlcBlockGroup)parent).Blocks.Find(blockName);
+                    var cachedItem = _plcCache.FirstOrDefault(b => b.Name.Equals(blockName, StringComparison.OrdinalIgnoreCase));
+                    if (cachedItem != null && newBlock != null) cachedItem.Block = newBlock;
+
                     LogService.Write($"[TIA-PLC-SERVICE] [SyncParamsAlarmsDbComments] ¡ÉXITO! Bloque {blockName} actualizado.");
                     return true;
                 }
@@ -431,8 +439,8 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
 
                 // Si cambiamos de PLC, destruimos la caché antigua
                 _isCacheBuilt = false;
-                _blocksByNameCache?.Clear();
-                _blocksByNumberCache?.Clear();
+                _plcCache?.Clear();
+                _tagTableCache?.Clear();
                 LogService.Write("[TIA-PLC-SERVICE] PLC modificado. Caché invalidada.");
             }
         }
@@ -443,58 +451,78 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
         // Construye el índice completo del PLC en memoria RAM
         public void BuildBlockCache()
         {
-            if (_currentPlc == null) return;
+            try
+            {
+                if (_currentPlc == null) return;
 
-            _blocksByNameCache = new Dictionary<string, PlcBlock>(StringComparer.OrdinalIgnoreCase);
-            _blocksByNumberCache = new Dictionary<string, PlcBlock>(StringComparer.OrdinalIgnoreCase);
+                _plcCache = new List<CachedPlcBlock>();
+                _tagTableCache = new List<CachedPlcTagTable>();
 
-            LogService.Write("[TIA-PLC-SERVICE] Indexando todos los bloques del PLC en memoria...");
+                LogService.Write("[TIA-PLC-SERVICE] Indexando todos los bloques del PLC en memoria...");
 
-            PopulateCacheRecursively(_currentPlc.BlockGroup);
+                PopulateCacheRecursively(_currentPlc.BlockGroup, "Root");
+                PopulateTagTableCacheRecursively(_currentPlc.TagTableGroup, "Variables de PLC");
 
-            _isCacheBuilt = true;
-            LogService.Write($"[TIA-PLC-SERVICE] Indexación completa: {_blocksByNameCache.Count} bloques guardados en caché.");
+                _isCacheBuilt = true;
+                LogService.Write($"[TIA-PLC-SERVICE] Indexación completa: {_plcCache.Count} bloques guardados en caché.");
+            }
+            catch (Exception ex)
+            {
+                LogService.Write($"[TIA-PLC-SERVICE] ERROR CRÍTICO construyendo la caché: {ex.Message}", true);
+            }
+            
         }
 
 
-        private void PopulateCacheRecursively(PlcBlockGroup group)
+        private void PopulateTagTableCacheRecursively(PlcTagTableGroup group, string currentPath)
+        {
+            foreach (var table in group.TagTables)
+            {
+                _tagTableCache.Add(new CachedPlcTagTable
+                {
+                    Table = table,
+                    Name = table.Name,
+                    FolderPath = currentPath
+                });
+            }
+
+            foreach (var subFolder in group.Groups)
+            {
+                string nextPath = currentPath == "Variables de PLC" ? subFolder.Name : currentPath + "\\" + subFolder.Name;
+                PopulateTagTableCacheRecursively(subFolder, nextPath);
+            }
+        }
+
+
+        private void PopulateCacheRecursively(PlcBlockGroup group, string currentPath)
         {
             foreach (var block in group.Blocks)
             {
-                // 1. Indexar por Nombre
-                if (!_blocksByNameCache.ContainsKey(block.Name))
-                {
-                    _blocksByNameCache.Add(block.Name, block);
-                }
+                // Averiguar el tipo simple
+                string simpleType = "";
+                if (block is GlobalDB || block is InstanceDB || block is ArrayDB) simpleType = "DB";
+                else if (block is FC) simpleType = "FC";
+                else if (block is FB) simpleType = "FB";
+                else if (block is OB) simpleType = "OB";
 
-                // 2. Indexar por Tipo y Número (Ej: "DB-100")
-                string type = "";
-                if (block is GlobalDB || block is InstanceDB || block is ArrayDB) type = "DB";
-                else if (block is FC) type = "FC";
-                else if (block is FB) type = "FB";
-                else if (block is OB) type = "OB";
-
-                if (!string.IsNullOrEmpty(type))
+                // Añadir a nuestra única lista
+                _plcCache.Add(new CachedPlcBlock
                 {
-                    string key = $"{type}-{block.Number}";
-                    if (!_blocksByNumberCache.ContainsKey(key))
-                    {
-                        _blocksByNumberCache.Add(key, block);
-                    }
-                }
+                    Block = block,
+                    Name = block.Name,
+                    Number = block.Number,
+                    ApiType = block.GetType().Name,
+                    SimpleType = simpleType,
+                    FolderPath = currentPath
+                });
             }
 
-            // Llamada recursiva a las subcarpetas para leerlo todo
             foreach (var subFolder in group.Groups)
             {
-                PopulateCacheRecursively(subFolder);
+                string nextPath = currentPath == "Root" ? subFolder.Name : currentPath + "\\" + subFolder.Name;
+                PopulateCacheRecursively(subFolder, nextPath);
             }
         }
-
-
-
-
-
 
 
 
@@ -515,7 +543,7 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
         {
             try
             {
-                var table = FindTagTableRecursively(tableName);
+                var table = FindTagTableByName(tableName);
                 if (table == null) return -1;
 
                 var constant = table.UserConstants.Find(constantName);
@@ -574,7 +602,7 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
             try
             {
                 LogService.Write($"[TIA-PLC-SERVICE] [SyncGlobalConstant] Verificando constante: {constantName}...");
-                var table = FindTagTableRecursively(tableName);
+                var table = FindTagTableByName(tableName);
                 if (table == null) throw new Exception($"No se encontró la tabla '{tableName}'");
 
                 var constant = table.UserConstants.Find(constantName);
@@ -609,7 +637,7 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
             try
             {
                 LogService.Write($"[TIA-PLC-SERVICE] [CompileBlock] Buscando bloque '{blockName}' para compilar...");
-                var block = FindBlockRecursively(_currentPlc.BlockGroup, blockName);
+                var block = FindBlockByName(blockName);
 
                 if (block == null)
                 {
@@ -640,26 +668,13 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
 
 
         // ==================================================================================================================
-        // Buscar tabla de variables recursivamente por nombre (Sirve para todo)
-        public PlcTagTable FindTagTableRecursively(string tableName)
+        // Buscar tabla de variables
+        public PlcTagTable FindTagTableByName(string tableName)
         {
             if (_currentPlc == null) return null;
-            return FindTagTableRecursive(_currentPlc.TagTableGroup, tableName);
-        }
+            if (!_isCacheBuilt) BuildBlockCache();
 
-        private PlcTagTable FindTagTableRecursive(PlcTagTableGroup group, string tableName)
-        {
-            if (group == null) return null;
-
-            var table = group.TagTables.Find(tableName);
-            if (table != null) return table;
-
-            foreach (var subGroup in group.Groups)
-            {
-                var found = FindTagTableRecursive(subGroup, tableName);
-                if (found != null) return found;
-            }
-            return null;
+            return _tagTableCache?.FirstOrDefault(t => t.Name.Equals(tableName, StringComparison.OrdinalIgnoreCase))?.Table;
         }
 
 
@@ -684,31 +699,9 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
         public PlcBlock FindBlockByName(string blockName)
         {
             if (_currentPlc == null) return null;
-            if (!_isCacheBuilt) BuildBlockCache(); // Lazy Loading: Si no hay caché, la crea
+            if (!_isCacheBuilt) BuildBlockCache();
 
-            if (_blocksByNameCache != null && _blocksByNameCache.TryGetValue(blockName, out PlcBlock foundBlock))
-            {
-                return foundBlock;
-            }
-            return null;
-        }
-
-
-
-
-        // ==================================================================================================================
-        // Buscar bloque recursivamente por nombre
-        private PlcBlock FindBlockRecursively(PlcBlockGroup group, string name)
-        {
-            var block = group.Blocks.Find(name);
-            if (block != null) return block;
-
-            foreach (var subFolder in group.Groups)
-            {
-                var found = FindBlockRecursively(subFolder, name);
-                if (found != null) return found;
-            }
-            return null;
+            return _plcCache?.FirstOrDefault(b => b.Name.Equals(blockName, StringComparison.OrdinalIgnoreCase))?.Block;
         }
 
 
@@ -719,48 +712,9 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
         public PlcBlock FindBlockByNumber(int number, string blockType)
         {
             if (_currentPlc == null) return null;
-            if (!_isCacheBuilt) BuildBlockCache(); // Lazy Loading: Si no hay caché, la crea
+            if (!_isCacheBuilt) BuildBlockCache();
 
-            string key = $"{blockType.ToUpper()}-{number}";
-
-            if (_blocksByNumberCache != null && _blocksByNumberCache.TryGetValue(key, out PlcBlock foundBlock))
-            {
-                return foundBlock;
-            }
-            return null;
-        }
-
-
-
-
-        // ==================================================================================================================
-        // Buscar bloque recursivamente por numero
-        private PlcBlock FindBlockByNumberRecursively(PlcBlockGroup group, int number, string blockType)
-        {
-            // Recorremos todos los bloques de la carpeta actual
-            foreach (var block in group.Blocks)
-            {
-                // TIA Portal guarda el número del bloque en la propiedad 'Number'
-                if (block.Number == number)
-                {
-                    // Si el número coincide, verificamos que sea del tipo correcto (FC, FB, DB)
-                    // Openness usa clases específicas para cada tipo de bloque
-                    if (blockType == "DB" && (block is GlobalDB || block is InstanceDB || block is ArrayDB)) return block;
-                    if (blockType == "FC" && block is FC) return block;
-                    if (blockType == "FB" && block is FB) return block;
-                    if (blockType == "OB" && block is OB) return block;
-                }
-            }
-
-            // Si no está en esta carpeta, buscamos en las subcarpetas de forma recursiva
-            foreach (var subFolder in group.Groups)
-            {
-                var found = FindBlockByNumberRecursively(subFolder, number, blockType);
-                if (found != null) return found;
-            }
-
-            // Si terminamos de buscar en todas partes y no está, devolvemos null (Vía libre)
-            return null;
+            return _plcCache?.FirstOrDefault(b => b.Number == number && b.SimpleType.Equals(blockType, StringComparison.OrdinalIgnoreCase))?.Block;
         }
 
 

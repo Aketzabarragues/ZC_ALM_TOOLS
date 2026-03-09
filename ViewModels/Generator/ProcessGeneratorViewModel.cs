@@ -196,7 +196,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
                 if (bloque.Tipo == "Tabla")
                 {
-                    if (_tiaPlcService.FindTagTableRecursively(bloque.NombreProyectado) != null)
+                    if (_tiaPlcService.FindTagTableByName(bloque.NombreProyectado) != null)
                     {
                         bloque.Estado = SynchronizationStatus.Error;
                         bloque.Mensaje = "La tabla ya existe";

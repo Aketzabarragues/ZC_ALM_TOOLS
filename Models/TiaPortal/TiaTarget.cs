@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace ZC_ALM_TOOLS.Models.Common
+namespace ZC_ALM_TOOLS.Models.TiaPortal
 {
     public enum TargetType { PLC, HMI, SCADA }
 
