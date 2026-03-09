@@ -69,7 +69,7 @@ namespace ZC_ALM_TOOLS.ViewModels
             // 4. Suscripción al StatusService Global
             StatusService.OnStatusChanged += (msg, type) => {
                 StatusMessage = msg;
-                StatusColor = type == StatusType.Error ? "Red" : (type == StatusType.Warning ? "Orange" : "Black");
+                StatusColor = type == StatusType.Error ? "Red" : (type == StatusType.Warning ? "Orange" : "Green");
                 OnPropertyChanged("StatusMessage"); OnPropertyChanged("StatusColor");
             };
             StatusService.OnBusyChanged += (busy) => { IsBusy = busy; OnPropertyChanged("IsBusy"); };
@@ -81,6 +81,11 @@ namespace ZC_ALM_TOOLS.ViewModels
         private void OnTargetChanged()
         {
             // Cuando cambias el PLC en el menú global, avisamos a los módulos
+            if (GeneratorVM != null)
+            {
+                GeneratorVM.SelectedTarget = this.SelectedTarget;
+            }
+            
             //GeneratorVM?.NotifyPlcChanged(SelectedTarget?.Name);
             // VciVM?.NotifyPlcChanged(SelectedTarget?.Name);
         }

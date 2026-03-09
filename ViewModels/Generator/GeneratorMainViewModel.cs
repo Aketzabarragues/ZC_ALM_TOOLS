@@ -46,8 +46,10 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
             }
         }
 
+
         // Caché de datos cargados
         private Dictionary<string, List<object>> _engineeringCache = new Dictionary<string, List<object>>();
+
 
         // Cache de configuracion xml
         private ConfigProcessSettings _configProcessesSettings;
@@ -55,30 +57,22 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
         private ConfigGlobalSettings _configGlobalSettings;        
         private List<ConfigDeviceCategory> _configDeviceCategory { get; set; }
 
+
         // ViewModels y Configuración
         public DevicesViewModel DevicesVM { get; set; }
         public ParamsAlarmsViewModel ParamsAlarmsVM { get; set; }
         public ProcessGeneratorViewModel ProcessGeneratorVM { get; set; }
 
-        // Variable que indica que esta ejecutandose algo
-        private bool _isBusy;
-        public bool IsBusy { get => _isBusy; set { _isBusy = value; OnPropertyChanged(); } }
 
         // Variable que indica si se ha cargado un Excel correctamente
         private bool _isDataLoaded;
         public bool IsDataLoaded { get => _isDataLoaded; set { _isDataLoaded = value; OnPropertyChanged(); } }
 
+
         // Ruta del excel seleccionado
         private string _selectedExcelFile;
         public string SelectedExcelFile { get => _selectedExcelFile; set { _selectedExcelFile = value; OnPropertyChanged(); } }
 
-        // Mensaje de estado
-        private string _statusMessage;
-        public string StatusMessage { get => _statusMessage; set { _statusMessage = value; OnPropertyChanged(); } }
-
-        // Color de estado
-        private string _statusColor = "Black";
-        public string StatusColor { get => _statusColor; set { _statusColor = value; OnPropertyChanged(); } }
 
         // Comandos
         public RelayCommand LoadDataCommand { get; set; }
@@ -129,9 +123,6 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
             ProcessGeneratorVM.SetTiaService(_tiaPlcService);
             ProcessGeneratorVM.LoadTemplates(_configGlobalSettings);
 
-            // Evento para actualizar el mensaje de estado                    
-            StatusService.OnStatusChanged += UpdateStatus;
-            StatusService.OnBusyChanged += (busy) => IsBusy = busy;
 
             // Seleccionamos una categoria en el viewmodel
             if (_configDeviceCategory.Count > 0)
@@ -178,9 +169,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
             if (saveFileDialog.ShowDialog() == true)
             {
                 StatusService.SetBusy(true);
-                UpdateStatus("Exportando volcado de caché...");
+                StatusService.Set("Exportando volcado de caché...", StatusType.Ok);
                 _tiaPlcService.DumpCacheToTxt(saveFileDialog.FileName);
-                UpdateStatus("Caché exportada correctamente.", StatusType.Ok);
+                StatusService.Set("Caché exportada correctamente.", StatusType.Ok);
                 StatusService.SetBusy(false);
             }
         }
@@ -234,7 +225,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                 if (IsDataLoaded)
                 {
                     StatusService.SetBusy(true);
-                    UpdateStatus($"Indexando bloques de {SelectedTarget.Name}...");
+                    StatusService.Set($"Indexando bloques de {SelectedTarget.Name}...", StatusType.Ok);
                     await Task.Run(() => _tiaPlcService.BuildBlockCache());
                     StatusService.SetBusy(false);
                 }
@@ -243,7 +234,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                 ParamsAlarmsVM?.NotifyPlcChanged(SelectedTarget.Name);
                 ProcessGeneratorVM?.NotifyPlcChanged(SelectedTarget.Name);
 
-                UpdateStatus($"Objetivo cambiado a: {SelectedTarget.Name}");
+                StatusService.Set($"Objetivo cambiado a: {SelectedTarget.Name}", StatusType.Ok);
             }
         }
 
@@ -274,7 +265,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                 if (!File.Exists(_configGlobalSettings.ExtractorExePath))
                 {
                     LogService.Write("[MAIN-VM] [LoadExcelAndGenerateJson] ERROR: Extractor no encontrado", true);
-                    UpdateStatus("Error: No se encuentra ZC_Extractor.exe", StatusType.Error);
+                    StatusService.Set("Error: No se encuentra ZC_Extractor.exe", StatusType.Error);
                     MessageBox.Show($"Extractor no encontrado en:\n{_configGlobalSettings.ExtractorExePath}", "Error de configuración");
                     return;
                 }
@@ -283,7 +274,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                 ClearExportFolder(AppConfigService.ExportPath);
 
                 LogService.Write("[MAIN-VM] [LoadExcelAndGenerateJson] Lanzando proceso Python...");
-                UpdateStatus("Ejecutando extractor Python...");
+                StatusService.Set("Ejecutando extractor Python...", StatusType.Ok);
 
 
 
@@ -294,7 +285,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                     if (await WaitForPythonFiles())
                     {
                         LogService.Write("[MAIN-VM] [LoadExcelAndGenerateJson] Archivos XML detectados con éxito.");
-                        UpdateStatus("Cargando datos en memoria...");
+                        StatusService.Set("Cargando datos en memoria...", StatusType.Ok);
 
                         await Task.Run(() => LoadAllFromFolder(AppConfigService.ExportPath));
 
@@ -303,21 +294,21 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                         ParamsAlarmsVM.LoadData(_engineeringCache, _configProcessesSettings);
                         ProcessGeneratorVM.LoadData(_engineeringCache, _configProcessesSettings, _configGlobalSettings);
 
-                        UpdateStatus("Indexando bloques del PLC en memoria RAM...");
+                        StatusService.Set("Indexando bloques del PLC en memoria RAM...", StatusType.Ok);
                         _tiaPlcService.BuildBlockCache();
 
                         IsDataLoaded = true;
-                        UpdateStatus("Listo. Todos los módulos cargados.");
+                        StatusService.Set("Listo. Todos los módulos cargados.", StatusType.Ok);
                     }
                     else
                     {
-                        UpdateStatus("Error: Python terminó pero no se encontraron los archivos XML.", StatusType.Error);
+                        StatusService.Set("Error: Python terminó pero no se encontraron los archivos XML.", StatusType.Error);
                     }
                 }
                 else
                 {
                     // Si llegamos aquí, es que Python falló (ExitCode != 0)
-                    UpdateStatus("Error en el script de extracción. Revisa el LOG.", StatusType.Error);
+                    StatusService.Set("Error en el script de extracción. Revisa el LOG.", StatusType.Error);
                     MessageBox.Show("El extractor de Python ha fallado. Consulta los detalles en la pestaña de Log.",
                                     "Error de Extracción", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
@@ -328,7 +319,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
             {
                 LogService.Write($"[MAIN-VM] [LoadExcelAndGenerateJson] CRASH EN CARGA: {ex.Message}", true);
                 LogService.Write($"[MAIN-VM] [LoadExcelAndGenerateJson] CRASH EN CARGA:\n{ex.ToString()}", true);
-                UpdateStatus("Error general en el proceso.", StatusType.Error);
+                StatusService.Set("Error general en el proceso.", StatusType.Error);
                 MessageBox.Show($"{ex.Message}", "Error Crítico");
             }
             finally 
@@ -540,21 +531,10 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
         {
             if (!File.Exists(path)) return;
             Siemens.Engineering.AddIn.Utilities.Process.Start("notepad.exe", $"\"{path}\"");
-            UpdateStatus(message);
+            StatusService.Set(message,StatusType.Ok);
         }
 
-        // Metodo para actualizar la barra de estado
-        private void UpdateStatus(string message, StatusType type = StatusType.Ok)
-        {
-            StatusMessage = message;
 
-            if (type == StatusType.Ok)
-                StatusColor = "Black"; // O el color por defecto que prefieras
-            else if (type == StatusType.Warning)
-                StatusColor = "Orange";
-            else if (type == StatusType.Error)
-                StatusColor = "Red";
-        }
 
     }
 }
