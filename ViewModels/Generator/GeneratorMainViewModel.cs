@@ -77,12 +77,13 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
         // Comandos
         public RelayCommand LoadDataCommand { get; set; }
-        public RelayCommand ConfigSettingsCommand { get; set; }
-        public RelayCommand DumpCacheCommand { get; set; }
+
+
+
 
         // ==================================================================================================================
         // CONSTRUCTOR
-        public GeneratorMainViewModel(TiaPortal tiaPortal, Project project)
+        public GeneratorMainViewModel(TiaPortal tiaPortal, Project project, TiaPlcService tiaPlcService)
         {
             LogService.Clear();
             LogService.Write("[MAIN-VM] [MainViewModel] Inicializando MainViewModel...");
@@ -98,8 +99,8 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
             ScadaTargets = new ObservableCollection<TiaTarget>(scannedDevices.Where(t => t.Type == TargetType.SCADA));
 
             // Inicializamos servicios de Tia portal
-            _tiaPlcService = new TiaPlcService();
-            _tiaHmiService = new TiaHmiService();
+            _tiaPlcService = tiaPlcService;
+            
 
             // Seleccionamos el primer PLC por defecto para la comparación
             SelectedTarget = PlcTargets.FirstOrDefault(t => t.Type == TargetType.PLC);            
@@ -131,51 +132,11 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
             // Mapeo de comandos
             LoadDataCommand = new RelayCommand(LoadExcelAndGenerateJson);
-            ConfigSettingsCommand = new RelayCommand(OpenSettingsEditor);
-            DumpCacheCommand = new RelayCommand(ExecuteDumpCache);
 
             // Inicializar estado
             IsDataLoaded = false;
         }
 
-
-
-
-
-
-
-
-
-
-
-
-
-        // ==================================================================================================================
-        // Exportar volcado de caché a TXT
-        private void ExecuteDumpCache()
-        {
-            if (!IsDataLoaded)
-            {
-                MessageBox.Show("Debes cargar los datos primero para que la caché se haya indexado.", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
-            SaveFileDialog saveFileDialog = new SaveFileDialog
-            {
-                Filter = "Text Files (*.txt)|*.txt",
-                Title = "Guardar volcado de la Caché",
-                FileName = $"TiaCacheDump_{SelectedTarget?.Name}.txt"
-            };
-
-            if (saveFileDialog.ShowDialog() == true)
-            {
-                StatusService.SetBusy(true);
-                StatusService.Set("Exportando volcado de caché...", StatusType.Ok);
-                _tiaPlcService.DumpCacheToTxt(saveFileDialog.FileName);
-                StatusService.Set("Caché exportada correctamente.", StatusType.Ok);
-                StatusService.SetBusy(false);
-            }
-        }
 
 
 
@@ -218,9 +179,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
         private void UpdateActiveService()
         {
             if (SelectedTarget != null && SelectedTarget.SoftwareObject is PlcSoftware plc)
-            {
-                _tiaPlcService.UpdatePlc(plc);
-
+            {               
                 // Si los datos del Excel ya están cargados y el usuario cambia de PLC,
                 // reconstruimos la caché automáticamente para el nuevo PLC.
                 if (IsDataLoaded)
@@ -524,16 +483,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
 
 
-        // ==================================================================================================================
-        // CONFIGURACIÓN Y UTILIDADES UI
-        private void OpenSettingsEditor() => OpenEditor(AppConfigService.AppConfigFile, "Editando ajustes...");
 
-        private void OpenEditor(string path, string message)
-        {
-            if (!File.Exists(path)) return;
-            Siemens.Engineering.AddIn.Utilities.Process.Start("notepad.exe", $"\"{path}\"");
-            StatusService.Set(message,StatusType.Ok);
-        }
 
 
 

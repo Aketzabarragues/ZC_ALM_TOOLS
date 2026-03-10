@@ -19,6 +19,22 @@
             <vVci:VciMainView />
         </DataTemplate>
 
+        <Style x:Key="SettingsButtonStyle" TargetType="Button">
+            <Setter Property="Foreground" Value="#555555"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontSize" Value="18"/>
+            <Setter Property="Width" Value="35"/>
+            <Setter Property="Height" Value="35"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Foreground" Value="Black"/>
+                    <Setter Property="Background" Value="#E5E5E5"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
         <Style x:Key="MenuButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="White"/>
@@ -83,7 +99,7 @@
                         <ComboBox ItemsSource="{Binding PlcTargets}" 
                                   SelectedItem="{Binding SelectedTarget}" 
                                   Width="220" Height="30" FontSize="14" 
-                                  Background="#F8F9FA" BorderBrush="#CCC" Padding="5,3">
+                                  Background="#F8F9FA" BorderBrush="#CCC" Padding="0,5,3,0">
                             <ComboBox.ItemTemplate>
                                 <DataTemplate>
                                     <StackPanel Orientation="Horizontal">
@@ -93,6 +109,16 @@
                                 </DataTemplate>
                             </ComboBox.ItemTemplate>
                         </ComboBox>
+
+                        <Button Command="{Binding DumpCacheCommand}"
+                                Style="{StaticResource SettingsButtonStyle}"
+                                ToolTip="Exportar Caché del PLC a un archivo TXT"
+                                Content="🖨️" Margin="10,0,10,0"/>
+
+                        <Button Command="{Binding ConfigSettingsCommand}"
+                                Style="{StaticResource SettingsButtonStyle}"
+                                ToolTip="Editar configuracion"
+                                Content="⚙️"/>
                     </StackPanel>
                 </Grid>
             </Border>
