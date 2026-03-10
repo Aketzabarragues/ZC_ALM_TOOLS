@@ -13,11 +13,12 @@ using ZC_ALM_TOOLS.Services.TiaPortal;
 namespace ZC_ALM_TOOLS.ViewModels.Generator
 {
 
-    // ViewModel que gestiona la pestaña de procesos
+    
     public class ParamsAlarmsViewModel : ObservableObject
     {
+
         // ==============================================================================
-        // SERVICIOS Y CACHÉS
+        // Servicios y cache
         private TiaPlcService _tiaPlcService;
         private ConfigProcessSettings _processSettings;
         private Dictionary<string, List<object>> _engineeringCache;
@@ -26,12 +27,11 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
 
         // ==============================================================================
-        // PROPIEDADES VISUALES (Binding al UI)
-        public ObservableCollection<Process> Processes { get; set; } = new ObservableCollection<Process>();
-
-        public ObservableCollection<Parameter> CurrentRealParams { get; set; } = new ObservableCollection<Parameter>();
-        public ObservableCollection<Parameter> CurrentIntParams { get; set; } = new ObservableCollection<Parameter>();
-        public ObservableCollection<Alarms> CurrentAlarms { get; set; } = new ObservableCollection<Alarms>();
+        // Propiedades visuales
+        public ObservableCollection<Process> Processes { get; } = new ObservableCollection<Process>();
+        public ObservableCollection<Parameter> CurrentRealParams { get; } = new ObservableCollection<Parameter>();
+        public ObservableCollection<Parameter> CurrentIntParams { get; } = new ObservableCollection<Parameter>();
+        public ObservableCollection<Alarms> CurrentAlarms { get; } = new ObservableCollection<Alarms>();
 
         private Process _selectedProcess;
         public Process SelectedProcess
@@ -60,16 +60,21 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
         private bool _selectSyncAlarmas = true;
         public bool SelectSyncAlarmas { get => _selectSyncAlarmas; set { _selectSyncAlarmas = value; OnPropertyChanged(); } }
 
-        // ==============================================================================
-        // COMANDOS
+
+        // Comandos
         public RelayCommand SyncCommand { get; set; }
         public RelayCommand CompareCommand { get; set; }
 
 
 
-        // =============
-        public ParamsAlarmsViewModel()
+
+        // ==================================================================================================================
+        // CONSTRUCTOR
+        public ParamsAlarmsViewModel(TiaPlcService tiaPlcService)
         {
+
+            _tiaPlcService = tiaPlcService;
+
             SyncCommand = new RelayCommand(ExecuteSync, CanExecuteAction);
             CompareCommand = new RelayCommand(ExecuteCompareCommand, CanExecuteAction);
         }
@@ -81,15 +86,6 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
         private async void ExecuteCompareCommand()
         {
             await ExecuteCompare();
-        }
-
-
-
-        // ==================================================================================================================
-        // Asigna la instancia de Tia Portal
-        public void SetTiaService(TiaPlcService service)
-        {
-            _tiaPlcService = service;
         }
 
 

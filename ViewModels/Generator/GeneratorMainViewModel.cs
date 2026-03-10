@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using Microsoft.Win32;
 using Siemens.Engineering;
+using Siemens.Engineering.HW;
 using Siemens.Engineering.SW;
 using ZC_ALM_TOOLS.Core;
 using ZC_ALM_TOOLS.Models.Common;
@@ -23,16 +24,12 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
         // =================================================================================================================
         // Tia portal
-        private readonly Project _tiaproject;
-        private readonly TiaPortal _tiaPortal;
-        private TiaPlcService _tiaPlcService;
-        private TiaHmiService _tiaHmiService;
+        private readonly TiaPlcService _tiaPlcService;
+        private readonly TiaHmiService _tiaHmiService;
 
-        public ObservableCollection<TiaTarget> PlcTargets { get; set; }
-        public ObservableCollection<TiaTarget> HmiTargets { get; set; }
-        public ObservableCollection<TiaTarget> ScadaTargets { get; set; }
-
-
+        public ObservableCollection<TiaTarget> PlcTargets { get; }
+        public ObservableCollection<TiaTarget> HmiTargets { get; }
+        public ObservableCollection<TiaTarget> ScadaTargets { get; }
 
 
         private TiaTarget _selectedTarget;
@@ -43,20 +40,19 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
             {
                 _selectedTarget = value;
                 OnPropertyChanged();
-                UpdateActiveService(); // Al cambiar el target en la lista, actualizamos el servicio
+                NotifyPlcChanged();
             }
         }
 
 
         // Caché de datos cargados
-        private Dictionary<string, List<object>> _engineeringCache = new Dictionary<string, List<object>>();
-
+        private readonly Dictionary<string, List<object>> _engineeringCache = new Dictionary<string, List<object>>();
 
         // Cache de configuracion xml
         private ConfigProcessSettings _configProcessesSettings;
         private ConfigDeviceSettings _configDeviceSettings;
-        private ConfigGlobalSettings _configGlobalSettings;        
-        private List<ConfigDeviceCategory> _configDeviceCategory { get; set; }
+        private ConfigGlobalSettings _configGlobalSettings;
+        private List<ConfigDeviceCategory> _configDeviceCategories;
 
 
         // ViewModels y Configuración
@@ -67,68 +63,65 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
         // Variable que indica si se ha cargado un Excel correctamente
         private bool _isDataLoaded;
-        public bool IsDataLoaded { get => _isDataLoaded; set { _isDataLoaded = value; OnPropertyChanged(); } }
+        public bool IsDataLoaded
+        {
+            get => _isDataLoaded;
+            set { _isDataLoaded = value; OnPropertyChanged(); }
+        }
 
-
-        // Ruta del excel seleccionado
         private string _selectedExcelFile;
-        public string SelectedExcelFile { get => _selectedExcelFile; set { _selectedExcelFile = value; OnPropertyChanged(); } }
+        public string SelectedExcelFile
+        {
+            get => _selectedExcelFile;
+            set { _selectedExcelFile = value; OnPropertyChanged(); }
+        }
 
-
-        // Comandos
-        public RelayCommand LoadDataCommand { get; set; }
+        public RelayCommand LoadDataCommand { get; }
 
 
 
 
         // ==================================================================================================================
         // CONSTRUCTOR
-        public GeneratorMainViewModel(TiaPortal tiaPortal, Project project, TiaPlcService tiaPlcService)
+        public GeneratorMainViewModel(TiaPlcService tiaPlcService,
+                                      ObservableCollection<TiaTarget> plcTargets,
+                                      ObservableCollection<TiaTarget> hmiTargets,
+                                      ObservableCollection<TiaTarget> scadaTargets)
         {
             LogService.Clear();
             LogService.Write("[MAIN-VM] [MainViewModel] Inicializando MainViewModel...");
 
-            // Inicializamos Tia portal y buscamos todos los dispositivos
-            _tiaPortal = tiaPortal;
-            _tiaproject = project;
 
-            // Buscamos todos los dispositivos del proyecto
-            var scannedDevices = TiaDeviceScanner.ScanProject(_tiaproject);            
-            PlcTargets = new ObservableCollection<TiaTarget>(scannedDevices.Where(t => t.Type == TargetType.PLC));
-            HmiTargets = new ObservableCollection<TiaTarget>(scannedDevices.Where(t => t.Type == TargetType.HMI));
-            ScadaTargets = new ObservableCollection<TiaTarget>(scannedDevices.Where(t => t.Type == TargetType.SCADA));
+            // Buscamos todos los dispositivos del proyecto         
+            PlcTargets = plcTargets;
+            HmiTargets = hmiTargets;
+            ScadaTargets = scadaTargets; 
 
             // Inicializamos servicios de Tia portal
             _tiaPlcService = tiaPlcService;
-            
+
 
             // Seleccionamos el primer PLC por defecto para la comparación
-            SelectedTarget = PlcTargets.FirstOrDefault(t => t.Type == TargetType.PLC);            
+            SelectedTarget = PlcTargets.FirstOrDefault(t => t.Type == TargetType.PLC);
 
             // Inicializamos configuración y cargamos categorías
             AppConfigService.InitializeEnvironment();
             _configProcessesSettings = AppConfigService.GetProcessConfig();
             _configDeviceSettings = AppConfigService.GetDeviceSettings();
             _configGlobalSettings = AppConfigService.GetGlobalSettings();
-            _configDeviceCategory = AppConfigService.GetDeviceCategories();            
+            _configDeviceCategories = AppConfigService.GetDeviceCategories();
 
             // Inicializamos viewmodels
-            DevicesVM = new DevicesViewModel();
-            DevicesVM.Categories = _configDeviceCategory;
-            DevicesVM.SetTiaService(_tiaPlcService, _tiaHmiService);
-            DevicesVM.HmiTargets = HmiTargets;
+            DevicesVM = new DevicesViewModel(_tiaPlcService, _tiaHmiService, _configDeviceCategories, HmiTargets);
+            ParamsAlarmsVM = new ParamsAlarmsViewModel(_tiaPlcService);
 
-            ParamsAlarmsVM = new ParamsAlarmsViewModel();
-            ParamsAlarmsVM.SetTiaService(_tiaPlcService);
-
-            ProcessGeneratorVM = new ProcessGeneratorViewModel();
-            ProcessGeneratorVM.SetTiaService(_tiaPlcService);
+            ProcessGeneratorVM = new ProcessGeneratorViewModel(_tiaPlcService);
             ProcessGeneratorVM.LoadTemplates(_configGlobalSettings);
 
 
             // Seleccionamos una categoria en el viewmodel
-            if (_configDeviceCategory.Count > 0)
-                DevicesVM.SelectedCategory = _configDeviceCategory[0];
+            if (_configDeviceCategories.Count > 0)
+                DevicesVM.SelectedCategory = _configDeviceCategories[0];
 
             // Mapeo de comandos
             LoadDataCommand = new RelayCommand(LoadExcelAndGenerateJson);
@@ -139,44 +132,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         // ==================================================================================================================
         // Método para actualizar el PLC de trabajo cuando el usuario cambia la selección
-        private void UpdateActiveService()
+        private void NotifyPlcChanged()
         {
             if (SelectedTarget != null && SelectedTarget.SoftwareObject is PlcSoftware plc)
             {               
@@ -365,7 +323,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
             // Creamos la lista de archivos que esperamos basándonos en la configuración
             List<string> expectedFiles = new List<string>();
-            expectedFiles.AddRange(_configDeviceCategory.Select(c => c.XmlFile));
+            expectedFiles.AddRange(_configDeviceCategories.Select(c => c.XmlFile));
             expectedFiles.Add(_configProcessesSettings.ProcessXml);
             expectedFiles.Add(_configProcessesSettings.PRealXml);
             expectedFiles.Add(_configProcessesSettings.PIntXml);
@@ -401,7 +359,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
             _engineeringCache.Clear();
 
             // Cargar dispositivos de cada categoría
-            foreach (var cat in _configDeviceCategory)
+            foreach (var cat in _configDeviceCategories)
             {
                 string filePath = Path.Combine(folderPath, cat.XmlFile);
                 if (File.Exists(filePath))

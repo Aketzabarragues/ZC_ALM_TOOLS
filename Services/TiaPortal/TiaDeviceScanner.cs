@@ -1,18 +1,16 @@
 ﻿using System.Collections.Generic;
 using Siemens.Engineering;
-using Siemens.Engineering.AddIn;
-using Siemens.Engineering.Hmi; // Necesitas referenciar Siemens.Engineering.Hmi.dll
+using Siemens.Engineering.Hmi;
 using Siemens.Engineering.HW;
 using Siemens.Engineering.HW.Features;
 using Siemens.Engineering.SW;
-using ZC_ALM_TOOLS.Models;
-using ZC_ALM_TOOLS.Models.Common;
 using ZC_ALM_TOOLS.Models.TiaPortal;
 
 namespace ZC_ALM_TOOLS.Services.TiaPortal
 {
     public static class TiaDeviceScanner
     {
+
         public static List<TiaTarget> ScanProject(Project project)
         {
             var targets = new List<TiaTarget>();
@@ -29,6 +27,7 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
             return targets;
         }
 
+
         private static void ScanGroups(DeviceUserGroupComposition groups, List<TiaTarget> targets)
         {
             foreach (DeviceUserGroup group in groups)
@@ -37,9 +36,10 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                 {
                     FindSoftwareInDevice(device, targets);
                 }
-                ScanGroups(group.Groups, targets); // Profundizar en subcarpetas
+                ScanGroups(group.Groups, targets);
             }
         }
+
 
         private static void FindSoftwareInDevice(Device device, List<TiaTarget> targets)
         {
@@ -64,7 +64,6 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                     else if (software is HmiTarget hmi)
                     {
                         // Diferenciamos entre Panel (HMI) y PC Station (SCADA)
-                        // Una forma simple es mirar el nombre o tipo del padre
                         bool isScada = device.Name.ToUpper().Contains("SCADA") || device.Name.ToUpper().Contains("PC");
 
                         targets.Add(new TiaTarget
@@ -78,5 +77,7 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                 }
             }
         }
+
+
     }
 }

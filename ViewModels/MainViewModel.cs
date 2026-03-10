@@ -3,10 +3,11 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Windows;
+using Microsoft.Win32;
 using Siemens.Engineering;
+using Siemens.Engineering.Hmi;
 using Siemens.Engineering.SW;
 using ZC_ALM_TOOLS.Core;
-using Microsoft.Win32;
 using ZC_ALM_TOOLS.Models.TiaPortal;
 using ZC_ALM_TOOLS.Services;
 using ZC_ALM_TOOLS.Services.Common;
@@ -19,19 +20,28 @@ namespace ZC_ALM_TOOLS.ViewModels
     public class MainViewModel : ObservableObject
     {
 
+        // =================================================================================================================
+        // Tia portal
         private readonly TiaPortal _tiaPortal;
         private readonly Project _project;
         public TiaPlcService _tiaPlcService;
         public TiaVciService _tiaVciService;
 
+        public ObservableCollection<TiaTarget> PlcTargets { get; } = new ObservableCollection<TiaTarget>();
+        public ObservableCollection<TiaTarget> HmiTargets { get; } = new ObservableCollection<TiaTarget>();
+        public ObservableCollection<TiaTarget> ScadaTargets { get; } = new ObservableCollection<TiaTarget>();
 
         // Selección Global de PLC
-        public ObservableCollection<TiaTarget> PlcTargets { get; set; }
+
         private TiaTarget _selectedTarget;
         public TiaTarget SelectedTarget
         {
             get => _selectedTarget;
-            set { _selectedTarget = value; OnPropertyChanged(); OnTargetChanged(); }
+            set 
+            { 
+                _selectedTarget = value; 
+                OnPropertyChanged(); OnTargetChanged(); 
+            }
         }
 
 
@@ -63,6 +73,7 @@ namespace ZC_ALM_TOOLS.ViewModels
         public RelayCommand DumpCacheCommand { get; set; }
 
 
+
         // =================================================================================================================
         // CONSTRUCTOR
         public MainViewModel(TiaPortal tiaPortal, Project project)
@@ -73,14 +84,10 @@ namespace ZC_ALM_TOOLS.ViewModels
             _tiaPlcService = new TiaPlcService();
             _tiaVciService = new TiaVciService(project);
 
-            // Escaneo inicial de dispositivos en el proyecto
-            var scannedDevices = TiaDeviceScanner.ScanProject(_project);
-            PlcTargets = new ObservableCollection<TiaTarget>(scannedDevices.Where(t => t.Type == TargetType.PLC));
-            SelectedTarget = PlcTargets.FirstOrDefault();
 
             // Inicializamos los Módulos
-            GeneratorVM = new GeneratorMainViewModel(_tiaPortal, _project, _tiaPlcService);
-            VciVM = new VciMainViewModel(_tiaPortal, _project, _tiaVciService);
+            GeneratorVM = new GeneratorMainViewModel(_tiaPlcService, PlcTargets, HmiTargets, ScadaTargets);
+            VciVM = new VciMainViewModel(_tiaPortal, _project, _tiaVciService, PlcTargets);
 
             // Comandos de menú lateral
             ShowGeneratorCommand = new RelayCommand(() => CurrentView = GeneratorVM);
@@ -99,10 +106,54 @@ namespace ZC_ALM_TOOLS.ViewModels
 
             // Vista por defecto al abrir
             CurrentView = GeneratorVM;
+
+            ScanProjectDevices();
         }
 
 
 
+        // =================================================================================================================
+        // Actualizar el listado de equipos en el proyecto
+        private void ScanProjectDevices()
+        {
+            StatusService.SetBusy(true);
+            StatusService.Set("Buscando dispositivos en el proyecto...", StatusType.Warning);
+                        
+            try
+            {
+                var scannedDevices = TiaDeviceScanner.ScanProject(_project);
+
+                // Vaciamos nuestras propias listas
+                PlcTargets.Clear();
+                HmiTargets.Clear();
+                ScadaTargets.Clear();
+
+                // Rellenamos nuestras propias listas (¡y los hijos se enteran automáticamente!)
+                foreach (var target in scannedDevices)
+                {
+                    if (target.Type == TargetType.PLC) PlcTargets.Add(target);
+                    else if (target.Type == TargetType.HMI) HmiTargets.Add(target);
+                    else if (target.Type == TargetType.SCADA) ScadaTargets.Add(target);
+                }
+
+                SelectedTarget = PlcTargets.FirstOrDefault();
+                StatusService.Set("Listo. Dispositivos escaneados.", StatusType.Ok);
+            }
+            catch (Exception ex)
+            {
+                LogService.Write($"[MAIN-VM] Error escaneando dispositivos: {ex.Message}", true);
+                StatusService.Set("Error al escanear dispositivos.", StatusType.Error);
+            }
+            finally
+            {
+                StatusService.SetBusy(false);
+            }
+        }
+        
+
+
+        // =================================================================================================================
+        // Actualizar el PLC al cambio en el combobox
         private void OnTargetChanged()
         {
             if (SelectedTarget != null && SelectedTarget.SoftwareObject is PlcSoftware plc)
@@ -118,8 +169,8 @@ namespace ZC_ALM_TOOLS.ViewModels
 
 
 
-        // ==================================================================================================================
-        // CONFIGURACIÓN Y UTILIDADES UI
+        // =================================================================================================================
+        // Abrir editor de configuracion
         private void OpenSettingsEditor() => OpenEditor(AppConfigService.AppConfigFile, "Editando ajustes...");
 
         private void OpenEditor(string path, string message)
@@ -131,7 +182,7 @@ namespace ZC_ALM_TOOLS.ViewModels
 
 
 
-        // ==================================================================================================================
+        // =================================================================================================================
         // Exportar volcado de caché a TXT
         private void ExecuteDumpCache()
         {

@@ -1,5 +1,7 @@
-﻿using Siemens.Engineering;
+﻿using System.Collections.ObjectModel;
+using Siemens.Engineering;
 using ZC_ALM_TOOLS.Core;
+using ZC_ALM_TOOLS.Models.TiaPortal;
 using ZC_ALM_TOOLS.Services;
 using ZC_ALM_TOOLS.Services.Common;
 using ZC_ALM_TOOLS.Services.TiaPortal;
@@ -14,6 +16,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
         private readonly Project _tiaproject;
         private readonly TiaPortal _tiaPortal;
         private TiaVciService _tiaVciService;
+        public ObservableCollection<TiaTarget> PlcTargets { get; set; }
 
         // ViewModels Hijos
         public VciMappingViewModel MappingVM { get; set; }
@@ -22,7 +25,8 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
 
         // ==================================================================================================================
         // CONSTRUCTOR
-        public VciMainViewModel(TiaPortal tiaPortal, Project project, TiaVciService tiaVciService)
+        public VciMainViewModel(TiaPortal tiaPortal, Project project, TiaVciService tiaVciService,
+                                      ObservableCollection<TiaTarget> plcTargets)
         {
             LogService.Write("[VCI-MAIN-VM] [VciMainViewModel] Inicializando VciMainViewModel...");
 
@@ -31,6 +35,8 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
 
             // Inicializamos servicios
             _tiaVciService = tiaVciService;
+
+            PlcTargets = plcTargets;
 
             // Inicializamos viewmodels hijos
             MappingVM = new VciMappingViewModel(_tiaVciService);

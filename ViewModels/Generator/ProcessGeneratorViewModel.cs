@@ -41,7 +41,10 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
         private Dictionary<string, List<object>> _engineeringCache;
         private ConfigGlobalSettings _globalSettings;
 
-        public ObservableCollection<Process> Processes { get; set; } = new ObservableCollection<Process>();
+        public ObservableCollection<Process> Processes { get; } = new ObservableCollection<Process>();
+        public ObservableCollection<string> Templates { get; } = new ObservableCollection<string>();
+        public ObservableCollection<ProjectedBlock> ProjectedBlocks { get; } = new ObservableCollection<ProjectedBlock>();
+
 
         private Process _selectedProcess;
         public Process SelectedProcess
@@ -55,7 +58,6 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
             }
         }
 
-        public ObservableCollection<string> Templates { get; set; } = new ObservableCollection<string>();
 
         private string _selectedTemplate;
         public string SelectedTemplate
@@ -69,23 +71,34 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
             }
         }
 
-        public ObservableCollection<ProjectedBlock> ProjectedBlocks { get; set; } = new ObservableCollection<ProjectedBlock>();
+
 
         private bool _canGenerate = false;
         public bool CanGenerate { get => _canGenerate; set { _canGenerate = value; OnPropertyChanged(); } }
+
 
         // Comandos
         public RelayCommand CompareCommand { get; set; }
         public RelayCommand GenerateCommand { get; set; }
         public RelayCommand RefreshTemplatesCommand { get; set; }
 
-        public ProcessGeneratorViewModel()
+
+
+
+        // ==================================================================================================================
+        // CONSTRUCTOR
+        public ProcessGeneratorViewModel(TiaPlcService tiaPlcService)
         {
+
+            _tiaPlcService = tiaPlcService;
+
             // El botón Comparar solo se habilita si hay bloques en la lista
             CompareCommand = new RelayCommand(ExecuteCompare, () => ProjectedBlocks.Count > 0);
             GenerateCommand = new RelayCommand(ExecuteGenerate, () => CanGenerate);
             RefreshTemplatesCommand = new RelayCommand(() => LoadTemplates(_globalSettings));
         }
+
+
 
         // ==================================================================================================================
         // 1. RELLENAR LA TABLA (AUTOMÁTICO) - No interacciona con TIA Portal
@@ -154,6 +167,8 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
             StatusService.Set($"Lista cargada. Pulsa 'Comparar con PLC' para validar los {ProjectedBlocks.Count} elementos.", StatusType.Ok);
         }
+
+
 
         // ==================================================================================================================
         // 2. LA COMPARACIÓN CON TIA PORTAL (Botón)
@@ -239,6 +254,8 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
             StatusService.SetBusy(false);
         }
 
+
+
         // ==================================================================================================================
         // 3. LA GENERACIÓN (Botón final)
         private async void ExecuteGenerate()
@@ -266,14 +283,10 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
             }
         }
 
-        // ==================================================================================================================
-        // METODOS AUXILIARES
-        public void SetTiaService(TiaPlcService tiaPlcService)
-        {
-            _tiaPlcService = tiaPlcService;
-            UpdateProjections();
-        }
 
+
+        // ==================================================================================================================
+        // 
         public void LoadData(Dictionary<string, List<object>> cache, ConfigProcessSettings settings, ConfigGlobalSettings globalSettings)
         {
             _engineeringCache = cache;
@@ -295,6 +308,10 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                 UpdateProjections();
         }
 
+
+
+        // ==================================================================================================================
+        // 
         public void NotifyPlcChanged(string plcName)
         {
             // Si cambian de PLC, obligamos a que vuelvan a comparar
@@ -306,6 +323,10 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
             CanGenerate = false;
         }
 
+
+
+        // ==================================================================================================================
+        // 
         public void LoadTemplates(ConfigGlobalSettings globalSettings)
         {
             Templates.Clear();

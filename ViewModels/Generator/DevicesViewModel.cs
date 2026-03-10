@@ -74,10 +74,19 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
 
 
+
         // ==================================================================================================================
-        // Constructor
-        public DevicesViewModel()
+        // CONSTRUCTOR
+        public DevicesViewModel(TiaPlcService tiaPlcService, TiaHmiService tiaHmiService,
+                              List<ConfigDeviceCategory> categories,
+                              ObservableCollection<TiaTarget> hmiTargets)
         {
+
+            _tiaPlcService = tiaPlcService;
+            _tiaHmiService = tiaHmiService;
+            Categories = categories;
+            HmiTargets = hmiTargets;
+
             SyncCommand = new RelayCommand(ExecuteSync, CanExecuteAction);
             CompareCommand = new RelayCommand(ExecuteCompareCommand, CanExecuteAction);
         }
@@ -89,16 +98,6 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
         private async void ExecuteCompareCommand()
         {
             await ExecuteCompare(false);
-        }
-
-
-
-        // ==================================================================================================================
-        // Asigna la instancia de Tia Portal
-        public void SetTiaService(TiaPlcService service, TiaHmiService hmiService)
-        {
-            _tiaPlcService = service;
-            _tiaHmiService = hmiService;
         }
 
 
