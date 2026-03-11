@@ -9,6 +9,10 @@ using ZC_ALM_TOOLS.Models.Common;
 
 namespace ZC_ALM_TOOLS.Services.Common
 {
+    // ==================================================================================================================
+    /// <summary>
+    /// Servicio encargado de la configuracion de la aplicacion
+    /// </summary>
     public static class AppConfigService
     {
 
@@ -31,7 +35,9 @@ namespace ZC_ALM_TOOLS.Services.Common
 
 
         // ==================================================================================================================
-        // Prepara el entorno de carpetas y archivos base
+        /// <summary>
+        /// Metodo que prepara el entorno de carpetas y archivos base 
+        /// </summary>
         public static void InitializeEnvironment()
         {
             // Crear directorios si no existen
@@ -49,7 +55,9 @@ namespace ZC_ALM_TOOLS.Services.Common
 
 
         // ==================================================================================================================
-        // Crear el archivo de configuracion si no existe
+        /// <summary>
+        /// Metodo que crea el archivo de configuracion si no existe 
+        /// </summary>
         private static void CreateAppConfigFile(string targetPath)
         {
 
@@ -78,7 +86,9 @@ namespace ZC_ALM_TOOLS.Services.Common
 
 
         // ==================================================================================================================
-        // Lectura de ajustes globales
+        /// <summary>
+        /// Metodo para la lectura de ajustes globales 
+        /// </summary>
         public static ConfigGlobalSettings GetGlobalSettings()
         {
             try
@@ -97,7 +107,9 @@ namespace ZC_ALM_TOOLS.Services.Common
 
 
         // ==================================================================================================================
-        // Lectura de Ajuste de dispositivos
+        /// <summary>
+        /// Metodo para la lectura de ajuste de dispositivos 
+        /// </summary>
         public static ConfigDeviceSettings GetDeviceSettings()
         {
             try
@@ -116,7 +128,9 @@ namespace ZC_ALM_TOOLS.Services.Common
 
 
         // ==================================================================================================================
-        // Lectura de caterogia de dispositvos (lista de tipos de dispositivos)
+        /// <summary>
+        /// Metodo para la lectura de categoria de dispositivos (lista de tipos de dispositivos)
+        /// </summary>
         public static List<ConfigDeviceCategory> GetDeviceCategories()
         {
             if (!File.Exists(AppConfigFile)) return new List<ConfigDeviceCategory>();
@@ -140,7 +154,9 @@ namespace ZC_ALM_TOOLS.Services.Common
 
 
         // ==================================================================================================================
-        // Lectura de configuracion de procesos
+        /// <summary>
+        /// Metodo para la lectura de configuracion de procesos 
+        /// </summary>
         public static ConfigProcessSettings GetProcessConfig()
         {
             try

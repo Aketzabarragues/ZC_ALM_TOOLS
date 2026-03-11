@@ -3,9 +3,15 @@ using ZC_ALM_TOOLS.Core;
 
 namespace ZC_ALM_TOOLS.Models.Generator
 {
+
+    // ==================================================================================================================
+    /// <summary>
+    /// Modelo que representa una entrada digital
+    /// </summary>
     public class Disp_ED : ObservableObject, IDevice
     {
-        // --- PROPIEDADES DEL EXCEL
+        // ==================================================================================================================
+        // Propiedades de Excel   
         public string UID { get; set; }
         public int Numero { get; set; }
         public string Tag { get; set; }
@@ -19,10 +25,15 @@ namespace ZC_ALM_TOOLS.Models.Generator
         public string CPTag { get; set; }
         public string CPComentario { get; set; }
 
-        // --- PROPIEDAD PARA LA INTERFAZ ---
+        // ==================================================================================================================
+        // Propiedades de estado
         private string _Estado = "Sin comprobar";
         public string Estado { get => _Estado; set { _Estado = value; OnPropertyChanged(); } }
 
+        // ==================================================================================================================
+        /// <summary>
+        /// Metodo para leer dispositivo entrada digital desde XML
+        /// </summary>
         public static Disp_ED FromXml(XElement x) => new Disp_ED
         {
             UID = DataHelper.GetXmlVal(x, "UID"),

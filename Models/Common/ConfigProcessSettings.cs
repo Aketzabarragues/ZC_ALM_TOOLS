@@ -3,6 +3,11 @@ using ZC_ALM_TOOLS.Core;
 
 namespace ZC_ALM_TOOLS.Models.Common
 {
+
+    // ==================================================================================================================
+    /// <summary>
+    /// Modelo que representa una la configuracion de procesos
+    /// </summary>
     public class ConfigProcessSettings
     {
         public string ProcessXml { get; set; }
@@ -27,6 +32,10 @@ namespace ZC_ALM_TOOLS.Models.Common
         public string SuffixDbAlm { get; set; }
 
 
+        // ==================================================================================================================
+        /// <summary>
+        /// Metodo para leer la configuracion de procesos desde XML
+        /// </summary>
         public static ConfigProcessSettings FromXml(XElement x) => new ConfigProcessSettings
         {
             ProcessXml = DataHelper.GetXmlVal(x, "ProcessXml"),

@@ -16,8 +16,9 @@ using ZC_ALM_TOOLS.Services.Common;
 namespace ZC_ALM_TOOLS.Services.TiaPortal
 {
 
-    // ==================================================================================================================
-    // Servicio para comunicación directa con Siemens Openness
+    /// <summary>
+    /// Servicio para comunicación directa con Siemens Openness
+    /// </summary>
     public class TiaPlcService
     {
 
@@ -33,7 +34,9 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
 
 
         // ==================================================================================================================
-        // Constructor
+        /// <summary>
+        /// Constructor
+        /// </summary>
         public TiaPlcService()
         {
         }
@@ -46,7 +49,9 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
         // ==================================================================================================================
 
         // ==================================================================================================================
-        // Asignacion de PLC seleccionado
+        /// <summary>
+        /// Asignacion de PLC seleccionado
+        /// </summary>
         public void UpdatePlc(PlcSoftware plcSoftware)
         {
             if (_currentPlc != plcSoftware)
@@ -64,7 +69,9 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
 
 
         // ==================================================================================================================
-        // Construye el índice completo del PLC en memoria RAM
+        /// <summary>
+        /// Construye el índice completo del PLC en memoria RAM
+        /// </summary>
         public void BuildBlockCache()
         {
             try
@@ -89,8 +96,12 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
         }
 
 
+
+
         // ==================================================================================================================
-        // Relleno de la cache de tabla de variables
+        /// <summary>
+        /// Relleno de la cache de tabla de variables
+        /// </summary>
         private void PopulateTagTableCacheRecursively(PlcTagTableGroup group, string currentPath)
         {
             foreach (var table in group.TagTables)
@@ -110,8 +121,12 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
             }
         }
 
+
+
         // ==================================================================================================================
-        // Relleno de la cache de bloques
+        /// <summary>
+        /// Relleno de la cache de bloques
+        /// </summary>
         private void PopulateCacheRecursively(PlcBlockGroup group, string currentPath)
         {
             foreach (var block in group.Blocks)
@@ -145,7 +160,9 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
 
 
         // ==================================================================================================================
-        // Exportar el contenido de la caché a un archivo TXT para análisis
+        /// <summary>
+        /// Exportar el contenido de la caché a un archivo TXT para análisis
+        /// </summary>
         public void DumpCacheToTxt(string filePath)
         {
             try
@@ -189,7 +206,9 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
 
 
         // ==================================================================================================================
-        // Buscar tabla de variables
+        /// <summary>
+        /// Buscar tabla de variables
+        /// </summary>
         public PlcTagTable FindTagTableByName(string tableName)
         {
             if (_currentPlc == null) return null;
@@ -204,7 +223,9 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
 
 
         // ==================================================================================================================
-        // Metodo publico para buscar bloque por nombre
+        /// <summary>
+        /// Buscar bloque por nombre
+        /// </summary>
         public PlcBlock FindBlockByName(string blockName)
         {
             if (_currentPlc == null) return null;
@@ -219,7 +240,9 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
 
 
         // ==================================================================================================================
-        // Metodo publico para buscar bloque por numero
+        /// <summary>
+        /// Buscar bloque por numero
+        /// </summary>
         public PlcBlock FindBlockByNumber(int number, string blockType)
         {
             if (_currentPlc == null) return null;
@@ -234,7 +257,9 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
 
 
         // ==================================================================================================================
-        // Lee el valor de una constante global
+        /// <summary>
+        /// Lee el valor de una constante global
+        /// </summary>
         public int ReadGlobalConstant(string tableName, string constantName)
         {
             try
@@ -259,7 +284,9 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
 
 
         // ==================================================================================================================
-        // Exportar un bloque a XML
+        /// <summary>
+        /// Exportar un bloque a XML
+        /// </summary>
         public bool ExportBlockToXml(string blockName, string destinationPath)
         {
             try
@@ -291,7 +318,9 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
 
 
         // ==================================================================================================================
-        // Exportar tabla de variables de dispositivos a XML
+        /// <summary>
+        /// Exportar tabla de variables de dispositivos a XML
+        /// </summary>
         public bool ExportDispTagTable(string tableName, string xmlPath)
         {
             try
@@ -313,7 +342,9 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
 
 
         // ==================================================================================================================
-        // Sincroniza el valor de una constante global de dimensionado
+        /// <summary>
+        /// Sincroniza el valor de una constante global de dimensionado
+        /// </summary>
         public bool SyncGlobalConstant(string tableName, string constantName, int newValue)
         {
             try
@@ -352,7 +383,9 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
 
 
         // ==================================================================================================================
-        // Compila un bloque específico
+        /// <summary>
+        /// Compila un bloque específico
+        /// </summary>
         public bool CompileBlock(string blockName)
         {
             try
@@ -394,7 +427,9 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
         // ==================================================================================================================
 
         // ==================================================================================================================
-        // Sincroniza la lista de constantes de dispositivos desde el Excel
+        /// <summary>
+        /// Sincroniza la lista de constantes de dispositivos desde el Excel
+        /// </summary>
         public async Task<bool> SyncDispUserConstants(string tableName, List<IDevice> excelDevices)
         {
             try
@@ -450,22 +485,28 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                         LogService.Write($"[TIA-PLC-SERVICE] [SyncDispUserConstants] ID {c.Value}: {c.Name} -> {excelDict[c.Value].CPTag}");
                         c.Name = excelDict[c.Value].CPTag;
                     }
-                }                
+                }
 
                 // Añadimos las nuevas variables directamente en el XML
-                // Edicion de XML
                 string xmlPath = Path.Combine(AppConfigService.TempPath, $"{tableName}.xml");
                 if (File.Exists(xmlPath)) File.Delete(xmlPath);
 
+                // Exportamos la tabla de variables
                 StatusService.Set("Exportando tabla para añadir nuevas variables...", StatusType.Ok);
                 table.Export(new FileInfo(xmlPath), ExportOptions.WithDefaults);
                 await Task.Delay(50);
 
                 StatusService.Set("Añadiendo variables y comentarios en el XML...", StatusType.Ok);
 
-                // Llamada a xmlparserservice para modificacion de xml para borrar todos los nodos del XML y crear solo los válidos
-                if (!XmlParserService.InjectDispUserConstantsXml(xmlPath, validExcelDevices))
-                    throw new Exception("Fallo en modificacion XML de constantes.");
+                // Añadimos las variables nuevas en el xml
+                var tagEditor = new XmlTagTableEditorService(xmlPath);
+                tagEditor.ClearConstants();
+                foreach (var dev in validExcelDevices)
+                {
+                    tagEditor.AddConstant(dev.CPTag, dev.Numero, dev.CPComentario);
+                }
+                tagEditor.Save();
+
 
                 // Importacion de xml modificado
                 LogService.Write($"[TIA-PLC-SERVICE] [SyncDispUserConstants] Re-importando tabla '{tableName}' en TIA Portal (Override)...");
@@ -496,7 +537,9 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
 
 
         // ==================================================================================================================
-        // Añade comentarios en el DB de dispositivos mediante manipulación de XML
+        /// <summary>
+        /// Añade comentarios en el DB de dispositivos mediante manipulación de XML
+        /// </summary>
         public async Task<bool> SyncDispDbComments(string dbName, string arrayName, List<IDevice> devices)
         {
             try
@@ -520,11 +563,27 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                 db.Export(new FileInfo(xmlPath), ExportOptions.WithDefaults);
                 await Task.Delay(50);
 
-                // Llamamos a xmlparserservice para edicion de DB
-                if (!XmlParserService.InjectDispDbCommentsXml(xmlPath, arrayName, devices))
-                    return false;
+                // Llamamos a XmlDataBlockEditorService para edicion de DB
+                var dbEditor = new XmlDataBlockEditorService(xmlPath);
+                bool isModified = false;
 
-                // 4. Re-importar el bloque a TIA Portal
+                foreach (var dev in devices)
+                {
+                    string comment = $"{dev.Tag} - {dev.Descripcion}";
+                    if (dbEditor.SetComment(arrayName, dev.Numero, comment, false))
+                    {
+                        isModified = true;
+                    }
+                }
+
+                if (!isModified)
+                {
+                    LogService.Write($"[TIA-PLC-SERVICE] [SyncDispDbComments] No había textos que actualizar en {dbName}.");
+                    return true;
+                }
+                dbEditor.Save();
+
+                // Re-importar el bloque a TIA Portal
                 LogService.Write($"[TIA-PLC-SERVICE] [SyncDispDbComments] Re-importando bloque '{dbName}' en TIA Portal...");
                 var parent = genericBlock.Parent;
 
@@ -552,7 +611,9 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
 
 
         // ==================================================================================================================
-        // Añade los textos en los Arrays principales y de Visibilidad de un DB de Parámetros/Alarmas
+        /// <summary>
+        /// Añade los textos en los Arrays principales y de Visibilidad de un DB de Parámetros/Alarmas
+        /// </summary>
         public bool SyncParamsAlarmsDbComments<T>(string dbName, string arrayName, IEnumerable<T> items, Func<T, int> getId, Func<T, string> getComment, bool hasVisArray = false)
         {
             try
@@ -570,11 +631,26 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                 LogService.Write($"[TIA-PLC-SERVICE] [SyncParamsAlarmsDbComments] Exportando DB a XML temporal...");
                 block.Export(new FileInfo(tempPath), ExportOptions.WithDefaults);
 
-                // Llamamos a xmlparserservice para edicion de DB
-                bool isModified = XmlParserService.InjectParamsAlarmsDbCommentsXml(tempPath, arrayName, items, getId, getComment, hasVisArray);
+                // Llamamos a XmlDataBlockEditorService para edicion de DB
+                var dbEditor = new XmlDataBlockEditorService(tempPath);
+                bool isModified = false;
+
+                foreach (var item in items)
+                {
+                    int id = getId(item);
+                    string expectedComment = getComment(item) ?? "";
+
+                    if (dbEditor.SetComment(arrayName, id, expectedComment, hasVisArray))
+                    {
+                        isModified = true;
+                    }
+                }
 
                 if (isModified)
                 {
+                    dbEditor.Save();
+                    // --------------------------------------------------
+
                     LogService.Write($"[TIA-PLC-SERVICE] [SyncParamsAlarmsDbComments] Re-importando bloque '{dbName}' en TIA Portal (Override)...");
                     var parent = block.Parent;
 
@@ -600,6 +676,7 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                 LogService.Write($"[TIA-PLC-SERVICE] [SyncParamsAlarmsDbComments] Error en la modificacion de DB: {ex.Message}", true);
                 return false;
             }
+
         }
 
 

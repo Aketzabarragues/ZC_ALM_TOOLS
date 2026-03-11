@@ -3,6 +3,10 @@ using ZC_ALM_TOOLS.Core;
 
 namespace ZC_ALM_TOOLS.Models.Generator
 {
+    // ==================================================================================================================
+    /// <summary>
+    /// Modelo que representa etapa de un proceso
+    /// </summary>
     public class ProcessStage : ObservableObject
     {
 
@@ -28,7 +32,10 @@ namespace ZC_ALM_TOOLS.Models.Generator
             set { _estado = value; OnPropertyChanged(); }
         }
 
-
+        // ==================================================================================================================
+        /// <summary>
+        /// Metodo para leer etapa de un proceso desde XML
+        /// </summary>
         public static ProcessStage FromXml(XElement x) => new ProcessStage
         {
             Uid = DataHelper.GetXmlVal(x, "UID"),

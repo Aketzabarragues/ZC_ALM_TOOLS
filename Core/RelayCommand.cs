@@ -7,7 +7,9 @@ namespace ZC_ALM_TOOLS.Core
 
 
     // ==================================================================================================================
-    // Clase para gestionar los comandos de los botones desde el ViewModel
+    /// <summary>
+    /// Clase para gestionar los comandos de los botones desde el ViewModel
+    /// </summary>
     public class RelayCommand : ICommand
     {
         private readonly Action _execute;
@@ -22,21 +24,27 @@ namespace ZC_ALM_TOOLS.Core
 
 
         // ==================================================================================================================
-        // Verifica si el comando puede ejecutarse en este momento
+        /// <summary>
+        /// Metodo para verificar si el comando puede ejecutarse en este momento
+        /// </summary>
         public bool CanExecute(object parameter) => _canExecute == null || _canExecute();
 
 
 
 
         // ==================================================================================================================
-        // Ejecuta la acción vinculada al comando
+        /// <summary>
+        /// Metodo para ejecutar la accion vinculada al comando
+        /// </summary>
         public void Execute(object parameter) => _execute();
 
 
 
 
         // ==================================================================================================================
-        // Se dispara cuando cambian las condiciones que afectan a si el comando puede ejecutarse
+        /// <summary>
+        /// Metodo que se dispara cuando cambian las condiciones que afectan a si el comando puede ejecutarse
+        /// </summary>
         public event EventHandler CanExecuteChanged
         {
             add { CommandManager.RequerySuggested += value; }

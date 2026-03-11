@@ -3,13 +3,19 @@ using System.IO;
 
 namespace ZC_ALM_TOOLS.Services.Common
 {
+    // ==================================================================================================================
+    /// <summary>
+    /// Servicio encargado de gestionar el log de la aplicacion
+    /// </summary>
     public static class LogService
     {
 
 
 
         // ==================================================================================================================
-        // Escribe una línea en el archivo de log físico
+        /// <summary>
+        /// Metodo para escribir una línea en el archivo de log físico
+        /// </summary>
         public static void Write(string message, bool isError = false)
         {
             string prefix = isError ? "[ERROR]" : "[INFO] ";
@@ -29,7 +35,9 @@ namespace ZC_ALM_TOOLS.Services.Common
 
 
         // ==================================================================================================================
-        // Borra el archivo actual para empezar uno nuevo
+        /// <summary>
+        /// Metodo para borrar el archivo actual para empezar uno nuevo
+        /// </summary>
         public static void Clear()
         {
             try

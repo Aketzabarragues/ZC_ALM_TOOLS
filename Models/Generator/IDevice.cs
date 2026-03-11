@@ -1,13 +1,18 @@
-﻿namespace ZC_ALM_TOOLS.Models.Generator
+﻿
+
+namespace ZC_ALM_TOOLS.Models.Generator
 {
-    // Interfaz común para que el sistema maneje cualquier dispositivo del Excel
+    // ==================================================================================================================
+    /// <summary>
+    /// Interfaz común para que el sistema maneje cualquier dispositivo del Excel
+    /// </summary>
     public interface IDevice
     {
-        int Numero { get; set; }           // ID o índice del array
-        string Tag { get; set; }          // Nombre del dispositivo
-        string Descripcion { get; set; }   // Descripción técnica
-        string CPTag { get; set; }        // Nombre para TIA Portal
-        string CPComentario { get; set; } // Comentario para TIA Portal
-        string Estado { get; set; }       // Estado de sincronización (UI)
+        int Numero { get; set; }
+        string Tag { get; set; }
+        string Descripcion { get; set; }
+        string CPTag { get; set; }
+        string CPComentario { get; set; }
+        string Estado { get; set; }
     }
 }

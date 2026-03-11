@@ -3,9 +3,14 @@ using ZC_ALM_TOOLS.Core;
 
 namespace ZC_ALM_TOOLS.Models.Generator
 {
+    // ==================================================================================================================
+    /// <summary>
+    /// Modelo que representa una valvula
+    /// </summary>
     public class Disp_V : ObservableObject, IDevice
     {
-        // Propiedades mapeadas directamente del Excel/XML
+        // ==================================================================================================================
+        // Propiedades de Excel  
         public string UID { get; set; }
         public int Numero { get; set; }
         public string Tag { get; set; }
@@ -23,11 +28,15 @@ namespace ZC_ALM_TOOLS.Models.Generator
         public string CPTag { get; set; }
         public string CPComentario { get; set; }
 
-        // Propiedad para la interfaz (con notificación de cambio)
+        // ==================================================================================================================
+        // Propiedades de estado
         private string _estado = "Sin comprobar";
         public string Estado { get => _estado; set { _estado = value; OnPropertyChanged(); } }
 
-        // Crea el objeto desde un elemento XML generado por Python
+        // ==================================================================================================================
+        /// <summary>
+        /// Metodo para leer dispositivo valvula desde XML
+        /// </summary>
         public static Disp_V FromXml(XElement x) => new Disp_V
         {
             UID = DataHelper.GetXmlVal(x, "UID"),

@@ -1,13 +1,18 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
-using ZC_ALM_TOOLS.Core;
 using ZC_ALM_TOOLS.Models.Common;
-using ZC_ALM_TOOLS.Services;
 using ZC_ALM_TOOLS.Services.Common;
 using ZC_ALM_TOOLS.Services.TiaPortal;
 
 namespace ZC_ALM_TOOLS.Models.Generator
 {
+
+    // ==================================================================================================================
+    /// <summary>
+    /// Clase de contexto que encapsula la preparación y validación del entorno necesario 
+    /// (existencia de tablas, bloques de datos y lectura de límites N_MAX) antes de ejecutar 
+    /// operaciones de comparación o sincronización de dispositivos con TIA Portal.
+    /// </summary>
     public class DevicesEnvironment
     {
         public bool IsValid { get; private set; } = false;
@@ -24,7 +29,7 @@ namespace ZC_ALM_TOOLS.Models.Generator
         {
             if (category == null || settings == null || cache == null) return;
 
-            // 1. Extraer el valor de N_MAX del Excel (Nos ahorramos repetirlo 3 veces en el ViewModel)
+            // Extraer el valor de N_MAX del Excel
             if (cache.TryGetValue(settings.Disp_N_Max, out var limits))
             {
                 var limitItem = limits.Cast<Disp_Config>().FirstOrDefault(x => x.Nombre == category.GlobalConfigKey);
@@ -38,7 +43,7 @@ namespace ZC_ALM_TOOLS.Models.Generator
                 return;
             }
 
-            // 2. Validación temprana contra TIA Portal (Early Return)
+            // Validación contra TIA Portal
             LogService.Write($"[DEVICES-ENVIRONMENT] Validando entorno PLC para categoría '{category.Name}'...");
 
             if (tiaPlcService.FindTagTableByName(settings.ConfigTableName) == null)

@@ -4,6 +4,10 @@ using ZC_ALM_TOOLS.Models.Common;
 
 namespace ZC_ALM_TOOLS.Models.Generator
 {
+    // ==================================================================================================================
+    /// <summary>
+    /// Modelo que representa la definicion de un proceso
+    /// </summary>
     public class Process : ObservableObject
     {
         // ==================================================================================================================
@@ -46,7 +50,10 @@ namespace ZC_ALM_TOOLS.Models.Generator
             set { _statusAlmHmi = value; OnPropertyChanged(); }
         }
 
-
+        // ==================================================================================================================
+        /// <summary>
+        /// Metodo para leer la definicion de un proceso desde XML
+        /// </summary>
         public static Process FromXml(XElement x) => new Process
         {
             Id = DataHelper.GetXmlVal(x, "UID"),
@@ -57,7 +64,6 @@ namespace ZC_ALM_TOOLS.Models.Generator
             NumAlarmas = DataHelper.GetXmlInt(x, "Alarmas")
         };
 
-        // Imprescindible para que el ComboBox muestre el nombre del proceso
         public override string ToString() => Nombre;
     }
 }

@@ -34,6 +34,11 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
         }
     }
 
+
+    // ==================================================================================================================
+    /// <summary>
+    /// ViewModel que gestiona la pestaña de procesos
+    /// </summary>
     public class ProcessGeneratorViewModel : ObservableObject
     {
         private TiaPlcService _tiaPlcService;
@@ -86,7 +91,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
 
         // ==================================================================================================================
-        // CONSTRUCTOR
+        /// <summary>
+        /// Constructor
+        /// </summary>
         public ProcessGeneratorViewModel(TiaPlcService tiaPlcService)
         {
 
@@ -101,7 +108,80 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
 
         // ==================================================================================================================
-        // 1. RELLENAR LA TABLA (AUTOMÁTICO) - No interacciona con TIA Portal
+        /// <summary>
+        /// Carga los datos provenientes del MainViewModel
+        /// </summary>
+        public void LoadData(Dictionary<string, List<object>> cache, ConfigProcessSettings settings, ConfigGlobalSettings globalSettings)
+        {
+            _engineeringCache = cache;
+            _processSettings = settings;
+            _globalSettings = globalSettings;
+
+            if (_engineeringCache.TryGetValue(_processSettings.ProcessName, out var procList))
+            {
+                Processes.Clear();
+                foreach (var proc in procList.Cast<Process>())
+                {
+                    Processes.Add(proc);
+                }
+            }
+
+            if (Processes.Count > 0 && SelectedProcess == null)
+                SelectedProcess = Processes[0];
+            else
+                UpdateProjections();
+        }
+
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Método para actualizar que la selección del PLC ha cambiado
+        /// </summary>
+        public void NotifyPlcChanged(string plcName)
+        {
+            // Si cambian de PLC, obligamos a que vuelvan a comparar
+            foreach (var block in ProjectedBlocks)
+            {
+                block.Estado = SynchronizationStatus.Pending;
+                block.Mensaje = "PLC cambiado. Vuelva a comparar.";
+            }
+            CanGenerate = false;
+        }
+
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Método para cargar los archivos de la carpeta de plantillas
+        /// </summary>
+        public void LoadTemplates(ConfigGlobalSettings globalSettings)
+        {
+            Templates.Clear();
+
+            if (globalSettings != null) _globalSettings = globalSettings;
+            if (_globalSettings == null || string.IsNullOrEmpty(_globalSettings.ProcessTemplatePath)) return;
+
+            string templatePath = _globalSettings.ProcessTemplatePath;
+
+            if (Directory.Exists(templatePath))
+            {
+                var directories = Directory.GetDirectories(templatePath);
+                foreach (var dir in directories) Templates.Add(Path.GetFileName(dir));
+                if (Templates.Count > 0) SelectedTemplate = Templates[0];
+            }
+            else
+            {
+                StatusService.Set($"Ruta de plantillas no encontrada: {templatePath}", StatusType.Warning);
+            }
+        }
+
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Metodo para rellenar la tabla con los bloques a generar
+        /// </summary>
         private void UpdateProjections()
         {
             ProjectedBlocks.Clear();
@@ -171,7 +251,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
 
         // ==================================================================================================================
-        // 2. LA COMPARACIÓN CON TIA PORTAL (Botón)
+        /// <summary>
+        /// Metodo para comparar con el PLC de los bloques a añadir
+        /// </summary>
         private async void ExecuteCompare()
         {
             if (_tiaPlcService == null || ProjectedBlocks.Count == 0) return;
@@ -257,7 +339,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
 
         // ==================================================================================================================
-        // 3. LA GENERACIÓN (Botón final)
+        /// <summary>
+        /// Metodo para generar el proceso desde la plantilla
+        /// </summary>
         private async void ExecuteGenerate()
         {
             StatusService.SetBusy(true);
@@ -283,69 +367,5 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
             }
         }
 
-
-
-        // ==================================================================================================================
-        // 
-        public void LoadData(Dictionary<string, List<object>> cache, ConfigProcessSettings settings, ConfigGlobalSettings globalSettings)
-        {
-            _engineeringCache = cache;
-            _processSettings = settings;
-            _globalSettings = globalSettings;
-
-            if (_engineeringCache.TryGetValue(_processSettings.ProcessName, out var procList))
-            {
-                Processes.Clear();
-                foreach (var proc in procList.Cast<Process>())
-                {
-                    Processes.Add(proc);
-                }
-            }
-
-            if (Processes.Count > 0 && SelectedProcess == null)
-                SelectedProcess = Processes[0];
-            else
-                UpdateProjections();
-        }
-
-
-
-        // ==================================================================================================================
-        // 
-        public void NotifyPlcChanged(string plcName)
-        {
-            // Si cambian de PLC, obligamos a que vuelvan a comparar
-            foreach (var block in ProjectedBlocks)
-            {
-                block.Estado = SynchronizationStatus.Pending;
-                block.Mensaje = "PLC cambiado. Vuelva a comparar.";
-            }
-            CanGenerate = false;
-        }
-
-
-
-        // ==================================================================================================================
-        // 
-        public void LoadTemplates(ConfigGlobalSettings globalSettings)
-        {
-            Templates.Clear();
-
-            if (globalSettings != null) _globalSettings = globalSettings;
-            if (_globalSettings == null || string.IsNullOrEmpty(_globalSettings.ProcessTemplatePath)) return;
-
-            string templatePath = _globalSettings.ProcessTemplatePath;
-
-            if (Directory.Exists(templatePath))
-            {
-                var directories = Directory.GetDirectories(templatePath);
-                foreach (var dir in directories) Templates.Add(Path.GetFileName(dir));
-                if (Templates.Count > 0) SelectedTemplate = Templates[0];
-            }
-            else
-            {
-                StatusService.Set($"Ruta de plantillas no encontrada: {templatePath}", StatusType.Warning);
-            }
-        }
     }
 }

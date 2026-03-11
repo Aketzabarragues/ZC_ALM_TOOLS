@@ -13,17 +13,20 @@ namespace ZC_ALM_TOOLS.Services.Generator
 {
 
 
-
     // ==================================================================================================================
-    // Servicio encargado exclusivamente de leer los XML generados por Python
-    // y convertirlos en objetos C# usando los Modelos definidos.
+    /// <summary>
+    /// Servicio encargado exclusivamente de leer los XML generados por Python
+    /// y convertirlos en objetos C# usando los Modelos definidos. 
+    /// </summary>
     public static class DataService
     {
 
 
 
         // ==================================================================================================================
-        // Carga la lista de procesos (el índice) desde procesos.xml
+        /// <summary>
+        /// Metodo para la carga de la lista de procesos desde procesos.xml
+        /// </summary>
         public static List<Process> LoadProcess(string path)
         {
             var list = new List<Process>();
@@ -55,7 +58,9 @@ namespace ZC_ALM_TOOLS.Services.Generator
 
 
         // ==================================================================================================================
-        // Carga la lista de etapas desde etapas.xml
+        /// <summary>
+        /// Metodo para la carga de la lista de etapas desde etapas.xml
+        /// </summary>
         public static List<ProcessStage> LoadStages(string path)
         {
             var list = new List<ProcessStage>();
@@ -87,7 +92,9 @@ namespace ZC_ALM_TOOLS.Services.Generator
 
 
         // ==================================================================================================================
-        // Carga una lista de parámetros (ya sean Reales o Enteros)
+        /// <summary>
+        /// Metodo para la carga de la lista de parametros desde p_real.xml o p_int.xml
+        /// </summary>
         public static List<Parameter> LoadParameters(string path)
         {
             var list = new List<Parameter>();
@@ -119,7 +126,9 @@ namespace ZC_ALM_TOOLS.Services.Generator
 
 
         // ==================================================================================================================
-        // Carga una lista de parámetros (ya sean Reales o Enteros)
+        /// <summary>
+        /// Metodo para la carga de la lista de alarmas desde alarmas.xml
+        /// </summary>
         public static List<Alarms> LoadAlarms(string path)
         {
             var list = new List<Alarms>();
@@ -151,7 +160,9 @@ namespace ZC_ALM_TOOLS.Services.Generator
 
 
         // ==================================================================================================================
-        // Carga la lista de numero maximo de dispositivos
+        /// <summary>
+        /// Metodo para la carga de la lista de numero maximo de dispositivos desde config_disp.xml
+        /// </summary>
         public static List<Disp_Config> LoadDeviceNMax(string path)
         {
             var list = new List<Disp_Config>();
@@ -182,7 +193,9 @@ namespace ZC_ALM_TOOLS.Services.Generator
 
 
         // ==================================================================================================================
-        // Carga una lista de dispositivos usando Reflexión para instanciar la clase correcta (Disp_V, Disp_M, etc.)
+        /// <summary>
+        /// Metodo para la carga de la lista de dispositivos usando Reflexión para instanciar la clase correcta (Disp_V, Disp_M, etc.) desde los archivos de dispositivos en xml
+        /// </summary>
         public static List<object> LoadDispCategoryData(string path, ConfigDeviceCategory category)
         {
             var list = new List<object>();
@@ -236,7 +249,9 @@ namespace ZC_ALM_TOOLS.Services.Generator
 
 
         // ==================================================================================================================
-        // Crea una instancia vacía de un modelo (Disp_ED, Disp_V, etc.) basado en su categoría
+        /// <summary>
+        /// Metodo para la crear una instancia vacía de un modelo (Disp_ED, Disp_V, etc.) basado en su categoría
+        /// </summary>
         public static IDevice CreateEmptyDispData(ConfigDeviceCategory category)
         {
             try

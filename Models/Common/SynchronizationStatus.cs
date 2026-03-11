@@ -1,10 +1,10 @@
 ﻿namespace ZC_ALM_TOOLS.Models.Common
 {
 
-
-
     // ==================================================================================================================
-    // Estados para los indicadores visuales de la interfaz
+    /// <summary>
+    /// ENUM con los estados para los indicadores visuales de la interfaz
+    /// </summary>
     public enum SynchronizationStatus
     {
         Pending, // Gris - Aún no se ha comprobado
@@ -12,4 +12,5 @@
         Error,   // Rojo - Hay discrepancias
         Warning  // Naranja - Requiere atención manual
     }
+
 }

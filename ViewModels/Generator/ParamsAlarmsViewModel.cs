@@ -13,7 +13,10 @@ using ZC_ALM_TOOLS.Services.TiaPortal;
 namespace ZC_ALM_TOOLS.ViewModels.Generator
 {
 
-    
+    // ==================================================================================================================
+    /// <summary>
+    /// ViewModel que gestiona la pestaña de parametros y alarmas
+    /// </summary>
     public class ParamsAlarmsViewModel : ObservableObject
     {
 
@@ -69,7 +72,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
 
         // ==================================================================================================================
-        // CONSTRUCTOR
+        /// <summary>
+        /// Constructor
+        /// </summary>
         public ParamsAlarmsViewModel(TiaPlcService tiaPlcService)
         {
 
@@ -82,7 +87,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
 
         // ==================================================================================================================
-        // Método puente para el botón Comparar
+        /// <summary>
+        /// Método puente para el botón Comparar
+        /// </summary>
         private async void ExecuteCompareCommand()
         {
             await ExecuteCompare();
@@ -91,7 +98,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
 
         // ==================================================================================================================
-        // Carga los datos provenientes del MainViewModel
+        /// <summary>
+        /// Carga los datos provenientes del MainViewModel
+        /// </summary>
         public void LoadData(Dictionary<string, List<object>> cache, ConfigProcessSettings settings)
         {
             _engineeringCache = cache;
@@ -99,7 +108,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
             if (_engineeringCache == null || _processSettings == null) return;
 
-            // 1. Extraer los procesos para el ComboBox
+            // Extraer los procesos para el ComboBox
             if (_engineeringCache.TryGetValue(_processSettings.ProcessName, out var procList))
             {
                 Processes.Clear(); // Vaciamos la lista actual
@@ -109,7 +118,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                 }
             }
 
-            // 2. Seleccionar el primer proceso por defecto (esto dispara RefreshView automáticamente)
+            // Seleccionar el primer proceso por defecto (esto dispara RefreshView automáticamente)
             if (Processes.Count > 0 && SelectedProcess == null)
             {
                 SelectedProcess = Processes[0];
@@ -123,7 +132,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
 
         // ==================================================================================================================
-        // Actualizar la vista del datagrid
+        /// <summary>
+        /// Actualizar la vista del datagrid
+        /// </summary>
         private void RefreshView()
         {
             if (SelectedProcess == null || _engineeringCache == null || _processSettings == null) return;
@@ -164,7 +175,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
 
         // ==================================================================================================================
-        // Método para actualizar que la selección del PLC ha cambiado
+        /// <summary>
+        /// Método para actualizar que la selección del PLC ha cambiado
+        /// </summary>
         public void NotifyPlcChanged(string plcName)
         {
             ActivePlcName = plcName;
@@ -198,7 +211,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
 
         // ==================================================================================================================
-        // Metodo para comparar con PLC
+        /// <summary>
+        /// Metodo para comparar con PLC
+        /// </summary>
         private async Task ExecuteCompare()
         {
             if (SelectedProcess == null || _tiaPlcService == null) return;
@@ -270,8 +285,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
 
                 // ==============================================================================
-                // EXPORTACIÓN Y CRUCE DE COMENTARIOS
-                // ==============================================================================
+                // Exportacion y cruce de comentarios
                 StatusService.Set("Exportando Bloques de Datos desde TIA Portal...", StatusType.Ok);
                 await Task.Delay(50);
 
@@ -296,14 +310,30 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
 
                 // Parseamos los XML
-                var dicReal = XmlParserService.ParseDbCommentsXml(tempReal);
-                var dicInt = XmlParserService.ParseDbCommentsXml(tempInt);
-                var dicAlm = XmlParserService.ParseDbCommentsXml(tempAlm);
+                var dicReal = new Dictionary<int, string>();
+                if (env.DbNumReal != -1 && File.Exists(tempReal))
+                {
+                    var dbRealEditor = new XmlDataBlockEditorService(tempReal);
+                    dicReal = dbRealEditor.GetArrayComments();
+                }
+
+                var dicInt = new Dictionary<int, string>();
+                if (env.DbNumInt != -1 && File.Exists(tempInt))
+                {
+                    var dbIntEditor = new XmlDataBlockEditorService(tempInt);
+                    dicInt = dbIntEditor.GetArrayComments();
+                }
+
+                var dicAlm = new Dictionary<int, string>();
+                if (env.DbNumAlm != -1 && File.Exists(tempAlm))
+                {
+                    var dbAlmEditor = new XmlDataBlockEditorService(tempAlm);
+                    dicAlm = dbAlmEditor.GetArrayComments();
+                }
 
                 bool allCommentsMatch = true;
 
-                // =========================================================
-                // 1. Cruzar Parámetros Reales
+                // Cruzar Parámetros Reales
                 var resReal = ComparisonService.Compare(
                     CurrentRealParams.ToList(), 
                     dicReal,
@@ -329,8 +359,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                 LogService.Write($"[PARAMS-VM] [ExecuteCompare] RESUMEN REALES: {resReal.MatchCount} OK, {resReal.MismatchCount} Diferencias, {resReal.NewCount} Nuevos, {resReal.GhostCount} Sobrantes.");
                 if (!resReal.AllMatch) allCommentsMatch = false;
 
-                // =========================================================
-                // 2. Cruzar Parámetros Enteros
+                // Cruzar Parámetros Enteros
                 var resInt = ComparisonService.Compare(
                     CurrentIntParams.ToList(), 
                     dicInt,
@@ -357,8 +386,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                 LogService.Write($"[PARAMS-VM] [ExecuteCompare] RESUMEN ENTEROS: {resInt.MatchCount} OK, {resInt.MismatchCount} Diferencias, {resInt.NewCount} Nuevos, {resInt.GhostCount} Sobrantes.");
                 if (!resInt.AllMatch) allCommentsMatch = false;
 
-                // =========================================================
-                // 3. Cruzar Alarmas
+                // Cruzar Alarmas
                 var resAlm = ComparisonService.Compare(
                     CurrentAlarms.ToList(), 
                     dicAlm,
@@ -383,10 +411,8 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
                 LogService.Write($"[PARAMS-VM] [ExecuteCompare] RESUMEN ALARMAS: {resAlm.MatchCount} OK, {resAlm.MismatchCount} Diferencias, {resAlm.NewCount} Nuevos, {resAlm.GhostCount} Sobrantes.");
                 if (!resAlm.AllMatch) allCommentsMatch = false;
-
-                
-                // ==============================================================================
-                // RESULTADO FINAL EN LA BARRA DE ESTADO
+                                
+                // Resultado final
                 if (needResize || !allCommentsMatch)
                 {
                     StatusService.Set("Comparación finalizada: Se detectaron diferencias.", StatusType.Warning);
@@ -415,7 +441,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
 
         // ==================================================================================================================
-        // Método para ejecutar la sincronización
+        /// <summary>
+        /// Método para ejecutar la sincronización
+        /// </summary>
         private async void ExecuteSync()
         {
 
@@ -437,9 +465,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
             {
                 await Task.Delay(50);
 
-                // ==============================================================================
-                // FASE 1: PREPARACIÓN Y VALIDACIÓN DEL ENTORNO
-                // ==============================================================================
+                // Preparacion y validacion del entorno
                 var env = new ParamsAlarmsEnvironment(
                     SelectedProcess, _processSettings,
                     CurrentRealParams, CurrentIntParams, CurrentAlarms,
@@ -448,9 +474,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
                 if (!env.IsValid) return;
 
-                // ==============================================================================
-                // FASE 2: ESCRITURA DE CONSTANTES DE DIMENSIONADO (N_MAX)
-                // ==============================================================================
+                // Escritura de constantes N_MAX
                 StatusService.Set("Comprobando y actualizando límites N_MAX...", StatusType.Ok);
                 await Task.Delay(50);
 
@@ -495,9 +519,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                     if (SelectSyncAlarmas && env.DbNumAlm != -1) _tiaPlcService.CompileBlock(env.DbNameAlm);
                 }
 
-                // ==============================================================================
-                // FASE 3: INYECCIÓN DE COMENTARIOS (CIRUGÍA XML)
-                // ==============================================================================
+                // Inyeccion de comentarios
                 StatusService.Set("Inyectando textos y comentarios en los DBs...", StatusType.Ok);
                 await Task.Delay(50);
 
@@ -522,9 +544,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                     commentsOk &= _tiaPlcService.SyncParamsAlarmsDbComments(env.DbNameAlm, "ALM", validAlarms, a => a.Numero, a => a.ComentarioDB);
                 }
 
-                // ==============================================================================
-                // FASE 4: COMPILACIÓN FINAL (Obligatoria tras modificar un DB)
-                // ==============================================================================
+                // Compilacion final tras modificar el DB
                 StatusService.Set("Guardando y realizando compilación final...", StatusType.Ok);
                 await Task.Delay(50);
 
@@ -551,7 +571,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
 
         // ==================================================================================================================
-        // Metodo para habilitar botones
+        /// <summary>
+        /// Metodo para habilitar botones
+        /// </summary>
         private bool CanExecuteAction()
         {
             // Solo habilitamos si:

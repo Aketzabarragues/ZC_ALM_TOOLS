@@ -2,6 +2,10 @@
 
 namespace ZC_ALM_TOOLS.Models.TiaPortal
 {
+    // ==================================================================================================================
+    /// <summary>
+    /// Modelo que representa un bloque de Tia portal para la cache
+    /// </summary>
     public class CachedPlcBlock
     {
 
@@ -11,9 +15,9 @@ namespace ZC_ALM_TOOLS.Models.TiaPortal
         // Datos planos extraídos una sola vez
         public string Name { get; set; }
         public int Number { get; set; }
-        public string ApiType { get; set; }      // Ej: "GlobalDB", "InstanceDB", "FC"
-        public string SimpleType { get; set; }   // Ej: "DB", "FC", "FB", "OB"
-        public string FolderPath { get; set; }   // Ej: "Root\0_Sistema\Alarmas"
+        public string ApiType { get; set; }
+        public string SimpleType { get; set; }
+        public string FolderPath { get; set; }
 
     }
 }

@@ -15,7 +15,10 @@ using ZC_ALM_TOOLS.Services.TiaPortal;
 
 namespace ZC_ALM_TOOLS.ViewModels.Generator
 {
-    // ViewModel que gestiona la pestaña de detalles (tabla de dispositivos, comparaciones y sincronización)
+    // ==================================================================================================================
+    /// <summary>
+    /// ViewModel que gestiona la pestaña de dispositivos
+    /// </summary>
     public class DevicesViewModel : ObservableObject
     {
 
@@ -76,7 +79,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
 
         // ==================================================================================================================
-        // CONSTRUCTOR
+        /// <summary>
+        /// Constructor
+        /// </summary>
         public DevicesViewModel(TiaPlcService tiaPlcService, TiaHmiService tiaHmiService,
                               List<ConfigDeviceCategory> categories,
                               ObservableCollection<TiaTarget> hmiTargets)
@@ -94,7 +99,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
 
         // ==================================================================================================================
-        // Método puente para el botón Comparar
+        /// <summary>
+        /// Método puente para el botón Comparar
+        /// </summary>
         private async void ExecuteCompareCommand()
         {
             await ExecuteCompare(false);
@@ -103,7 +110,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
 
         // ==================================================================================================================
-        // Carga los datos provenientes del MainViewModel
+        /// <summary>
+        /// Carga los datos provenientes del MainViewModel
+        /// </summary>
         public void LoadData(Dictionary<string, List<object>> cache, ConfigDeviceSettings settings)
         {
             _engineeringCache = cache;
@@ -115,7 +124,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
 
         // ==================================================================================================================
-        // Actualizar la vista del datagrid
+        /// <summary>
+        /// Actualizar la vista del datagrid
+        /// </summary>
         private void RefreshView()
         {
             if (SelectedCategory == null || _engineeringCache == null) return;
@@ -137,7 +148,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
 
         // ==================================================================================================================
-        // Metodo para actualizar que la seleccion del PLC ha cambiado
+        /// <summary>
+        /// Metodo para actualizar que la seleccion del PLC ha cambiado
+        /// </summary>
         public void NotifyPlcChanged(string plcName)
         {
             ActivePlcName = plcName;
@@ -175,7 +188,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
 
         // ==================================================================================================================
-        // Actualizar el numero maximo de dispositivos
+        /// <summary>
+        /// Actualizar el numero maximo de dispositivos
+        /// </summary>
         private async void UpdateDimensionInfo()
         {
 
@@ -219,7 +234,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
 
         // ==================================================================================================================
-        // Metodo para ejecutar la sincronizacion
+        /// <summary>
+        /// Metodo para ejecutar la sincronizacion
+        /// </summary>
         private async void ExecuteSync()
         {
             if (SelectedCategory == null) return;
@@ -354,7 +371,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
 
         // ==================================================================================================================
-        // Metodo para comparar el dispositivo seleccionado con el PLC
+        /// <summary>
+        /// Metodo para comparar el dispositivo seleccionado con el PLC
+        /// </summary>
         private async Task ExecuteCompare(bool keepDbStatus)
         {
             if (SelectedCategory == null || _deviceSettings == null || _engineeringCache == null) return;
@@ -406,7 +425,10 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                 await Task.Delay(10);
 
 
-                var plcDict = XmlParserService.ParseDispTableXml(tempXmlPath);
+                var tagEditor = new XmlTagTableEditorService(tempXmlPath);
+                var plcDict = tagEditor.GetTags();
+                LogService.Write($"[DEVICE-VM] [ExecuteCompare] Leídas {plcDict.Count} variables del archivo plc_export.xml");
+
 
                 // Obtenemos los dispositivos del Excel (los que ya están en la tabla)
                 // Obtenemos los dispositivos del Excel
@@ -469,11 +491,13 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
 
 
-        
+
 
 
         // ==================================================================================================================
-        // Metodo para habilitar botones
+        /// <summary>
+        /// Metodo para habilitar botones
+        /// </summary>
         private bool CanExecuteAction()
         {
             // Solo habilitamos si:

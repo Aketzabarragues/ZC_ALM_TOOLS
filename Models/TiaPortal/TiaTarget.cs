@@ -5,6 +5,12 @@ namespace ZC_ALM_TOOLS.Models.TiaPortal
 {
     public enum TargetType { PLC, HMI, SCADA }
 
+    // ==================================================================================================================
+    /// <summary>
+    /// Modelo que representa un dispositivo objetivo (PLC, HMI o SCADA) encontrado en el proyecto.
+    /// Encapsula la referencia nativa de Siemens (SoftwareObject) y permite su enlace dinámico (Binding) 
+    /// con los controles de selección de la interfaz gráfica.
+    /// </summary>
     public class TiaTarget : INotifyPropertyChanged
     {
         private bool _isChecked;

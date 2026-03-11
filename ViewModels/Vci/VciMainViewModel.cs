@@ -8,6 +8,10 @@ using ZC_ALM_TOOLS.Services.TiaPortal;
 
 namespace ZC_ALM_TOOLS.ViewModels.Vci
 {
+    // ==================================================================================================================
+    /// <summary>
+    /// ViewModel que gestiona la ventana principal del modulo VCI
+    /// </summary>
     public class VciMainViewModel : ObservableObject
     {
 
@@ -24,7 +28,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
 
 
         // ==================================================================================================================
-        // CONSTRUCTOR
+        /// <summary>
+        /// Constructor
+        /// </summary>
         public VciMainViewModel(TiaPortal tiaPortal, Project project, TiaVciService tiaVciService,
                                       ObservableCollection<TiaTarget> plcTargets)
         {

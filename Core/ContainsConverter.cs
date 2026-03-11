@@ -8,15 +8,17 @@ namespace ZC_ALM_TOOLS.Core
 
 
     // ==================================================================================================================
-    // Convertidor para comprobar si un texto contiene una cadena específica
-    // Se usa en la interfaz para detectar cambios (buscando el símbolo '->')
+    /// <summary>
+    /// Convertidor para comprobar si un texto contiene una cadena específica
+    ///  Se usa en la interfaz para detectar cambios (buscando el símbolo '->')
+    /// </summary>
     public class ContainsConverter : IValueConverter
     {
 
-
-
         // ==================================================================================================================
-        // Evalúa si el valor recibido contiene el texto pasado como parámetro
+        /// <summary>
+        /// Evalúa si el valor recibido contiene el texto pasado como parámetro
+        /// </summary>
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
             if (value == null || parameter == null)

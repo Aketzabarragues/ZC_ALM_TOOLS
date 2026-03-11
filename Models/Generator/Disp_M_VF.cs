@@ -3,9 +3,14 @@ using ZC_ALM_TOOLS.Core;
 
 namespace ZC_ALM_TOOLS.Models.Generator
 {
+    // ==================================================================================================================
+    /// <summary>
+    /// Modelo que representa un motor variador
+    /// </summary>
     public class Disp_M_VF : ObservableObject, IDevice
     {
-        // --- PROPIEDADES DEL EXCEL
+        // ==================================================================================================================
+        // Propiedades de Excel  
         public string UID { get; set; }
         public int Numero { get; set; }
         public string Tag { get; set; }
@@ -25,10 +30,15 @@ namespace ZC_ALM_TOOLS.Models.Generator
         public string CPComentario { get; set; }
 
 
-        // --- PROPIEDAD PARA LA INTERFAZ ---
+        // ==================================================================================================================
+        // Propiedades de estado
         private string _Estado = "Sin comprobar";
         public string Estado { get => _Estado; set { _Estado = value; OnPropertyChanged(); } }
 
+        // ==================================================================================================================
+        /// <summary>
+        /// Metodo para leer dispositivo motor variador desde XML
+        /// </summary>
         public static Disp_M_VF FromXml(XElement x) => new Disp_M_VF
         {
             UID = DataHelper.GetXmlVal(x, "UID"),

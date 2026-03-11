@@ -5,14 +5,25 @@ using ZC_ALM_TOOLS.Services.Common;
 
 namespace ZC_ALM_TOOLS.Services.Vci
 {
+    // ==================================================================================================================
+    /// <summary>
+    /// Servicio encargado de gestionar el Workspace de VCI en Tia Portal
+    /// </summary>
     public class VciWorkspaceService
     {
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Constructor
+        /// </summary>
         public VciWorkspaceService()
         {
         }
 
         // ==================================================================================================================
-        // Escanea un directorio y devuelve un diccionario: Key = Nombre del Bloque, Value = Ruta del Archivo XML
+        /// <summary>
+        /// Metodo para escanear un directorio y devuelve un diccionario: Key = Nombre del Bloque, Value = Ruta del Archivo XML
+        /// </summary>
         public Dictionary<string, string> GetVciFilesFromWorkspace(string workspacePath)
         {
             var vciFilesDict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);

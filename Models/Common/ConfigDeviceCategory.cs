@@ -4,30 +4,32 @@ using ZC_ALM_TOOLS.Core;
 namespace ZC_ALM_TOOLS.Models.Common
 {
 
-    // Representa una categoría de dispositivos y su configuración de ingeniería
+    // ==================================================================================================================
+    /// <summary>
+    /// Modelo que representa una categoría de dispositivos y su configuración de ingeniería
+    /// </summary>
     public class ConfigDeviceCategory : ObservableObject
     {
 
-        // ==================================================================================================================
         // Propiedades de identificación y Excel    
-        public string Name { get; set; } // Nombre de la categoría (ej. "Motor")
-        public string ExcelSheet { get; set; } // Nombre de la hoja de Excel origen
+        public string Name { get; set; }
+        public string ExcelSheet { get; set; }
 
 
         // ==================================================================================================================
         // Configuración TIA Portal
-        public string TiaGroup { get; set; } // Carpeta donde se encuentra la tabla de variables
-        public string TiaTable { get; set; } // Nombre de la tabla de variables
-        public string TiaDbName { get; set; } // Nombre del bloque de datos para cirugía XML
-        public string TiaDbArrayName { get; set; } // Nombre del Array dentro del DB para los comentarios
+        public string TiaGroup { get; set; }
+        public string TiaTable { get; set; }
+        public string TiaDbName { get; set; }
+        public string TiaDbArrayName { get; set; }
 
 
         // ==================================================================================================================
         // Lógica interna y Archivos
-        public string ModelClass { get; set; } // Clase C# que representa el modelo (ej. Disp_V)
-        public string XmlFile { get; set; } // Nombre del archivo XML intermedio generado por Python
-        public string GlobalConfigKey { get; set; } // Clave para buscar el N_MAX en el Excel        
-        public string PlcCountConstant { get; set; } // Nombre de la constante de dimensionado en el PLC
+        public string ModelClass { get; set; }
+        public string XmlFile { get; set; }
+        public string GlobalConfigKey { get; set; }     
+        public string PlcCountConstant { get; set; } 
 
 
         // ==================================================================================================================
@@ -54,7 +56,10 @@ namespace ZC_ALM_TOOLS.Models.Common
         }
 
 
-
+        // ==================================================================================================================
+        /// <summary>
+        /// Metodo para leer la categoria de dispositivo desde XML
+        /// </summary>
         public static ConfigDeviceCategory FromXml(XElement x) => new ConfigDeviceCategory
         {
             Name = x.Attribute("Name")?.Value,

@@ -1,13 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml.Linq;
+﻿using System.Xml.Linq;
 using ZC_ALM_TOOLS.Core;
 
 namespace ZC_ALM_TOOLS.Models.Generator
 {
+
+    // ==================================================================================================================
+    /// <summary>
+    /// Modelo que representa alarmas
+    /// </summary>
     public class Alarms : ObservableObject
     {
 
@@ -30,7 +30,10 @@ namespace ZC_ALM_TOOLS.Models.Generator
             set { _estado = value; OnPropertyChanged(); }
         }
 
-
+        // ==================================================================================================================
+        /// <summary>
+        /// Metodo para leer alarmas desde XML
+        /// </summary>
         public static Alarms FromXml(XElement x) => new Alarms
         {
             UID = DataHelper.GetXmlVal(x, "UID"),

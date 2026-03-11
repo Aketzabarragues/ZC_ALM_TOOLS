@@ -3,6 +3,10 @@ using ZC_ALM_TOOLS.Core;
 
 namespace ZC_ALM_TOOLS.Models.Generator
 {
+    // ==================================================================================================================
+    /// <summary>
+    /// Modelo que representa parametros
+    /// </summary>
     public class Parameter : ObservableObject
     {
 
@@ -28,7 +32,10 @@ namespace ZC_ALM_TOOLS.Models.Generator
             set { _estado = value; OnPropertyChanged(); }
         }
 
-
+        // ==================================================================================================================
+        /// <summary>
+        /// Metodo para leer parametros desde XML
+        /// </summary>
         public static Parameter FromXml(XElement x) => new Parameter
         {
             Uid = DataHelper.GetXmlVal(x, "UID"),

@@ -2,6 +2,11 @@
 
 namespace ZC_ALM_TOOLS.Models.Vci
 {
+
+    // ==================================================================================================================
+    /// <summary>
+    /// Clase para VCI
+    /// </summary>
     public class VciMappingAction : ObservableObject
     {
         private bool _isSelected;
@@ -20,7 +25,7 @@ namespace ZC_ALM_TOOLS.Models.Vci
         public VciMatchState State { get; set; }
         public string DiskPath { get; set; }
 
-        // Propiedad calculada con Switch compatible con C# 7.3
+        // Propiedad calculada
         public string StateIcon
         {
             get

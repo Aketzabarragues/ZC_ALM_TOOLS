@@ -75,8 +75,10 @@ namespace ZC_ALM_TOOLS.ViewModels
 
 
 
-        // =================================================================================================================
-        // CONSTRUCTOR
+        // ==================================================================================================================
+        /// <summary>
+        /// Constructor
+        /// </summary>
         public MainViewModel(TiaPortal tiaPortal, Project project)
         {
             _tiaPortal = tiaPortal;
@@ -113,8 +115,10 @@ namespace ZC_ALM_TOOLS.ViewModels
 
 
 
-        // =================================================================================================================
-        // Actualizar el listado de equipos en el proyecto
+        // ==================================================================================================================
+        /// <summary>
+        /// Actualizar el listado de equipos en el proyecto
+        /// </summary>
         private void ScanProjectDevices()
         {
             StatusService.SetBusy(true);
@@ -152,12 +156,14 @@ namespace ZC_ALM_TOOLS.ViewModels
                 StatusService.SetBusy(false);
             }
         }
-        
 
 
-        // =================================================================================================================
-        // Actualizar el PLC al cambio en el combobox
-        private  void OnTargetChanged()
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Actualizar el PLC al cambio en el combobox
+        /// </summary>
+        private void OnTargetChanged()
         {
             if (SelectedTarget != null && SelectedTarget.SoftwareObject is PlcSoftware plc)
             {
@@ -191,8 +197,10 @@ namespace ZC_ALM_TOOLS.ViewModels
 
 
 
-        // =================================================================================================================
-        // Abrir editor de configuracion
+        // ==================================================================================================================
+        /// <summary>
+        /// Abrir editor de configuracion
+        /// </summary>
         private void OpenSettingsEditor() => OpenEditor(AppConfigService.AppConfigFile, "Editando ajustes...");
 
         private void OpenEditor(string path, string message)
@@ -204,8 +212,10 @@ namespace ZC_ALM_TOOLS.ViewModels
 
 
 
-        // =================================================================================================================
-        // Exportar volcado de caché a TXT
+        // ==================================================================================================================
+        /// <summary>
+        /// Exportar volcado de caché a TXT
+        /// </summary>
         private void ExecuteDumpCache()
         {
 

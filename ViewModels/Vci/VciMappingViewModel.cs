@@ -11,6 +11,10 @@ using ZC_ALM_TOOLS.Services.Vci;
 
 namespace ZC_ALM_TOOLS.ViewModels.Vci
 {
+    // ==================================================================================================================
+    /// <summary>
+    /// ViewModel que gestiona la pestaña mapeado de archivos VCI
+    /// </summary>
     public class VciMappingViewModel : ObservableObject
     {
         private readonly TiaVciService _tiaVciService;
@@ -35,8 +39,13 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
         public RelayCommand AnalyzeProjectCommand { get; }
         public RelayCommand ApplyMappingsCommand { get; }
 
+
+
+
         // ==================================================================================================================
-        // CONSTRUCTOR
+        /// <summary>
+        /// Constructor
+        /// </summary>
         public VciMappingViewModel(TiaVciService tiaVciService)
         {
             LogService.Write("[VCI-MAPPING-VM] [Constructor] Inicializando VciMappingViewModel...");
@@ -51,8 +60,11 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
         }
 
 
+
         // ==================================================================================================================
-        // BOTÓN: Explorar Carpeta
+        /// <summary>
+        /// Metodo para explorar la carpeta de los archivos del VCI
+        /// </summary>
         private void ExecuteSelectFolder()
         {
             LogService.Write("[VCI-MAPPING-VM] [ExecuteSelectFolder] Abriendo diálogo de selección de carpeta...");
@@ -85,8 +97,12 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
         private bool CanExecuteAnalyze() => !string.IsNullOrWhiteSpace(WorkspacePath);
 
 
+
+
         // ==================================================================================================================
-        // BOTÓN: Analizar Proyecto (Fase 1: Solo Windows)
+        /// <summary>
+        /// Metodo para comparar y analizar el proyecto con el VCI
+        /// </summary>
         private void ExecuteAnalyzeProject()
         {
             LogService.Write($"[VCI-MAPPING-VM] [ExecuteAnalyzeProject] Iniciando escaneo de Workspace en: {WorkspacePath}");
@@ -139,9 +155,18 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
 
 
         // ==================================================================================================================
+        /// <summary>
+        /// Metodo para determinar si se puede ejecutar la accion de ejecutar
+        /// </summary>
         // BOTÓN: Aplicar (Pendiente)
         private bool CanExecuteApply() => MappingActions != null && MappingActions.Count > 0;
 
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Metodo para ejecutar el mapeado del VCI
+        /// </summary>
         private void ExecuteApplyMappings()
         {
             LogService.Write("[VCI-MAPPING-VM] [ExecuteApplyMappings] Botón de aplicar pulsado. (Pendiente de implementación).");

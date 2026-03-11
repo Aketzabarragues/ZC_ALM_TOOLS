@@ -3,9 +3,14 @@ using ZC_ALM_TOOLS.Core;
 
 namespace ZC_ALM_TOOLS.Models.Generator
 {
+    // ==================================================================================================================
+    /// <summary>
+    /// Modelo que representa una salida analogica
+    /// </summary>
     public class Disp_SA : ObservableObject, IDevice
     {
-        // --- PROPIEDADES DEL EXCEL
+        // ==================================================================================================================
+        // Propiedades de Excel  
         public string UID { get; set; }
         public int Numero { get; set; }
         public string Tag { get; set; }
@@ -21,12 +26,15 @@ namespace ZC_ALM_TOOLS.Models.Generator
         public string CPTag { get; set; }
         public string CPComentario { get; set; }
 
-        // --- PROPIEDAD PARA LA INTERFAZ ---
-        // No se carga desde el CSV, se usa solo para mostrar resultados de comparación
+        // ==================================================================================================================
+        // Propiedades de estado
         private string _Estado = "Sin comprobar";
         public string Estado { get => _Estado; set { _Estado = value; OnPropertyChanged(); } }
 
-        // --- MÉTODO DE CARGA
+        // ==================================================================================================================
+        /// <summary>
+        /// Metodo para leer dispositivo salida analogica desde XML
+        /// </summary>
         public static Disp_SA FromXml(XElement x) => new Disp_SA
         {
             UID = DataHelper.GetXmlVal(x, "UID"),

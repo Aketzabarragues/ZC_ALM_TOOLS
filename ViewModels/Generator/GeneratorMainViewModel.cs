@@ -18,7 +18,10 @@ using ZC_ALM_TOOLS.Services.TiaPortal;
 
 namespace ZC_ALM_TOOLS.ViewModels.Generator
 {
-
+    // ==================================================================================================================
+    /// <summary>
+    /// ViewModel principal del modulo de generacion
+    /// </summary>
     public class GeneratorMainViewModel : ObservableObject
     {
 
@@ -82,7 +85,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
 
         // ==================================================================================================================
-        // CONSTRUCTOR
+        /// <summary>
+        /// Constructor
+        /// </summary>
         public GeneratorMainViewModel(TiaPlcService tiaPlcService,
                                       ObservableCollection<TiaTarget> plcTargets,
                                       ObservableCollection<TiaTarget> hmiTargets,
@@ -133,7 +138,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
 
         // ==================================================================================================================
-        // Método para actualizar el PLC de trabajo cuando el usuario cambia la selección
+        /// <summary>
+        /// Método para actualizar el PLC de trabajo cuando el usuario cambia la selección
+        /// </summary>
         private void NotifyPlcChanged()
         {
             if (SelectedTarget != null && SelectedTarget.SoftwareObject is PlcSoftware plc)
@@ -149,7 +156,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
 
         // ==================================================================================================================
-        // LÓGICA DE EXTRACCIÓN Y CARGA
+        /// <summary>
+        /// Metodo para leer y generar JSON con los datos de Excel
+        /// </summary>
         private async void LoadExcelAndGenerateJson()
         {
             LogService.Write("[MAIN-VM] [LoadExcelAndGenerateJson] Botón 'Cargar' pulsado.");
@@ -237,7 +246,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
 
         // ==================================================================================================================
-        // Metodo para lanzar el programa de extraccion de python
+        /// <summary>
+        /// Metodo para lanzar el programa de extraccion de python
+        /// </summary>
         private async Task<bool> StartExtractor()
         {
             try
@@ -302,7 +313,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
 
         // ==================================================================================================================
-        // Metodo para esperar a que se encuentren todos los archivos esperados
+        /// <summary>
+        /// Metodo para esperar a que se encuentren todos los archivos esperados
+        /// </summary>
         private async Task<bool> WaitForPythonFiles()
         {        
 
@@ -340,7 +353,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
 
         // ==================================================================================================================
-        // Metodo para cargar todos los archivos desde una carpeta
+        /// <summary>
+        /// Metodo para cargar todos los archivos desde una carpeta
+        /// </summary>
         private void LoadAllFromFolder(string folderPath)
         {
             _engineeringCache.Clear();
@@ -415,8 +430,10 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
 
 
-        // ==================================================================================================================
-        // Limpiar la carpeta de exportacion de archivos
+        // // ==================================================================================================================
+        /// <summary>
+        /// Limpiar la carpeta de exportacion de archivos
+        /// </summary>
         private void ClearExportFolder(string path)
         {
             if (!Directory.Exists(path)) return;
@@ -425,10 +442,6 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                 try { File.Delete(f); } catch { }
             }
         }
-
-
-
-
 
 
 

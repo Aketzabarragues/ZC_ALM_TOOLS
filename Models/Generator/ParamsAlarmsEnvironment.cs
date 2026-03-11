@@ -1,13 +1,17 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
-using ZC_ALM_TOOLS.Core;
 using ZC_ALM_TOOLS.Models.Common;
-using ZC_ALM_TOOLS.Services;
 using ZC_ALM_TOOLS.Services.Common;
 using ZC_ALM_TOOLS.Services.TiaPortal;
 
 namespace ZC_ALM_TOOLS.Models.Generator
 {
+    // ==================================================================================================================
+    /// <summary>
+    /// Clase de contexto que encapsula la preparación y validación del entorno necesario 
+    /// (existencia de tablas, constantes y bloques de datos) antes de ejecutar 
+    /// operaciones de comparación o sincronización de parámetros y alarmas con TIA Portal.
+    /// </summary>
     public class ParamsAlarmsEnvironment
     {
         public bool IsValid { get; private set; } = false;

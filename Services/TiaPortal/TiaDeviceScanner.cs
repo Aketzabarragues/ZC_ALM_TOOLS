@@ -8,26 +8,37 @@ using ZC_ALM_TOOLS.Models.TiaPortal;
 
 namespace ZC_ALM_TOOLS.Services.TiaPortal
 {
+    // ==================================================================================================================
+    /// <summary>
+    /// Servicio encargado de buscar y escanear el proyecto de Tia Portal
+    /// </summary>
     public static class TiaDeviceScanner
     {
 
+        // ==================================================================================================================
+        /// <summary>
+        /// Metodo para escanear el proyecto de Tia Portal
+        /// </summary>
         public static List<TiaTarget> ScanProject(Project project)
         {
             var targets = new List<TiaTarget>();
 
-            // 1. Escanear dispositivos en la raíz
+            // Escanear dispositivos en la raíz
             foreach (Device device in project.Devices)
             {
                 FindSoftwareInDevice(device, targets);
             }
 
-            // 2. Escanear dispositivos dentro de grupos (carpetas) - Recursivo
+            // Escanear dispositivos dentro de grupos (carpetas) - Recursivo
             ScanGroups(project.DeviceGroups, targets);
 
             return targets;
         }
 
-
+        // ==================================================================================================================
+        /// <summary>
+        /// Metodo para escanear en equipos dentro de grupos
+        /// </summary>
         private static void ScanGroups(DeviceUserGroupComposition groups, List<TiaTarget> targets)
         {
             foreach (DeviceUserGroup group in groups)
@@ -40,7 +51,10 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
             }
         }
 
-
+        // ==================================================================================================================
+        /// <summary>
+        /// Metodo para estanear el software en el equipo
+        /// </summary>
         private static void FindSoftwareInDevice(Device device, List<TiaTarget> targets)
         {
             foreach (DeviceItem item in device.DeviceItems)

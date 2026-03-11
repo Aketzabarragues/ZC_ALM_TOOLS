@@ -101,13 +101,14 @@
     <Compile Include="Models\Vci\VciMatchState.cs" />
     <Compile Include="Services\Common\AppConfigService.cs" />
     <Compile Include="Services\Common\ComparisonService.cs" />
+    <Compile Include="Services\Common\XmlDataBlockEditorService.cs" />
+    <Compile Include="Services\Common\XmlTagTableEditorService.cs" />
     <Compile Include="Services\Generator\DataService.cs" />
     <Compile Include="Services\Common\LogService.cs" />
     <Compile Include="Services\Common\StatusService.cs" />
     <Compile Include="Services\TiaPortal\TiaDeviceScanner.cs" />
     <Compile Include="Services\TiaPortal\TiaHmiService.cs" />
     <Compile Include="Services\TiaPortal\TiaPlcService.cs" />
-    <Compile Include="Services\Common\XmlParserService.cs" />
     <Compile Include="Services\TiaPortal\TiaVciService.cs" />
     <Compile Include="Services\Vci\VciWorkspaceService.cs" />
     <Compile Include="ViewModels\Generator\DevicesViewModel.cs" />

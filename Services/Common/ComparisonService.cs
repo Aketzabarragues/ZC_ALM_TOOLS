@@ -4,7 +4,10 @@ using System.Linq;
 
 namespace ZC_ALM_TOOLS.Services.Common
 {
-    // Esta clase guardará el resumen de la comparación y los fantasmas encontrados
+    // ==================================================================================================================
+    /// <summary>
+    /// Servicio encargado de la comparacion de dispositivos, parametros o alarmas
+    /// </summary>
     public class ComparisonResult<T>
     {
         public int MatchCount { get; set; } = 0;
@@ -17,7 +20,11 @@ namespace ZC_ALM_TOOLS.Services.Common
 
     public static class ComparisonService
     {
-        // Método genérico capaz de comparar Dispositivos, Parámetros o Alarmas
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Método para comparar Dispositivos, Parámetros o Alarmas 
+        /// </summary>
         public static ComparisonResult<T> Compare<T>(
             IEnumerable<T> excelItems,
             Dictionary<int, string> plcDict,
