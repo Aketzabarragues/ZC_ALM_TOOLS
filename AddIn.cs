@@ -40,7 +40,7 @@ namespace ZC_ALM_TOOLS
             //return _tiaPortal.Projects.Any() ? MenuStatus.Enabled : MenuStatus.Hidden;
             bool isProjectSelected = selectionProvider.GetSelection<Project>().Any();
 
-            return isProjectSelected ? MenuStatus.Enabled : MenuStatus.Hidden;
+            return isProjectSelected ? MenuStatus.Enabled : MenuStatus.Disabled;
         }
 
         // =================================================================================================================

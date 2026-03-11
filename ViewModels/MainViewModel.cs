@@ -2,6 +2,7 @@
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using Microsoft.Win32;
 using Siemens.Engineering;
@@ -118,7 +119,8 @@ namespace ZC_ALM_TOOLS.ViewModels
         {
             StatusService.SetBusy(true);
             StatusService.Set("Buscando dispositivos en el proyecto...", StatusType.Warning);
-                        
+            LogService.Write($"[MAIN-VM] [ScanProjectDevices] Buscando dispositivos en el proyecto...");
+
             try
             {
                 var scannedDevices = TiaDeviceScanner.ScanProject(_project);
@@ -137,11 +139,12 @@ namespace ZC_ALM_TOOLS.ViewModels
                 }
 
                 SelectedTarget = PlcTargets.FirstOrDefault();
-                StatusService.Set("Listo. Dispositivos escaneados.", StatusType.Ok);
+                StatusService.Set("Dispositivos escaneados.", StatusType.Ok);
+                LogService.Write($"[MAIN-VM] [ScanProjectDevices] Dispositivos escaneados.");
             }
             catch (Exception ex)
             {
-                LogService.Write($"[MAIN-VM] Error escaneando dispositivos: {ex.Message}", true);
+                LogService.Write($"[MAIN-VM] [ScanProjectDevices] Error escaneando dispositivos: {ex.Message}", true);
                 StatusService.Set("Error al escanear dispositivos.", StatusType.Error);
             }
             finally
@@ -154,16 +157,35 @@ namespace ZC_ALM_TOOLS.ViewModels
 
         // =================================================================================================================
         // Actualizar el PLC al cambio en el combobox
-        private void OnTargetChanged()
+        private  void OnTargetChanged()
         {
             if (SelectedTarget != null && SelectedTarget.SoftwareObject is PlcSoftware plc)
             {
+                
+                StatusService.Set($"Cambiando PLC a '{plc.Name}'. Indexando bloques del PLC en memoria RAM...", StatusType.Warning);
+
+
+                // 2. EL TRUCO PARA WFP EN ADD-INS: 
+                // Forzamos a la interfaz gráfica a procesar todos los cambios visuales pendientes 
+                // (como cerrar el menú del ComboBox y mostrar el texto de arriba) en este mismo milisegundo,
+                // sin cambiar de hilo y sin usar Task.Delay.
+                try
+                {
+                    System.Windows.Threading.Dispatcher.CurrentDispatcher.Invoke(
+                        System.Windows.Threading.DispatcherPriority.Background,
+                        new Action(delegate { }));
+                }
+                catch { /* Si da error por ser demasiado temprano en el constructor, lo ignoramos */ }
+
                 // Avisamos al servicio central de que el usuario ha cambiado de PLC
                 _tiaPlcService.UpdatePlc(plc);
+                _tiaPlcService.BuildBlockCache();
 
                 // Avisamos a los módulos visuales
                 if (GeneratorVM != null) GeneratorVM.SelectedTarget = this.SelectedTarget;
                 //if (VciVM != null) VciVM.NotifyPlcChanged(SelectedTarget.Name);
+
+                StatusService.Set($"PLC '{plc.Name}' enlazado e indexado correctamente.", StatusType.Ok);
             }
         }
 

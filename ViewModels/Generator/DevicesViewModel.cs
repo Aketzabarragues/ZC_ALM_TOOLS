@@ -240,7 +240,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                 if (!env.IsValid) return;
 
                 StatusService.Set($"Inicio sincronización: {SelectedCategory.Name} ---", StatusType.Ok);
-                LogService.Write($"[DEVICE-VM] [ExecuteSync] Inicio sincronización: {SelectedCategory.Name} ---");
+                LogService.Write($"[DEVICE-VM] [ExecuteSync] Inicio sincronización: {SelectedCategory.Name}");
 
                 okNMax = _tiaPlcService.SyncGlobalConstant(_deviceSettings.ConfigTableName, SelectedCategory.PlcCountConstant, env.ExcelNMax);
 
@@ -249,6 +249,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                 if (!okNMax)
                 {
                     MessageBox.Show("Error crítico al sincronizar N_MAX. Se aborta el proceso.");
+                    LogService.Write($"[DEVICE-VM] [ExecuteSync] Error crítico al sincronizar N_MAX. Se aborta el proceso.\"");
                     return;
                 }
 

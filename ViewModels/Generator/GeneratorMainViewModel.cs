@@ -137,17 +137,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
         private void NotifyPlcChanged()
         {
             if (SelectedTarget != null && SelectedTarget.SoftwareObject is PlcSoftware plc)
-            {               
-                // Si los datos del Excel ya están cargados y el usuario cambia de PLC,
-                // reconstruimos la caché automáticamente para el nuevo PLC.
-                if (IsDataLoaded)
-                {
-                    StatusService.SetBusy(true);
-                    StatusService.Set($"Indexando bloques de {SelectedTarget.Name}...", StatusType.Ok);
-                    _tiaPlcService.BuildBlockCache();
-                    StatusService.SetBusy(false);
-                }
-
+            {
                 DevicesVM?.NotifyPlcChanged(SelectedTarget.Name);
                 ParamsAlarmsVM?.NotifyPlcChanged(SelectedTarget.Name);
                 ProcessGeneratorVM?.NotifyPlcChanged(SelectedTarget.Name);
@@ -210,10 +200,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                         // Actualizar ViewModels
                         DevicesVM.LoadData(_engineeringCache, _configDeviceSettings);
                         ParamsAlarmsVM.LoadData(_engineeringCache, _configProcessesSettings);
-                        ProcessGeneratorVM.LoadData(_engineeringCache, _configProcessesSettings, _configGlobalSettings);
-
-                        StatusService.Set("Indexando bloques del PLC en memoria RAM...", StatusType.Ok);
-                        _tiaPlcService.BuildBlockCache();
+                        ProcessGeneratorVM.LoadData(_engineeringCache, _configProcessesSettings, _configGlobalSettings);                        
 
                         IsDataLoaded = true;
                         StatusService.Set("Listo. Todos los módulos cargados.", StatusType.Ok);
