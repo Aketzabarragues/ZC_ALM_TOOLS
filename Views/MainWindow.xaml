@@ -5,7 +5,7 @@
         xmlns:vmVci="clr-namespace:ZC_ALM_TOOLS.ViewModels.Vci"
         xmlns:vGenerator="clr-namespace:ZC_ALM_TOOLS.Views.Generator"
         xmlns:vVci="clr-namespace:ZC_ALM_TOOLS.Views.Vci"
-        Title="ZC Engineering Suite" Height="850" Width="1600"
+        Title="ZC ALM Tools" Height="850" Width="1600"
         WindowStartupLocation="CenterScreen" Background="#F5F6F8">
 
     <Window.Resources>
@@ -36,15 +36,20 @@
         </Style>
 
         <Style x:Key="MenuButtonStyle" TargetType="Button">
-            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Background" Value="#1f296e"/>
             <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="BorderBrush" Value="#2a3680"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="MinHeight" Value="45"/>
             <Setter Property="Padding" Value="10"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" CornerRadius="5" Margin="5,0">
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="5" Margin="5,0">
                             <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center" Margin="10,0,0,0"/>
                         </Border>
                     </ControlTemplate>
@@ -53,6 +58,7 @@
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
                     <Setter Property="Background" Value="#2a3680"/>
+                    <Setter Property="BorderBrush" Value="#4554b5"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
@@ -65,23 +71,40 @@
         </Grid.ColumnDefinitions>
 
         <Border Grid.Column="0" Background="#19215d">
-            <StackPanel Margin="0,20">
-                <TextBlock Text="ZC ALM Tools" Foreground="White" FontWeight="Bold" FontSize="18" HorizontalAlignment="Center" Margin="0,0,0,30"/>
 
-                <Button Command="{Binding ShowGeneratorCommand}" ToolTip="Generador de Procesos" Style="{StaticResource MenuButtonStyle}" Margin="0,5">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="⚙️" FontSize="16" Margin="0,0,10,0"/>
-                        <TextBlock Text="Procesos" FontSize="14" Foreground="White" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="50"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
 
-                <Button Command="{Binding ShowVciCommand}" ToolTip="Auditoría VCI" Style="{StaticResource MenuButtonStyle}" Margin="0,5">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="🔍" FontSize="16" Margin="0,0,10,0"/>
-                        <TextBlock Text="VCI" FontSize="14" Foreground="White" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
-            </StackPanel>
+                <Border Grid.Row="0" BorderBrush="#2a3680" BorderThickness="0,0,0,1">
+                    <TextBlock Text="ZC ALM Tools" 
+                               Foreground="White" 
+                               FontWeight="Bold" 
+                               FontSize="17" 
+                               HorizontalAlignment="Center" 
+                               VerticalAlignment="Center"/>
+                </Border>
+
+                <StackPanel Grid.Row="1" Margin="0,15,0,0">
+                    
+                    <Button Command="{Binding ShowGeneratorCommand}" ToolTip="Generador de Procesos" Style="{StaticResource MenuButtonStyle}" Margin="0,5">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="⚙️" FontSize="16" Margin="0,0,10,0"/>
+                            <TextBlock Text="Procesos" FontSize="14" Foreground="White" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Button Command="{Binding ShowVciCommand}" ToolTip="Auditoría VCI" Style="{StaticResource MenuButtonStyle}" Margin="0,5">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="🔍" FontSize="16" Margin="0,0,10,0"/>
+                            <TextBlock Text="VCI" FontSize="14" Foreground="White" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+
+            </Grid>
         </Border>
 
         <Grid Grid.Column="1">

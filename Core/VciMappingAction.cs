@@ -5,7 +5,9 @@ namespace ZC_ALM_TOOLS.Models.Vci
 
     // ==================================================================================================================
     /// <summary>
-    /// Clase para VCI
+    /// Modelo de datos observable que representa una fila individual en la tabla de mapeo del VCI.
+    /// Encapsula la información de un bloque de TIA Portal, su estado de vinculación con el espacio de trabajo 
+    /// (Workspace) en disco, y gestiona la lógica visual (iconos y permisos de selección) para la interfaz gráfica.
     /// </summary>
     public class VciMappingAction : ObservableObject
     {
@@ -25,7 +27,11 @@ namespace ZC_ALM_TOOLS.Models.Vci
         public VciMatchState State { get; set; }
         public string DiskPath { get; set; }
 
-        // Propiedad calculada
+
+        /// <summary>
+        /// Propiedad calculada que devuelve un icono visual (emoji) basado en el estado actual de coincidencia, 
+        /// facilitando la lectura rápida en la interfaz de usuario.
+        /// </summary>
         public string StateIcon
         {
             get

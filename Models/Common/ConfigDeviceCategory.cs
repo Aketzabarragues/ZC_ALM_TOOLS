@@ -6,7 +6,10 @@ namespace ZC_ALM_TOOLS.Models.Common
 
     // ==================================================================================================================
     /// <summary>
-    /// Modelo que representa una categoría de dispositivos y su configuración de ingeniería
+    /// Modelo de datos observable que define la configuración y el mapeo de una categoría 
+    /// de dispositivos (ej. Motores, Válvulas). Vincula la información del Excel con las tablas 
+    /// y bloques de datos correspondientes en TIA Portal, y mantiene el estado visual de su 
+    /// sincronización para la interfaz gráfica.
     /// </summary>
     public class ConfigDeviceCategory : ObservableObject
     {
@@ -58,7 +61,8 @@ namespace ZC_ALM_TOOLS.Models.Common
 
         // ==================================================================================================================
         /// <summary>
-        /// Metodo para leer la categoria de dispositivo desde XML
+        /// Método estático que construye e inicializa una instancia de ConfigDeviceCategory 
+        /// a partir de un nodo XML (XElement) extraído del archivo de configuración de la aplicación (app_config.xml).
         /// </summary>
         public static ConfigDeviceCategory FromXml(XElement x) => new ConfigDeviceCategory
         {

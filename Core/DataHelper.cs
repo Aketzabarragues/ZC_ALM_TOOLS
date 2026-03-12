@@ -4,16 +4,17 @@ namespace ZC_ALM_TOOLS.Core
 {
     // ==================================================================================================================
     /// <summary>
-    /// Clase para lectura de valores de XML
+    /// Clase estática de utilidad (Helper) que proporciona métodos seguros para la extracción 
+    /// y conversión de valores desde nodos XML (XElement), gestionando valores nulos o formatos no deseados.
     /// </summary>
     public static class DataHelper
     {
 
 
 
-        // ==================================================================================================================
         /// <summary>
-        /// Metodo para obtener el valor de un nodo XML
+        /// Extrae el valor de texto de un nodo XML hijo especificado por su nombre.
+        /// Retorna un valor por defecto si el nodo padre es nulo, si el nodo hijo no existe o si está vacío.
         /// </summary>
         public static string GetXmlVal(XElement el, string name, string def = "")
         {
@@ -24,9 +25,10 @@ namespace ZC_ALM_TOOLS.Core
 
 
 
-        // ==================================================================================================================
         /// <summary>
-        /// Metodo para obtener un entero de un nodo XML, limpiando decimales de Pandas (.0)
+        /// Extrae y convierte el valor de un nodo XML a un número entero.
+        /// Incluye una limpieza de formato específica para ignorar decimales espurios (ej. ".0") 
+        /// generados durante la exportación de DataFrames desde scripts de Pandas (Python).
         /// </summary>
         public static int GetXmlInt(XElement el, string name, int def = 0)
         {

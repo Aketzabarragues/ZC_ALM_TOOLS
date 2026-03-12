@@ -8,7 +8,9 @@ namespace ZC_ALM_TOOLS.Core
 
     // ==================================================================================================================
     /// <summary>
-    /// Clase para gestionar los comandos de los botones desde el ViewModel
+    /// Implementación estándar de la interfaz ICommand para el patrón MVVM. 
+    /// Permite enlazar (bind) acciones de la vista (WPF) directamente a métodos 
+    /// definidos en el ViewModel, delegando en este la lógica de ejecución y validación.
     /// </summary>
     public class RelayCommand : ICommand
     {
@@ -25,7 +27,8 @@ namespace ZC_ALM_TOOLS.Core
 
         // ==================================================================================================================
         /// <summary>
-        /// Metodo para verificar si el comando puede ejecutarse en este momento
+        /// Determina si el comando puede ejecutarse en el estado actual. 
+        /// WPF evalúa este método automáticamente para habilitar o deshabilitar controles visuales (ej. botones).
         /// </summary>
         public bool CanExecute(object parameter) => _canExecute == null || _canExecute();
 
@@ -34,7 +37,7 @@ namespace ZC_ALM_TOOLS.Core
 
         // ==================================================================================================================
         /// <summary>
-        /// Metodo para ejecutar la accion vinculada al comando
+        /// Ejecuta la acción (Action) principal encapsulada por el comando cuando el usuario interactúa con la interfaz.
         /// </summary>
         public void Execute(object parameter) => _execute();
 
@@ -43,7 +46,8 @@ namespace ZC_ALM_TOOLS.Core
 
         // ==================================================================================================================
         /// <summary>
-        /// Metodo que se dispara cuando cambian las condiciones que afectan a si el comando puede ejecutarse
+        /// Evento que notifica a la interfaz gráfica que las condiciones de ejecución han cambiado.
+        /// Se apoya en el CommandManager de WPF para reevaluar automáticamente el estado de los controles asociados.
         /// </summary>
         public event EventHandler CanExecuteChanged
         {
