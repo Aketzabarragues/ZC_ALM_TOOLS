@@ -258,7 +258,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
             {
                 string wsName = WorkspaceName;
 
-                LogService.Write($"[VCI-MAPPING-VM] Nombre de Workspace detectado para TIA Portal: '{wsName}'");
+                LogService.Write($"[VCI-MAPPING-VM] [ExecuteApplyMappings] Nombre de Workspace detectado para TIA Portal: '{wsName}'");
 
                 int successCount = 0;
                 string basePath = WorkspacePath.TrimEnd('\\') + "\\";
@@ -266,8 +266,8 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                 foreach (var item in itemsToMap)
                 {
                     StatusService.Set($"Vinculando bloque: {item.BlockName}...", StatusType.Warning);
-                    LogService.Write($"[VCI-MAPPING-VM] --- Procesando '{item.BlockName}' ---");
-                    LogService.Write($"[VCI-MAPPING-VM] Ruta absoluta en disco: '{item.DiskPath}'");
+                    LogService.Write($"[VCI-MAPPING-VM] [ExecuteApplyMappings] --- Procesando '{item.BlockName}' ---");
+                    LogService.Write($"[VCI-MAPPING-VM] [ExecuteApplyMappings] Ruta absoluta en disco: '{item.DiskPath}'");
 
                     var plcBlock = _tiaPlcService.FindBlockByName(item.BlockName);
 
@@ -285,26 +285,26 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                             relativePath = "\\" + Path.GetFileName(item.DiskPath);
                         }
 
-                        LogService.Write($"[VCI-MAPPING-VM] Bloque encontrado en PLC. Intentando mapear con Ruta Relativa: '{relativePath}'");
+                        LogService.Write($"[VCI-MAPPING-VM] [ExecuteApplyMappings] Bloque encontrado en PLC. Intentando mapear con Ruta Relativa: '{relativePath}'");
 
                         bool ok = _tiaVciService.MapObjectToWorkspace(wsName, plcBlock, relativePath);
                         if (ok)
                         {
                             successCount++;
-                            LogService.Write($"[VCI-MAPPING-VM] ÉXITO: '{item.BlockName}' mapeado correctamente.");
+                            LogService.Write($"[VCI-MAPPING-VM] [ExecuteApplyMappings] ÉXITO: '{item.BlockName}' mapeado correctamente.");
                         }
                         else
                         {
-                            LogService.Write($"[VCI-MAPPING-VM] FALLO: El servicio VCI devolvió False para '{item.BlockName}'.", true);
+                            LogService.Write($"[VCI-MAPPING-VM] [ExecuteApplyMappings] FALLO: El servicio VCI devolvió False para '{item.BlockName}'.", true);
                         }
                     }
                     else
                     {
-                        LogService.Write($"[VCI-MAPPING-VM] FALLO: No se pudo encontrar el bloque '{item.BlockName}' en la caché del PLC.", true);
+                        LogService.Write($"[VCI-MAPPING-VM] [ExecuteApplyMappings] FALLO: No se pudo encontrar el bloque '{item.BlockName}' en la caché del PLC.", true);
                     }
                 }
 
-                LogService.Write($"[VCI-MAPPING-VM] Mapeo finalizado. {successCount} de {itemsToMap.Count} exitosos.");
+                LogService.Write($"[VCI-MAPPING-VM] [ExecuteApplyMappings] Mapeo finalizado. {successCount} de {itemsToMap.Count} exitosos.");
                 StatusService.Set($"Se han mapeado {successCount} bloques en TIA Portal correctamente.", StatusType.Ok);
 
                 foreach (var item in itemsToMap) item.IsSelected = false;
@@ -363,12 +363,12 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                         if (ok)
                         {
                             successCount++;
-                            LogService.Write($"[VCI-MAPPING-VM] ÉXITO: '{item.BlockName}' desvinculado correctamente.");
+                            LogService.Write($"[VCI-MAPPING-VM] [ExecuteUnmapBlocks] ÉXITO: '{item.BlockName}' desvinculado correctamente.");
                         }
                     }
                 }
 
-                LogService.Write($"[VCI-MAPPING-VM] Desvinculación finalizada. {successCount} de {itemsToUnmap.Count} exitosos.");
+                LogService.Write($"[VCI-MAPPING-VM] [ExecuteUnmapBlocks] Desvinculación finalizada. {successCount} de {itemsToUnmap.Count} exitosos.");
                 StatusService.Set($"Se han eliminado {successCount} mapeos en TIA Portal.", StatusType.Ok);
 
                 foreach (var item in itemsToUnmap) item.IsSelected = false;
