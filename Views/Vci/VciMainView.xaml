@@ -1,24 +1,199 @@
 ﻿<UserControl x:Class="ZC_ALM_TOOLS.Views.Vci.VciMainView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:ZC_ALM_TOOLS.Views.Vci"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:localViews="clr-namespace:ZC_ALM_TOOLS.Views.Vci"
              mc:Ignorable="d" 
-             Background="#F4F4F4"
+             Background="#F0F0F0"
              d:DesignHeight="800" d:DesignWidth="1200">
 
-    <UserControl.Resources>
+        <UserControl.Resources>
+            
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
+
+        <Style x:Key="PrimaryButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#007ACC"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="15,0"/>
+            <Setter Property="Height" Value="35"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                CornerRadius="4" 
+                                BorderThickness="{TemplateBinding BorderThickness}" 
+                                BorderBrush="{TemplateBinding BorderBrush}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#005B96"/>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Background" Value="#CCCCCC"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="ModernComboBoxStyle" TargetType="ComboBox">
+            <Setter Property="Height" Value="35"/>
+            <Setter Property="Padding" Value="10,0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="#D0D0D0"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Foreground" Value="#333333"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <Border x:Name="MainBorder" 
+                                    Background="{TemplateBinding Background}" 
+                                    BorderBrush="{TemplateBinding BorderBrush}" 
+                                    BorderThickness="{TemplateBinding BorderThickness}" 
+                                    CornerRadius="4"/>
+
+                            <Grid Margin="{TemplateBinding Padding}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <ContentPresenter IsHitTestVisible="False" 
+                                                  Content="{TemplateBinding SelectionBoxItem}"
+                                                  ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                                  ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}"
+                                                  VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                  HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"/>
+                                <Path x:Name="Arrow" Grid.Column="1" 
+                                      Data="M0,0 L4,4 L8,0" 
+                                      Stroke="#666" StrokeThickness="2" 
+                                      VerticalAlignment="Center" Margin="5,0,0,0"/>
+                            </Grid>
+
+                            <ToggleButton IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border Background="Transparent" />
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+
+                            <Popup x:Name="PART_Popup" AllowsTransparency="True" 
+                                   IsOpen="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}}" 
+                                   Placement="Bottom" PopupAnimation="Slide">
+                                <Border Background="White" BorderBrush="#D0D0D0" BorderThickness="1" 
+                                        CornerRadius="4" MinWidth="{TemplateBinding ActualWidth}" MaxHeight="300">
+                                    <ScrollViewer>
+                                        <ItemsPresenter SnapsToDevicePixels="True"/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="MainBorder" Property="BorderBrush" Value="#007ACC"/>
+                                <Setter TargetName="MainBorder" Property="Background" Value="White"/>
+                            </Trigger>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="MainBorder" Property="BorderBrush" Value="#007ACC"/>
+                                <Setter TargetName="MainBorder" Property="Background" Value="White"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+            
     </UserControl.Resources>
 
     <Grid>
-        <TabControl Margin="10">
-            <TabItem Header="📦 Configuración y Mapeo VCI">
-                <localViews:VciMappingView DataContext="{Binding MappingVM}" />
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Padding="15,10" Background="#F5F6F7" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1">
+            <Grid>
+                
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Visible"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsCreatingWorkspace}" Value="True">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+
+                    <TextBlock Text="Workspace de TIA Portal:" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="#555" Margin="0,0,10,0"/>
+
+                    <ComboBox ItemsSource="{Binding ConfiguredWorkspaces}" 
+                              SelectedItem="{Binding SelectedWorkspace}"
+                              Style="{StaticResource ModernComboBoxStyle}"
+                              DisplayMemberPath="Name"
+                              Width="260" Height="35" Margin="0,0,10,0" VerticalContentAlignment="Center"
+                              ToolTip="Selecciona un Workspace existente."/>
+
+                    <Button Content="➕ Nuevo" 
+                            Command="{Binding ToggleCreateModeCommand}" 
+                            Style="{StaticResource PrimaryButtonStyle}"
+                            Width="85" Margin="0,0,15,0"/>
+
+                    <Button Content="🗑️ Borrar" 
+                            Command="{Binding DeleteWorkspaceCommand}" 
+                            Style="{StaticResource PrimaryButtonStyle}"
+                            Width="85" Margin="0,0,15,0"/>
+                    
+                    <Button Content="✏️ Cambiar ruta" 
+                            Command="{Binding ChangeWorkspaceFolderCommand}" 
+                            Style="{StaticResource PrimaryButtonStyle}"
+                            Width="120" 
+                            Margin="0,0,15,0"/>
+                    
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="Ruta en disco:" FontSize="10" Foreground="#888"/>
+                        <TextBlock Text="{Binding SelectedWorkspace.Path, TargetNullValue='Ningún workspace seleccionado'}" 
+                                   Foreground="#555" FontWeight="Medium" FontStyle="Italic"/>
+                    </StackPanel>
+
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Visibility="{Binding IsCreatingWorkspace, Converter={StaticResource BoolToVis}}">
+                    <TextBlock Text="Nombre del nuevo Workspace:" VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,0,10,0" Foreground="#007ACC"/>
+
+                    <TextBox Text="{Binding NewWorkspaceName, UpdateSourceTrigger=PropertyChanged}" 
+                             Width="300" Height="35" Margin="0,0,10,0" VerticalContentAlignment="Center" Padding="5,0"
+                             ToolTip="Ejemplo: Mi_Workspace_VCI"/>
+
+                    <Button Content="📁 Explorar ruta y Crear" 
+                            Command="{Binding CreateNewWorkspaceCommand}" 
+                            Style="{StaticResource PrimaryButtonStyle}"
+                            Width="180"/>
+
+                    <Button Content="❌ Cancelar" 
+                            Command="{Binding ToggleCreateModeCommand}" 
+                            Style="{StaticResource PrimaryButtonStyle}"
+                            Margin="10,0,0,0" Width="100"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <TabControl Grid.Row="1" Margin="10" Background="White" BorderBrush="#D0D0D0">
+            <TabItem Header="🔄 Mapeo de Archivos">
+                <views:VciMappingView DataContext="{Binding MappingVM}" Loaded="VciMappingView_Loaded"/>
             </TabItem>
-            <TabItem Header="🔍 Auditoría y Dependencias XML">
-                <localViews:VciAuditView DataContext="{Binding AuditVM}" />
+            <TabItem Header="📋 Auditoría y Sincronización">
+                <views:VciAuditView DataContext="{Binding AuditVM}"/>
             </TabItem>
         </TabControl>
     </Grid>

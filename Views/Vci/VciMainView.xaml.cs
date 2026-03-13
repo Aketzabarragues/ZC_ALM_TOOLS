@@ -12,5 +12,10 @@ namespace ZC_ALM_TOOLS.Views.Vci
         {
             InitializeComponent();
         }
+
+        private void VciMappingView_Loaded(object sender, RoutedEventArgs e)
+        {
+
+        }
     }
 }

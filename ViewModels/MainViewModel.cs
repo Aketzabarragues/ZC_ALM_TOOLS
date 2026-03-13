@@ -90,7 +90,7 @@ namespace ZC_ALM_TOOLS.ViewModels
 
             // Inicializamos los Módulos
             GeneratorVM = new GeneratorMainViewModel(_tiaPlcService, PlcTargets, HmiTargets, ScadaTargets);
-            VciVM = new VciMainViewModel(_tiaPortal, _project, _tiaVciService, PlcTargets);
+            VciVM = new VciMainViewModel(_tiaPortal, _project, _tiaPlcService, _tiaVciService, PlcTargets);
 
             // Comandos de menú lateral
             ShowGeneratorCommand = new RelayCommand(() => CurrentView = GeneratorVM);
@@ -189,7 +189,7 @@ namespace ZC_ALM_TOOLS.ViewModels
 
                 // Avisamos a los módulos visuales
                 if (GeneratorVM != null) GeneratorVM.SelectedTarget = this.SelectedTarget;
-                //if (VciVM != null) VciVM.NotifyPlcChanged(SelectedTarget.Name);
+                if (VciVM != null) VciVM.SelectedTarget = this.SelectedTarget;
 
                 StatusService.Set($"PLC '{plc.Name}' enlazado e indexado correctamente.", StatusType.Ok);
             }

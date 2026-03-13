@@ -33,10 +33,11 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup>
-    <SignAssembly>true</SignAssembly>
+    <SignAssembly>false</SignAssembly>
   </PropertyGroup>
   <PropertyGroup>
-    <AssemblyOriginatorKeyFile>ABH.snk</AssemblyOriginatorKeyFile>
+    <AssemblyOriginatorKeyFile>
+    </AssemblyOriginatorKeyFile>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="PresentationCore" />
@@ -99,6 +100,7 @@
     <Compile Include="Models\Generator\ProcessStage.cs" />
     <Compile Include="Models\TiaPortal\CachedPlcBlock.cs" />
     <Compile Include="Models\Vci\VciMatchState.cs" />
+    <Compile Include="Models\Vci\VciWorkspaceModel.cs" />
     <Compile Include="Services\Common\AppConfigService.cs" />
     <Compile Include="Services\Common\ComparisonService.cs" />
     <Compile Include="Services\Common\XmlDataBlockEditorService.cs" />
@@ -151,7 +153,6 @@
     <EmbeddedResource Include="Resources\app_config.xml" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="ABH.snk" />
     <None Include="app.config" />
   </ItemGroup>
   <ItemGroup>

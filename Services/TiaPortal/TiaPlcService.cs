@@ -158,6 +158,17 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
         }
 
 
+        // ==================================================================================================================
+        /// <summary>
+        /// Debuelve la cache de los bloques del PLC
+        /// </summary>
+        public List<CachedPlcBlock> GetAllBlocks()
+        {
+            if (!_isCacheBuilt) BuildBlockCache();
+            return _plcCache ?? new List<CachedPlcBlock>();
+        }
+
+
 
         // ==================================================================================================================
         /// <summary>
