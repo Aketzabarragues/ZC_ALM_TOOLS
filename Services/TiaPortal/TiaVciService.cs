@@ -3,11 +3,15 @@ using System.Collections.Generic;
 using System.IO;
 using Siemens.Engineering;
 using Siemens.Engineering.VersionControl; // <-- NAMESPACE CORRECTO
+using ZC_ALM_TOOLS.Models;
 using ZC_ALM_TOOLS.Models.Vci;
 using ZC_ALM_TOOLS.Services.Common;
 
 namespace ZC_ALM_TOOLS.Services.TiaPortal
 {
+
+
+
     // ==================================================================================================================
     /// <summary>
     /// Servicio para interactuar con la Interfaz de Control de Versiones (VCI) de TIA Portal mediante Openness.
@@ -15,6 +19,7 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
     public class TiaVciService
     {
         private readonly Project _project;
+
 
         // ==================================================================================================================
         /// <summary>
@@ -24,6 +29,8 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
         {
             _project = project;
         }
+
+
 
         // ==================================================================================================================
         /// <summary>
@@ -59,6 +66,8 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
 
             return workspaces;
         }
+
+
 
         // ==================================================================================================================
         /// <summary>
@@ -165,12 +174,12 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
         /// Crea o actualiza un vínculo (Mapping) VCI entre un objeto del TIA Portal y una ruta relativa en el Workspace.
         /// Adicionalmente, fuerza a TIA Portal a comprobar el estado de sincronización.
         /// </summary>
-        public bool MapObjectToWorkspace(string workspaceName, IEngineeringObject plcObject, string relativePath)
+        public VciMapResult MapObjectToWorkspace(string workspaceName, IEngineeringObject plcObject, string relativePath)
         {
             if (_project == null)
             {
                 LogService.Write("[TIA-VCI-SERVICE] [MapObjectToWorkspace] ERROR: La referencia al proyecto (_project) es nula.", true);
-                return false;
+                return VciMapResult.Error;
             }
 
             try
@@ -179,19 +188,19 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                 if (vciService == null)
                 {
                     LogService.Write("[TIA-VCI-SERVICE] [MapObjectToWorkspace] ERROR: No se pudo obtener el VersionControlInterface.", true);
-                    return false;
+                    return VciMapResult.Error;
                 }
 
                 Workspace ws = vciService.WorkspaceGroup.Workspaces.Find(workspaceName);
                 if (ws == null)
                 {
                     LogService.Write($"[TIA-VCI-SERVICE] [MapObjectToWorkspace] ERROR: No se encontró ningún Workspace llamado '{workspaceName}' en el proyecto.", true);
-                    return false;
+                    return VciMapResult.Error;
                 }
 
                 WorkspaceMapping activeMapping = null;
 
-                // 1. Comprobamos si el objeto ya está mapeado iterando sobre los mapeos existentes
+                // Comprobamos si el objeto ya está mapeado iterando sobre los mapeos existentes
                 foreach (WorkspaceMapping mapping in ws.Mappings)
                 {
                     if (mapping.LinkedProjectObject == plcObject)
@@ -211,7 +220,7 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                     }
                 }
 
-                // 2. Si no estaba mapeado, lo creamos
+                // Si no estaba mapeado, lo creamos
                 if (activeMapping == null)
                 {
                     LogService.Write($"[TIA-VCI-SERVICE] [MapObjectToWorkspace] El objeto no tenía mapeo. Llamando a Mappings.Create('{relativePath}')...");
@@ -225,23 +234,31 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                     var syncStatusService = activeMapping.GetService<IndividualObjectSynchronizationStatus>();
                     if (syncStatusService != null)
                     {
-                        LogService.Write($"[TIA-VCI-SERVICE] [MapObjectToWorkspace] Forzando a TIA Portal a comparar el archivo con el PLC (UpdateStatus)...");
-                        syncStatusService.UpdateStatus();
+                        try
+                        {
+                            LogService.Write($"[TIA-VCI-SERVICE] [MapObjectToWorkspace] Forzando a TIA Portal a comparar el archivo con el PLC (UpdateStatus)...");
+                            syncStatusService.UpdateStatus();
+                            return VciMapResult.Success;
+                        }
+                        catch (Exception syncEx)
+                        {
+                            LogService.Write($"[TIA-VCI-SERVICE] [MapObjectToWorkspace] Advertencia: El mapeo se creó, pero TIA Portal no pudo comprobar el estado (UpdateStatus). Motivo: {syncEx.Message}");
+                            return VciMapResult.SuccessWithWarning;
+                        }
                     }
                     else
                     {
                         LogService.Write($"[TIA-VCI-SERVICE] [MapObjectToWorkspace] Advertencia: El objeto mapeado no soporta comprobación de estado de sincronización.");
+                        return VciMapResult.SuccessWithWarning;
                     }
-
-                    return true;
                 }
 
-                return false;
+                return VciMapResult.Error;
             }
             catch (Exception ex)
             {
                 LogService.Write($"[TIA-VCI-SERVICE] [MapObjectToWorkspace] EXCEPCIÓN al mapear hacia '{relativePath}': {ex.Message}", true);
-                return false;
+                return VciMapResult.Error;
             }
         }
 

@@ -9,6 +9,7 @@
         YaEnlazado,       
         ListoParaEnlazar, 
         FaltaExportar,    
-        Conflicto         
+        Conflicto,
+        ErrorAlEnlazar
     }
 }

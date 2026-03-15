@@ -77,7 +77,8 @@
     <Compile Include="Core\DataHelper.cs" />
     <Compile Include="Core\ObservableObject.cs" />
     <Compile Include="Core\RelayCommand.cs" />
-    <Compile Include="Core\VciMappingAction.cs" />
+    <Compile Include="Models\VciMatchResult.cs" />
+    <Compile Include="Models\Vci\VciMappingAction.cs" />
     <Compile Include="Models\Generator\Alarms.cs" />
     <Compile Include="Models\Common\ConfigDeviceCategory.cs" />
     <Compile Include="Models\Common\ConfigDeviceSettings.cs" />

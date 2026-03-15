@@ -22,11 +22,24 @@ namespace ZC_ALM_TOOLS.Models.Vci
 
         public string BlockName { get; set; }
         public string BlockType { get; set; }
-        public VciMatchState State { get; set; }
         public string DiskPath { get; set; }
 
         // ==================================================================================================================
         // Propiedades visuales calculadas
+
+        private VciMatchState _state;
+        public VciMatchState State
+        {
+            get => _state;
+            set
+            {
+                _state = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(StateText));
+                OnPropertyChanged(nameof(StateColor));
+            }
+        }
+
 
         /// <summary>
         /// Devuelve el texto descriptivo indicando dónde existe el bloque actualmente.
@@ -37,10 +50,11 @@ namespace ZC_ALM_TOOLS.Models.Vci
             {
                 switch (State)
                 {
-                    case VciMatchState.YaEnlazado: return "En ambos (Enlazado)";
-                    case VciMatchState.ListoParaEnlazar: return "En ambos (Falta enlazar)";
+                    case VciMatchState.YaEnlazado: return "En ambos (Mapeado)";
+                    case VciMatchState.ListoParaEnlazar: return "En ambos (Falta mapear)";
                     case VciMatchState.FaltaExportar: return "Solo en PLC";
-                    case VciMatchState.Conflicto: return "Solo en VCI (Disco)";
+                    case VciMatchState.Conflicto: return "Solo en VCI";
+                    case VciMatchState.ErrorAlEnlazar: return "Error al mapear (Requiere compilar)";
                     default: return "Desconocido";
                 }
             }
@@ -55,15 +69,16 @@ namespace ZC_ALM_TOOLS.Models.Vci
             {
                 switch (State)
                 {
-                    case VciMatchState.YaEnlazado: return "#007ACC";        // Azul (OK)
-                    case VciMatchState.ListoParaEnlazar: return "#28A745";  // Verde (Acción requerida)
+                    case VciMatchState.YaEnlazado: return "#007ACC";        // Azul
+                    case VciMatchState.ListoParaEnlazar: return "#28A745";  // Verde
                     case VciMatchState.FaltaExportar: return "#FFC107";     // Amarillo
                     case VciMatchState.Conflicto: return "#DC3545";         // Rojo
+                    case VciMatchState.ErrorAlEnlazar: return "#FD7E14";    // Naranja
                     default: return "#6C757D";                              // Gris
                 }
             }
         }
 
-        public bool IsSelectable => State == VciMatchState.ListoParaEnlazar || State == VciMatchState.YaEnlazado;
+        public bool IsSelectable => State == VciMatchState.ListoParaEnlazar || State == VciMatchState.YaEnlazado || State == VciMatchState.ErrorAlEnlazar;
     }
 }

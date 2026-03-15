@@ -1,8 +1,11 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks; // <-- Añadido para poder usar Task.Delay y async/await
 using ZC_ALM_TOOLS.Core;
+using ZC_ALM_TOOLS.Models;
 using ZC_ALM_TOOLS.Models.Vci;
 using ZC_ALM_TOOLS.Services.Common;
 using ZC_ALM_TOOLS.Services.TiaPortal;
@@ -69,20 +72,29 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
             MappingActions = new ObservableCollection<VciMappingAction>();
             WorkspaceStatusText = "Esperando análisis...";
 
-            AnalyzeProjectCommand = new RelayCommand(ExecuteAnalyzeProject, CanExecuteAnalyze);
-            ApplyMappingsCommand = new RelayCommand(ExecuteApplyMappings, CanExecuteApply);
-            UnmapBlocksCommand = new RelayCommand(ExecuteUnmapBlocks, CanExecuteUnmap);
+            // Enlazamos el botón de la vista a nuestro nuevo método envoltorio
+            AnalyzeProjectCommand = new RelayCommand(ExecuteAnalyzeProjectCommand, CanExecuteAnalyze);
+            ApplyMappingsCommand = new RelayCommand(ExecuteApplyMappingsCommand, CanExecuteApply);
+            UnmapBlocksCommand = new RelayCommand(ExecuteUnmapBlocksCommand, CanExecuteUnmap);
         }
-
-        private bool CanExecuteAnalyze() => !string.IsNullOrWhiteSpace(WorkspacePath);
 
 
 
         // ==================================================================================================================
+        private bool CanExecuteAnalyze() => !string.IsNullOrWhiteSpace(WorkspacePath);
+        // ==================================================================================================================
+        /// <summary>
+        /// Método envoltorio asíncrono para el botón de Analizar de la UI
+        /// </summary>
+        private async void ExecuteAnalyzeProjectCommand()
+        {
+            await ExecuteAnalyzeProject();
+        }
+        // ==================================================================================================================
         /// <summary>
         /// Metodo para comparar y analizar los bloques del PLC con los archivos XML del VCI
         /// </summary>
-        private void ExecuteAnalyzeProject()
+        private async Task ExecuteAnalyzeProject()
         {
             LogService.Write($"[VCI-MAPPING-VM] [ExecuteAnalyzeProject] Iniciando escaneo cruzado en: {WorkspacePath}");
             StatusService.SetBusy(true);
@@ -91,39 +103,52 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
             {
                 MappingActions.Clear();
 
-                // 1. LECTURA DE DATOS
-                StatusService.Set("Extrayendo bloques del PLC y archivos del disco...", StatusType.Ok);
+                // Leemos los datos desde el disco
+                StatusService.Set("Extrayendo archivos del disco...", StatusType.Ok);
+                await Task.Delay(50);
 
                 var vciWorkspaceService = new VciWorkspaceService();
                 var localFilesDict = vciWorkspaceService.GetVciFilesFromWorkspace(WorkspacePath);
+                LogService.Write($"[VCI-MAPPING-VM] [ExecuteAnalyzeProject] Archivos VCI leídos del disco duro: {localFilesDict.Count}");
 
-                // Usamos la caché del PLC (instantánea)
+                // Leemos la cache del PLC
+                StatusService.Set("Extrayendo bloques del PLC...", StatusType.Ok);
+                await Task.Delay(50);
+
                 var plcBlocks = _tiaPlcService.GetAllBlocks();
+                LogService.Write($"[VCI-MAPPING-VM] [ExecuteAnalyzeProject] Bloques recuperados de la caché del PLC: {plcBlocks.Count()}");
 
-                // Obtenemos el listado de archivos ya mapeados en TIA Portal
-                StatusService.Set("Cruzando datos...", StatusType.Ok);
+                // Consultamos a Tia portal el estado
+                StatusService.Set("Consultando estado de mapeos en TIA Portal...", StatusType.Ok);
+                await Task.Delay(50);
+
+                LogService.Write($"[VCI-MAPPING-VM] [ExecuteAnalyzeProject] Solicitando objetos mapeados al TIA VCI Service para el Workspace '{WorkspaceName}'...");
+                var mappedObjects = _tiaVciService.GetMappedObjects(WorkspaceName);
+                LogService.Write($"[VCI-MAPPING-VM] [ExecuteAnalyzeProject] Objetos actualmente mapeados en TIA Portal: {mappedObjects.Count}");
+
+
+                var mappedBlockNames = new HashSet<string>();
+                foreach (dynamic obj in mappedObjects)
+                {
+                    try { mappedBlockNames.Add((string)obj.Name); } catch { }
+                }
+
+                // Cruzamos los datos
+                StatusService.Set("Cruzando y comparando datos...", StatusType.Ok);
+                LogService.Write($"[VCI-MAPPING-VM] [ExecuteAnalyzeProject] Iniciando bucle de comparación cruzada...");
+                await Task.Delay(50);
+
                 int matchLinkedCount = 0;
                 int pendingMapCount = 0;
                 int missingExportCount = 0;
-
-                // OBTENEMOS LOS OBJETOS COM REALES YA MAPEADOS (en lugar de solo los nombres)
-                var mappedObjects = _tiaVciService.GetMappedObjects(WorkspaceName);
 
                 foreach (var plcBlock in plcBlocks)
                 {
                     // ¿Existe el archivo XML en el disco duro?
                     if (localFilesDict.TryGetValue(plcBlock.Name, out string diskPath))
                     {
-                        // Necesitamos el objeto exacto del PLC para evitar confundirlo con otro PLC
-                        var realPlcBlock = _tiaPlcService.FindBlockByName(plcBlock.Name);
-
-                        // Comprobamos si el objeto exacto de este PLC está en la lista de mapeados
-                        bool isMapped = false;
-                        if (realPlcBlock != null)
-                        {
-                            // La API de Siemens usa .Equals() para comparar las identidades de los objetos
-                            isMapped = mappedObjects.Any(m => m.Equals(realPlcBlock));
-                        }
+                        // BÚSQUEDA INSTANTÁNEA EN RAM (Sin llamar a TIA Portal)
+                        bool isMapped = mappedBlockNames.Contains(plcBlock.Name);
 
                         if (isMapped)
                         {
@@ -152,7 +177,6 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                     }
                     else
                     {
-                        // ... (el resto del código sigue exactamente igual hacia abajo)
                         MappingActions.Add(new VciMappingAction
                         {
                             BlockName = plcBlock.Name,
@@ -176,7 +200,12 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                     });
                 }
 
-                // 3. ORDENACIÓN (1º Falta Enlazar (Verde) -> 2º Enlazados -> 3º Solo PLC -> 4º Solo VCI)
+                LogService.Write($"[VCI-MAPPING-VM] [ExecuteAnalyzeProject] Bucle finalizado. Resultados: {matchLinkedCount} Enlazados, {pendingMapCount} Por Enlazar, {missingExportCount} Solo PLC, {localFilesDict.Count} Solo Disco.");
+
+                // Ordenamos y volcamos al datagrid
+                LogService.Write($"[VCI-MAPPING-VM] [ExecuteAnalyzeProject] Ordenando y actualizando la interfaz gráfica...");
+
+                // Ordenamos por: Falta Enlazar (Verde) -> Enlazados -> Solo PLC -> Solo VCI
                 var sortedList = MappingActions.OrderBy(x =>
                 {
                     switch (x.State)
@@ -194,6 +223,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
 
                 WorkspaceStatusText = $"Análisis completado en: {WorkspacePath}";
                 StatusService.Set($"Análisis: {matchLinkedCount} enlazados, {pendingMapCount} por enlazar, {missingExportCount} solo PLC, {localFilesDict.Count} solo disco.", StatusType.Ok);
+                LogService.Write($"[VCI-MAPPING-VM] [ExecuteAnalyzeProject] Análisis completado con éxito.");
             }
             catch (Exception ex)
             {
@@ -239,11 +269,20 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
         private bool CanExecuteApply() => MappingActions != null && MappingActions.Count > 0;
         // ==================================================================================================================
         /// <summary>
+        /// Método envoltorio asíncrono para el botón de aplicar mapeo de la UI
+        /// </summary>
+        private async void ExecuteApplyMappingsCommand()
+        {
+            await ExecuteApplyMappings();
+        }
+        // ==================================================================================================================
+        /// <summary>
         /// Ejecuta la creación de los Mapeos VCI para los bloques que existen en ambos lados.
         /// </summary>
-        private void ExecuteApplyMappings()
+        private async Task ExecuteApplyMappings()
         {
-            var itemsToMap = MappingActions.Where(m => m.IsSelected && m.State == VciMatchState.ListoParaEnlazar).ToList();
+            var itemsToMap = MappingActions.Where(m => m.IsSelected &&
+                            (m.State == VciMatchState.ListoParaEnlazar || m.State == VciMatchState.ErrorAlEnlazar)).ToList();
 
             if (!itemsToMap.Any())
             {
@@ -251,21 +290,30 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                 return;
             }
 
+            int totalItems = itemsToMap.Count;
             LogService.Write($"[VCI-MAPPING-VM] [ExecuteApplyMappings] Iniciando mapeo de {itemsToMap.Count} bloques...");
+            await Task.Delay(50);
             StatusService.SetBusy(true);
+
+            int successCount = 0;
+            int currentItem = 0;
+            string basePath = WorkspacePath.TrimEnd('\\') + "\\";
 
             try
             {
                 string wsName = WorkspaceName;
 
                 LogService.Write($"[VCI-MAPPING-VM] [ExecuteApplyMappings] Nombre de Workspace detectado para TIA Portal: '{wsName}'");
+                await Task.Delay(50);
 
-                int successCount = 0;
-                string basePath = WorkspacePath.TrimEnd('\\') + "\\";
+                
 
                 foreach (var item in itemsToMap)
                 {
-                    StatusService.Set($"Vinculando bloque: {item.BlockName}...", StatusType.Warning);
+                    currentItem++;
+                    StatusService.Set($"Vinculando [{currentItem}/{totalItems}]: {item.BlockName}...", StatusType.Warning);
+                    await Task.Delay(10);
+
                     LogService.Write($"[VCI-MAPPING-VM] [ExecuteApplyMappings] --- Procesando '{item.BlockName}' ---");
                     LogService.Write($"[VCI-MAPPING-VM] [ExecuteApplyMappings] Ruta absoluta en disco: '{item.DiskPath}'");
 
@@ -273,43 +321,47 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
 
                     if (plcBlock != null)
                     {
-                        string relativePath = "";
+                        string relativePath = item.DiskPath.StartsWith(basePath, StringComparison.OrdinalIgnoreCase)
+                            ? "\\" + item.DiskPath.Substring(basePath.Length).TrimStart('\\')
+                            : "\\" + Path.GetFileName(item.DiskPath);
 
-                        if (item.DiskPath.StartsWith(basePath, StringComparison.OrdinalIgnoreCase))
-                        {
-                            relativePath = item.DiskPath.Substring(basePath.Length);
-                            relativePath = "\\" + relativePath.TrimStart('\\');
-                        }
-                        else
-                        {
-                            relativePath = "\\" + Path.GetFileName(item.DiskPath);
-                        }
+                        var result = _tiaVciService.MapObjectToWorkspace(wsName, plcBlock, relativePath);
 
-                        LogService.Write($"[VCI-MAPPING-VM] [ExecuteApplyMappings] Bloque encontrado en PLC. Intentando mapear con Ruta Relativa: '{relativePath}'");
-
-                        bool ok = _tiaVciService.MapObjectToWorkspace(wsName, plcBlock, relativePath);
-                        if (ok)
+                        if (result == VciMapResult.Success)
                         {
                             successCount++;
-                            LogService.Write($"[VCI-MAPPING-VM] [ExecuteApplyMappings] ÉXITO: '{item.BlockName}' mapeado correctamente.");
+                            LogService.Write($"[VCI-MAPPING-VM] [ExecuteApplyMappings] ÉXITO: '{item.BlockName}' mapeado perfectamente.");
+                            item.State = VciMatchState.YaEnlazado; // AZUL
                         }
-                        else
+                        else if (result == VciMapResult.SuccessWithWarning)
                         {
-                            LogService.Write($"[VCI-MAPPING-VM] [ExecuteApplyMappings] FALLO: El servicio VCI devolvió False para '{item.BlockName}'.", true);
+                            successCount++; // Lo contamos como éxito porque en TIA Portal sí se ha mapeado
+                            LogService.Write($"[VCI-MAPPING-VM] [ExecuteApplyMappings] ADVERTENCIA: '{item.BlockName}' mapeado pero con errores visuales.");
+                            item.State = VciMatchState.ErrorAlEnlazar; // NARANJA
+                        }
+                        else // Error
+                        {
+                            LogService.Write($"[VCI-MAPPING-VM] [ExecuteApplyMappings] FALLO CRÍTICO al mapear '{item.BlockName}'.", true);
+                            item.State = VciMatchState.ErrorAlEnlazar; // NARANJA
                         }
                     }
                     else
                     {
-                        LogService.Write($"[VCI-MAPPING-VM] [ExecuteApplyMappings] FALLO: No se pudo encontrar el bloque '{item.BlockName}' en la caché del PLC.", true);
+                        LogService.Write($"[VCI-MAPPING-VM] [ExecuteApplyMappings] FALLO: Bloque '{item.BlockName}' no encontrado en caché.", true);
+                        item.State = VciMatchState.ErrorAlEnlazar;
                     }
+
+                    item.IsSelected = false; // Desmarcamos la casilla tras procesarlo
                 }
 
-                LogService.Write($"[VCI-MAPPING-VM] [ExecuteApplyMappings] Mapeo finalizado. {successCount} de {itemsToMap.Count} exitosos.");
-                StatusService.Set($"Se han mapeado {successCount} bloques en TIA Portal correctamente.", StatusType.Ok);
+                LogService.Write($"[VCI-MAPPING-VM] [ExecuteApplyMappings] Mapeo finalizado. {successCount} de {totalItems} exitosos.");
 
-                foreach (var item in itemsToMap) item.IsSelected = false;
+                if (successCount == totalItems)
+                    StatusService.Set($"Se han mapeado todos los bloques ({successCount}) correctamente.", StatusType.Ok);
+                else
+                    StatusService.Set($"Mapeo finalizado con errores. {successCount} de {totalItems} exitosos.", StatusType.Error);
 
-                ExecuteAnalyzeProject();
+                await Task.Delay(50);
 
             }
             catch (Exception ex)
@@ -328,11 +380,18 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
         // ==================================================================================================================
         private bool CanExecuteUnmap() => MappingActions != null && MappingActions.Count > 0;
         // ==================================================================================================================
+        /// <summary>
+        /// Método envoltorio asíncrono para el botón de aplicar mapeo de la UI
+        /// </summary>
+        private async void ExecuteUnmapBlocksCommand()
+        {
+            await ExecuteUnmapBlocks();
+        }
         // ==================================================================================================================
         /// <summary>
         /// Ejecuta la eliminación de los Mapeos VCI para los bloques seleccionados que ya estaban enlazados.
         /// </summary>
-        private void ExecuteUnmapBlocks()
+        private async Task ExecuteUnmapBlocks()
         {
             // Filtramos SOLO los que el usuario ha marcado y que están "Ya Enlazados" (Azules)
             var itemsToUnmap = MappingActions.Where(m => m.IsSelected && m.State == VciMatchState.YaEnlazado).ToList();
@@ -344,6 +403,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
             }
 
             LogService.Write($"[VCI-MAPPING-VM] [ExecuteUnmapBlocks] Iniciando desvinculación de {itemsToUnmap.Count} bloques...");
+            await Task.Delay(50);
             StatusService.SetBusy(true);
 
             try
@@ -354,6 +414,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                 foreach (var item in itemsToUnmap)
                 {
                     StatusService.Set($"Desvinculando bloque: {item.BlockName}...", StatusType.Warning);
+                    await Task.Delay(10);
 
                     var plcBlock = _tiaPlcService.FindBlockByName(item.BlockName);
 
@@ -369,12 +430,13 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                 }
 
                 LogService.Write($"[VCI-MAPPING-VM] [ExecuteUnmapBlocks] Desvinculación finalizada. {successCount} de {itemsToUnmap.Count} exitosos.");
+                await Task.Delay(50);
                 StatusService.Set($"Se han eliminado {successCount} mapeos en TIA Portal.", StatusType.Ok);
 
                 foreach (var item in itemsToUnmap) item.IsSelected = false;
 
-                // Refrescamos la vista para que los bloques vuelvan a ponerse de color verde
-                ExecuteAnalyzeProject();
+                // Refrescamos la vista esperando asíncronamente
+                await ExecuteAnalyzeProject();
             }
             catch (Exception ex)
             {
@@ -386,8 +448,6 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                 StatusService.SetBusy(false);
             }
         }
-
-
 
     }
 }
