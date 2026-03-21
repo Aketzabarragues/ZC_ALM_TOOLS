@@ -3,6 +3,10 @@
 	<GlobalSettings>
 		<ExtractorExePath>C:\Program Files\Siemens\Automation\Portal V18\AddIns\ZC_ALM_TOOLS\ZC_Extractor.exe</ExtractorExePath>
 		<ProcessTemplatePath>C:\Plantilla</ProcessTemplatePath>
+		<DocGeneratorExePath>C:\Program Files\Siemens\Automation\Portal V18\AddIns\ZC_ALM_TOOLS\ZCALM_Doc.exe</DocGeneratorExePath>
+		<DocWordManualPath>C:\Plantilla\ESTANDAR_ALIMENTACION.docx</DocWordManualPath>
+		<DocExportSourcesPath>C:\Plantilla\Fuentes_Exportadas</DocExportSourcesPath>
+		<DocOutputPath>C:\Plantilla\Ayuda_Generada</DocOutputPath>
 	</GlobalSettings>
 	<Devices>
 		<DeviceCategory Name="Entrada Digital">

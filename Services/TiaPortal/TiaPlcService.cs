@@ -2,13 +2,17 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using Siemens.Engineering;
 using Siemens.Engineering.Compiler;
 using Siemens.Engineering.SW;
 using Siemens.Engineering.SW.Blocks;
+using Siemens.Engineering.SW.ExternalSources;
 using Siemens.Engineering.SW.Tags;
+using Siemens.Engineering.SW.Types;
 using ZC_ALM_TOOLS.Models.Generator;
 using ZC_ALM_TOOLS.Models.TiaPortal;
 using ZC_ALM_TOOLS.Services.Common;
@@ -29,6 +33,7 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
         // Diccionarios de caché en RAM
         private List<CachedPlcBlock> _plcCache;
         private List<CachedPlcTagTable> _tagTableCache;
+        private List<CachedPlcType> _typeCache;
         private bool _isCacheBuilt = false;
 
 
@@ -62,6 +67,7 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                 _isCacheBuilt = false;
                 _plcCache?.Clear();
                 _tagTableCache?.Clear();
+                _typeCache?.Clear();
                 LogService.Write("[TIA-PLC-SERVICE] [UpdatePlc] PLC modificado. Caché invalidada.");
             }
         }
@@ -80,11 +86,13 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
 
                 _plcCache = new List<CachedPlcBlock>();
                 _tagTableCache = new List<CachedPlcTagTable>();
+                _typeCache = new List<CachedPlcType>();
 
                 LogService.Write("[TIA-PLC-SERVICE] [BuildBlockCache] Indexando todos los bloques del PLC en memoria...");
 
                 PopulateCacheRecursively(_currentPlc.BlockGroup, "Root");
                 PopulateTagTableCacheRecursively(_currentPlc.TagTableGroup, "Variables de PLC");
+                PopulateTypeCacheRecursively(_currentPlc.TypeGroup, "Tipos de datos PLC");
 
                 _isCacheBuilt = true;
                 LogService.Write($"[TIA-PLC-SERVICE] [BuildBlockCache] Indexación completa: {_plcCache.Count} bloques guardados en caché.");
@@ -95,6 +103,30 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
             }
         }
 
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Relleno de la cache de Tipos de Datos de Usuario (UDTs)
+        /// </summary>
+        private void PopulateTypeCacheRecursively(PlcTypeGroup group, string currentPath)
+        {
+            foreach (var type in group.Types)
+            {
+                _typeCache.Add(new CachedPlcType
+                {
+                    Type = type,
+                    Name = type.Name,
+                    FolderPath = currentPath
+                });
+            }
+
+            foreach (var subFolder in group.Groups)
+            {
+                string nextPath = currentPath == "Tipos de datos PLC" ? subFolder.Name : currentPath + "\\" + subFolder.Name;
+                PopulateTypeCacheRecursively(subFolder, nextPath);
+            }
+        }
 
 
 
@@ -146,7 +178,8 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                     Number = block.Number,
                     ApiType = block.GetType().Name,
                     SimpleType = simpleType,
-                    FolderPath = currentPath
+                    FolderPath = currentPath,
+                    ProgrammingLanguage = block.ProgrammingLanguage.ToString()
                 });
             }
 
@@ -156,6 +189,19 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                 PopulateCacheRecursively(subFolder, nextPath);
             }
         }
+
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Devuelve la cache de los UDTs del PLC
+        /// </summary>
+        public List<CachedPlcType> GetAllTypes()
+        {
+            if (!_isCacheBuilt) BuildBlockCache();
+            return _typeCache ?? new List<CachedPlcType>();
+        }
+
 
 
         // ==================================================================================================================
@@ -187,8 +233,10 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                     writer.WriteLine("=========================================================");
                     writer.WriteLine($"Fecha de volcado: {DateTime.Now}");
                     writer.WriteLine($"PLC: {_currentPlc?.Name}");
-                    writer.WriteLine($"Total Bloques: {_plcCache.Count}");
+                    writer.WriteLine($"Total Bloques: {_plcCache.Count} | Total Tablas: {_tagTableCache?.Count ?? 0} | Total UDTs: { _typeCache?.Count ?? 0}");
                     writer.WriteLine("=========================================================\n");
+
+                    writer.WriteLine("=== BLOQUES (OB/FC/FB/DB) ===");
 
                     // Ordenamos la lista alfabéticamente solo para imprimirla bonita
                     foreach (var item in _plcCache.OrderBy(b => b.Name))
@@ -204,6 +252,15 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                             writer.WriteLine($"[Nombre] {item.Name,-35} | [Ruta] {item.FolderPath}");
                         }
                     }
+
+                    writer.WriteLine("\n=== TIPOS DE DATOS DE USUARIO (UDT) ===");
+                    if (_typeCache != null)
+                    {
+                        foreach (var item in _typeCache.OrderBy(t => t.Name))
+                        {
+                            writer.WriteLine($"[Nombre] {item.Name,-35} | [Ruta] {item.FolderPath}");
+                        }
+                    }
                 }
                 LogService.Write($"[TIA-PLC-SERVICE] [DumpCache] Caché exportada exitosamente a: {filePath}");
             }
@@ -212,7 +269,6 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                 LogService.Write($"[TIA-PLC-SERVICE] [DumpCache] Error exportando la caché: {ex.Message}", true);
             }
         }
-
 
 
 
@@ -232,7 +288,6 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
 
 
 
-
         // ==================================================================================================================
         /// <summary>
         /// Buscar bloque por nombre
@@ -247,6 +302,20 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
             return _plcCache?.FirstOrDefault(b => b.Name.Equals(blockName, StringComparison.OrdinalIgnoreCase))?.Block;
         }
 
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Buscar UDT por nombre
+        /// </summary>
+        public PlcType FindTypeByName(string typeName)
+        {
+            if (_currentPlc == null) return null;
+
+            if (!_isCacheBuilt) BuildBlockCache();
+
+            return _typeCache?.FirstOrDefault(t => t.Name.Equals(typeName, StringComparison.OrdinalIgnoreCase))?.Type;
+        }
 
 
 
@@ -293,7 +362,6 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
 
 
 
-
         // ==================================================================================================================
         /// <summary>
         /// Exportar un bloque a XML
@@ -324,6 +392,271 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                 return false;
             }
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Proceso maestro para actualizar y reimportar masivamente dependencias SCL
+        /// </summary>
+        public async Task<bool> UpdateMassiveSclDependencies(List<CachedPlcBlock> blocksToProcess)
+        {
+            try
+            {
+                LogService.Write($"[TIA-PLC-SERVICE] [UpdateMassiveSclDependencies] Iniciando proceso para {blocksToProcess.Count} bloques.");
+
+                string tempDir = Path.Combine(AppConfigService.TempPath, "SCL_Deps");
+                if (!Directory.Exists(tempDir)) Directory.CreateDirectory(tempDir);
+
+                // Exportaremos los bloques finales aquí para dárselos a tu herramienta Python de documentación
+                string pythonDocsDir = Path.Combine(AppConfigService.TempPath, "SCL_Exported_For_Docs");
+                if (!Directory.Exists(pythonDocsDir)) Directory.CreateDirectory(pythonDocsDir);
+
+                StringBuilder massiveSclFile = new StringBuilder();
+
+                int counter = 1;
+                foreach (var cachedBlock in blocksToProcess)
+                {
+                    StatusService.Set($"Analizando e inyectando {cachedBlock.Name} ({counter}/{blocksToProcess.Count})...", StatusType.Ok);
+                    await Task.Delay(10);
+
+                    string xmlTempPath = Path.Combine(tempDir, $"{cachedBlock.Name}.xml");
+                    string sclTempPath = Path.Combine(pythonDocsDir, $"{cachedBlock.Name}.scl");
+
+                    // 1. Exportar a XML para leer dependencias "seguras" (Con Auto-Compilación)
+                    if (File.Exists(xmlTempPath)) File.Delete(xmlTempPath);
+
+                    try
+                    {
+                        cachedBlock.Block.Export(new FileInfo(xmlTempPath), ExportOptions.WithDefaults);
+                    }
+                    catch (Exception ex) when (ex.Message.Contains("Inconsistent"))
+                    {
+                        LogService.Write($"[TIA-PLC-SERVICE] El bloque {cachedBlock.Name} es inconsistente. Auto-compilando...");
+                        StatusService.Set($"El bloque {cachedBlock.Name} requiere compilación previa...", StatusType.Warning);
+
+                        // Usamos el método CompileBlock que ya tienes en tu clase
+                        if (CompileBlock(cachedBlock.Name))
+                        {
+                            // Si compila bien, lo volvemos a intentar
+                            cachedBlock.Block.Export(new FileInfo(xmlTempPath), ExportOptions.WithDefaults);
+                        }
+                        else
+                        {
+                            throw new Exception($"El bloque {cachedBlock.Name} tiene errores de programación en TIA Portal y no se puede compilar ni exportar.");
+                        }
+                    }
+
+                    string dependenciesText = ExtractDependenciesFromXml(xmlTempPath);
+
+                    // 2. Exportar el bloque limpio a SCL para la herramienta Python y para modificarlo
+                    if (File.Exists(sclTempPath)) File.Delete(sclTempPath);
+                    var listForExport = new List<PlcBlock> { cachedBlock.Block };
+
+                    // Aquí NO va overwrite. GenerateSource solo escupe el archivo. (Por eso lo borramos antes arriba)
+                    _currentPlc.ExternalSourceGroup.GenerateSource(listForExport, new FileInfo(sclTempPath), GenerateOptions.None);
+
+                    // 3. Inyectar dependencias mediante C# (Expresiones regulares)
+                    var utf8Bom = new System.Text.UTF8Encoding(true);
+
+                    string sclContent = File.ReadAllText(sclTempPath, utf8Bom);
+                    string updatedScl = InjectRequiresIntoScl(sclContent, dependenciesText);
+
+                    // Guardamos el SCL individual actualizado
+                    File.WriteAllText(sclTempPath, updatedScl, utf8Bom);
+
+                    // 4. Añadirlo a nuestro "Mega Archivo" de importación masiva para TIA Portal
+                    massiveSclFile.AppendLine(updatedScl);
+                    massiveSclFile.AppendLine();
+
+                    
+                    counter++;
+                }
+
+                StatusService.Set($"Importando masivamente a TIA Portal. Por favor, espera...", StatusType.Warning);
+                LogService.Write("[TIA-PLC-SERVICE] Importando archivo consolidado gigante a TIA Portal...");
+                await Task.Delay(50);
+
+                // 5. IMPORTACIÓN MASIVA a TIA PORTAL
+                string massiveImportPath = Path.Combine(tempDir, "MassiveImport.scl");
+
+
+                var finalUtf8Bom = new System.Text.UTF8Encoding(true);
+                File.WriteAllText(massiveImportPath, massiveSclFile.ToString(), finalUtf8Bom);
+
+                var extSources = _currentPlc.ExternalSourceGroup.ExternalSources;
+                PlcExternalSource source = extSources.CreateFromFile("UpdateMasivo_Temp", massiveImportPath);
+
+                // AQUÍ SÍ VA EL OVERWRITE. Al importar a TIA Portal, machacamos los bloques existentes.
+                source.GenerateBlocksFromSource(GenerateBlockOption.None);
+
+                // Limpieza en TIA Portal
+                source.Delete();
+
+                LogService.Write("[TIA-PLC-SERVICE] [UpdateMassiveSclDependencies] Proceso completado con éxito.");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                LogService.Write($"[TIA-PLC-SERVICE] [UpdateMassiveSclDependencies] Error crítico: {ex.Message}", true);
+                return false;
+            }
+        }
+
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Lee el XML de Siemens y extrae todas las referencias cruzadas de forma infalible cruzando con la caché
+        /// </summary>
+        private string ExtractDependenciesFromXml(string xmlPath)
+        {
+            try
+            {
+                XDocument doc = XDocument.Load(xmlPath);
+
+                // 1. FUERZA BRUTA: Sacamos TODOS los atributos "Name" de cualquier nodo del XML
+                // Esto atrapa TODO: <CallInfo Name="FC1">, <Component Name="DB1">, <Instruction Name="FC2">...
+                var allNamesInXml = doc.Descendants()
+                    .Where(e => e.Attribute("Name") != null)
+                    .Select(e => e.Attribute("Name").Value)
+                    .Distinct()
+                    .ToList();
+
+                // 2. Cruzamos todos esos nombres con nuestra caché de FCs y FBs
+                // Solo se guardará si realmente es un bloque de tu proyecto (Ignora "ADD", "TON", etc.)
+                var fcCalls = _plcCache
+                    .Where(b => (b.SimpleType == "FC" || b.SimpleType == "FB") && allNamesInXml.Contains(b.Name))
+                    .Select(b => b.Name)
+                    .OrderBy(name => name)
+                    .ToList();
+
+                // 3. Cruzamos todos esos nombres con nuestra caché de DBs
+                var dbCalls = _plcCache
+                    .Where(b => b.SimpleType == "DB" && allNamesInXml.Contains(b.Name))
+                    .Select(b => b.Name)
+                    .OrderBy(name => name)
+                    .ToList();
+
+                // 4. LOS UDTs: Los cazamos del Interface porque Siemens los envuelve en comillas (No hace falta caché)
+                var interfaceTypes = doc.Descendants()
+                    .Where(e => e.Name.LocalName == "Member" && e.Attribute("Datatype") != null)
+                    .Select(e => e.Attribute("Datatype").Value)
+                    .Where(dt => dt.Contains("\""))
+                    .Select(dt =>
+                    {
+                        var match = Regex.Match(dt, "\"([^\"]+)\"");
+                        return match.Success ? match.Groups[1].Value : null;
+                    })
+                    .Where(dt => !string.IsNullOrEmpty(dt) && dt != "String" && dt != "WString")
+                    .Distinct()
+                    .OrderBy(name => name)
+                    .ToList();
+
+                StringBuilder sb = new StringBuilder();
+                if (fcCalls.Any()) sb.AppendLine($"FC:  {string.Join(", ", fcCalls)}");
+                if (dbCalls.Any()) sb.AppendLine($"DB:  {string.Join(", ", dbCalls)}");
+                if (interfaceTypes.Any()) sb.AppendLine($"UDT: {string.Join(", ", interfaceTypes)}");
+
+                return sb.ToString().Trim();
+            }
+            catch (Exception ex)
+            {
+                LogService.Write($"[TIA-PLC-SERVICE] Error extrayendo XML: {ex.Message}", true);
+                return "";
+            }
+        }
+
+
+
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Inyecta la cabecera formateada /// <Requires> en el código SCL
+        /// </summary>
+        private string InjectRequiresIntoScl(string originalScl, string dependenciesText)
+        {
+            if (string.IsNullOrWhiteSpace(dependenciesText))
+                dependenciesText = "Sin dependencias detectadas.";
+
+            string newRequiresBlock = $"/// <Requires>\n(*\n{dependenciesText}\n*)\n/// </Requires>";
+
+            // Si ya existe un bloque Requires, lo sustituimos
+            if (originalScl.Contains("/// <Requires>"))
+            {
+                return Regex.Replace(originalScl, @"/// <Requires>.*?/// </Requires>", newRequiresBlock, RegexOptions.Singleline);
+            }
+
+            // Si no existe, buscamos el bloque <Remarks> para ponerlo justo debajo
+            if (originalScl.Contains("/// </Remarks>"))
+            {
+                return originalScl.Replace("/// </Remarks>", "/// </Remarks>\n\n" + newRequiresBlock);
+            }
+
+            // Si no tiene Remarks, lo ponemos justo antes del primer REGION o BEGIN
+            if (originalScl.Contains("REGION "))
+            {
+                return Regex.Replace(originalScl, @"REGION ", newRequiresBlock + "\n\nREGION ", RegexOptions.None);
+            }
+
+            return originalScl; // Fallback de seguridad
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

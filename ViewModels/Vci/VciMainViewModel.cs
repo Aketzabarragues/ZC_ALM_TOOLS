@@ -106,7 +106,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
 
             // Inicializamos viewmodels hijos
             MappingVM = new VciMappingViewModel(_tiaPlcService, _tiaVciService);
-            AuditVM = new VciAuditViewModel();
+            AuditVM = new VciAuditViewModel(_tiaPlcService);
 
             ConfiguredWorkspaces = new ObservableCollection<VciWorkspaceModel>();
 

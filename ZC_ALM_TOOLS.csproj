@@ -77,6 +77,7 @@
     <Compile Include="Core\DataHelper.cs" />
     <Compile Include="Core\ObservableObject.cs" />
     <Compile Include="Core\RelayCommand.cs" />
+    <Compile Include="Models\TiaPortal\CachedPlcType.cs" />
     <Compile Include="Models\VciMatchResult.cs" />
     <Compile Include="Models\Vci\VciMappingAction.cs" />
     <Compile Include="Models\Generator\Alarms.cs" />
