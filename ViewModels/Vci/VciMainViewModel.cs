@@ -34,7 +34,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
         // ViewModels Hijos
         public VciMappingViewModel MappingVM { get; set; }
         public VciAuditViewModel AuditVM { get; set; }
-        public VciAuditViewModel DocGeneratorVM { get; set; }
+        public VciDocGeneratorViewModel DocGeneratorVM { get; set; }
 
 
         private TiaTarget _selectedTarget;
@@ -108,6 +108,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
             // Inicializamos viewmodels hijos
             MappingVM = new VciMappingViewModel(_tiaPlcService, _tiaVciService);
             AuditVM = new VciAuditViewModel(_tiaPlcService);
+            DocGeneratorVM = new VciDocGeneratorViewModel(_tiaPlcService);
 
             ConfiguredWorkspaces = new ObservableCollection<VciWorkspaceModel>();
 

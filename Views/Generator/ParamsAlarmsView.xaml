@@ -8,133 +8,14 @@
              d:DataContext="{d:DesignInstance Type=viewmodels:ParamsAlarmsViewModel}"
              mc:Ignorable="d" 
              d:DesignHeight="600" d:DesignWidth="1000">
+
+
     <UserControl.Resources>
-
-        <core:ContainsConverter x:Key="ContainsConverter" />
-
-        <Style x:Key="StatusIndicatorStyle" TargetType="Border">
-            <Setter Property="Padding" Value="12,6"/>
-            <Setter Property="CornerRadius" Value="6"/>
-            <Setter Property="Margin" Value="0,0,10,0"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Background" Value="#F5F5F5"/>
-            <Setter Property="BorderBrush" Value="#DDDDDD"/>
-            <Setter Property="TextBlock.Foreground" Value="#777777"/>
-            <Setter Property="TextBlock.FontWeight" Value="SemiBold"/>
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=Tag}" Value="Ok">
-                    <Setter Property="Background" Value="#DFF0D8"/>
-                    <Setter Property="BorderBrush" Value="#3C763D"/>
-                    <Setter Property="TextBlock.Foreground" Value="#3C763D"/>
-                </DataTrigger>
-                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=Tag}" Value="Error">
-                    <Setter Property="Background" Value="#F2DEDE"/>
-                    <Setter Property="BorderBrush" Value="#A94442"/>
-                    <Setter Property="TextBlock.Foreground" Value="#A94442"/>
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
-
-        <Style x:Key="StatusTextStyle" TargetType="TextBlock">
-            <Setter Property="Text" Value="PENDIENTE"/>
-            <Setter Property="Margin" Value="5,0,0,0"/>
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=Border}, Path=Tag}" Value="Ok">
-                    <Setter Property="Text" Value="CORRECTO ✓"/>
-                </DataTrigger>
-                <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=Border}, Path=Tag}" Value="Error">
-                    <Setter Property="Text" Value="DIFERENTE ✕"/>
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
-
-        <Style x:Key="ModernComboBoxStyle" TargetType="ComboBox">
-            <Setter Property="Height" Value="35"/>
-            <Setter Property="Padding" Value="10,0"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-            <Setter Property="Background" Value="White"/>
-            <Setter Property="BorderBrush" Value="#D0D0D0"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Foreground" Value="#333333"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ComboBox">
-                        <Grid>
-                            <Border x:Name="MainBorder" 
-                            Background="{TemplateBinding Background}" 
-                            BorderBrush="{TemplateBinding BorderBrush}" 
-                            BorderThickness="{TemplateBinding BorderThickness}" 
-                            CornerRadius="4"/>
-
-                            <Grid Margin="{TemplateBinding Padding}">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <ContentPresenter IsHitTestVisible="False" 
-                                          Content="{TemplateBinding SelectionBoxItem}"
-                                          ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
-                                          ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}"
-                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
-                                          HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"/>
-                                <Path x:Name="Arrow" Grid.Column="1" 
-                              Data="M0,0 L4,4 L8,0" 
-                              Stroke="#666" StrokeThickness="2" 
-                              VerticalAlignment="Center" Margin="5,0,0,0"/>
-                            </Grid>
-
-                            <ToggleButton IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
-                                <ToggleButton.Template>
-                                    <ControlTemplate TargetType="ToggleButton">
-                                        <Border Background="Transparent" />
-                                    </ControlTemplate>
-                                </ToggleButton.Template>
-                            </ToggleButton>
-
-                            <Popup x:Name="PART_Popup" AllowsTransparency="True" 
-                           IsOpen="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}}" 
-                           Placement="Bottom" PopupAnimation="Slide">
-                                <Border Background="White" BorderBrush="#D0D0D0" BorderThickness="1" 
-                                CornerRadius="4" MinWidth="{TemplateBinding ActualWidth}" MaxHeight="300">
-                                    <ScrollViewer>
-                                        <ItemsPresenter SnapsToDevicePixels="True"/>
-                                    </ScrollViewer>
-                                </Border>
-                            </Popup>
-                        </Grid>
-
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="MainBorder" Property="BorderBrush" Value="#007ACC"/>
-                                <Setter TargetName="MainBorder" Property="Background" Value="White"/>
-                            </Trigger>
-                            <Trigger Property="IsFocused" Value="True">
-                                <Setter TargetName="MainBorder" Property="BorderBrush" Value="#007ACC"/>
-                                <Setter TargetName="MainBorder" Property="Background" Value="White"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style x:Key="EstadoCellStyle" TargetType="TextBlock">
-            <Setter Property="Padding" Value="5,0"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Foreground" Value="#F44336"/>
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding Estado}" Value="Sincronizado">
-                    <Setter Property="Foreground" Value="#4CAF50"/>
-                </DataTrigger>
-                <DataTrigger Binding="{Binding Estado}" Value="Pendiente">
-                    <Setter Property="Foreground" Value="#999999"/>
-                </DataTrigger>
-                <DataTrigger Binding="{Binding Estado}" Value="Nuevo">
-                    <Setter Property="Foreground" Value="#2196F3"/>
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/ZC_ALM_TOOLS;component/Resources/GlobalStyles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
     </UserControl.Resources>
 
 
@@ -165,27 +46,14 @@
                 <TextBlock Text="Paso 1: Comprobaciones" FontWeight="SemiBold" Margin="0,5,0,2" Foreground="#444"/>
                 <Button Command="{Binding CompareCommand}"
                         Content="Comparar con PLC"
-                        Height="40" Margin="0,0,0,10"
-                        Background="#007ACC" BorderThickness="0" Foreground="White" FontWeight="Bold"
-                        Cursor="Hand">
-                    <Button.Resources>
-                        <Style TargetType="Border">
-                            <Setter Property="CornerRadius" Value="4"/>
-                        </Style>
-                    </Button.Resources>
-                </Button>
+                        Style="{StaticResource PrimaryButtonStyle}"
+                        Height="40" Margin="0,0,0,10"/>
+                
                 <TextBlock Text="Paso 2: Actualización" FontWeight="SemiBold" Margin="0,5,0,2" Foreground="#444"/>
                 <Button Command="{Binding SyncCommand}" 
                         Content="Sincronizar parametros y alarmas" 
-                        Height="40" Margin="0,0,0,10"
-                        Background="#007ACC" BorderThickness="0" Foreground="White" FontWeight="Bold"
-                        Cursor="Hand">
-                    <Button.Resources>
-                        <Style TargetType="Border">
-                            <Setter Property="CornerRadius" Value="4"/>
-                        </Style>
-                    </Button.Resources>
-                </Button>
+                        Style="{StaticResource PrimaryButtonStyle}"
+                        Height="40" Margin="0,0,0,10"/>
                 
                 <TextBlock Text="Elementos a sincronizar:" FontWeight="SemiBold" Margin="0,5,0,5" Foreground="#555" FontSize="11"/>
                 <CheckBox Content="Parámetros Reales" IsChecked="{Binding SelectSyncReales}" Margin="5,0,0,5" Foreground="#333" Cursor="Hand"/>
@@ -245,28 +113,13 @@
                               GridLinesVisibility="Horizontal"
                               HorizontalGridLinesBrush="#EEE"
                               HeadersVisibility="Column"
-                              Background="White">
-
-                        <DataGrid.Resources>
-                            <Style TargetType="DataGridColumnHeader">
-                                <Setter Property="Padding" Value="10,8"/>
-                                <Setter Property="Background" Value="#F8F9FA"/>
-                                <Setter Property="FontWeight" Value="SemiBold"/>
-                                <Setter Property="BorderThickness" Value="0,0,0,1"/>
-                                <Setter Property="BorderBrush" Value="#DDD"/>
-                            </Style>
-
-                            <Style TargetType="TextBlock" x:Key="CeldaCentrada">
-                                <Setter Property="Padding" Value="5,0"/>
-                                <Setter Property="VerticalAlignment" Value="Center"/>
-                            </Style>
-                        </DataGrid.Resources>
+                              Background="White">                        
 
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="DB" Binding="{Binding DbNumber}" Width="80" ElementStyle="{StaticResource CeldaCentrada}"/>
                             <DataGridTextColumn Header="Numero" Binding="{Binding Numero}" Width="60" ElementStyle="{StaticResource CeldaCentrada}"/>
                             <DataGridTextColumn Header="Descripción" Binding="{Binding ComentarioDB}" Width="Auto" ElementStyle="{StaticResource CeldaCentrada}"/>
-                            <DataGridTextColumn Header="Estado" Binding="{Binding Estado}" Width="Auto" ElementStyle="{StaticResource EstadoCellStyle}"/>
+                            <DataGridTextColumn Header="Estado" Binding="{Binding Estado}" Width="Auto" ElementStyle="{StaticResource Params_EstadoCellStyle}"/>
                         </DataGrid.Columns>
                     </DataGrid>
                 </TabItem>
@@ -300,7 +153,7 @@
                             <DataGridTextColumn Header="DB" Binding="{Binding DbNumber}" Width="80" ElementStyle="{StaticResource CeldaCentrada}"/>
                             <DataGridTextColumn Header="Numero" Binding="{Binding Numero}" Width="60" ElementStyle="{StaticResource CeldaCentrada}"/>
                             <DataGridTextColumn Header="Descripción" Binding="{Binding ComentarioDB}" Width="Auto" ElementStyle="{StaticResource CeldaCentrada}"/>
-                            <DataGridTextColumn Header="Estado" Binding="{Binding Estado}" Width="Auto" ElementStyle="{StaticResource EstadoCellStyle}"/>
+                            <DataGridTextColumn Header="Estado" Binding="{Binding Estado}" Width="Auto" ElementStyle="{StaticResource Params_EstadoCellStyle}"/>
                         </DataGrid.Columns>
                     </DataGrid>
                 </TabItem>
@@ -335,7 +188,7 @@
                             <DataGridTextColumn Header="DB" Binding="{Binding DbNumber}" Width="80" ElementStyle="{StaticResource CeldaCentrada}"/>
                             <DataGridTextColumn Header="Numero" Binding="{Binding Numero}" Width="60" ElementStyle="{StaticResource CeldaCentrada}"/>
                             <DataGridTextColumn Header="Descripción" Binding="{Binding ComentarioDB}" Width="Auto" ElementStyle="{StaticResource CeldaCentrada}"/>
-                            <DataGridTextColumn Header="Estado" Binding="{Binding Estado}" Width="Auto" ElementStyle="{StaticResource EstadoCellStyle}"/>
+                            <DataGridTextColumn Header="Estado" Binding="{Binding Estado}" Width="Auto" ElementStyle="{StaticResource Params_EstadoCellStyle}"/>
                         </DataGrid.Columns>
                     </DataGrid>
                 </TabItem>

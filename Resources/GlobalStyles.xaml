@@ -1,0 +1,326 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:core="clr-namespace:ZC_ALM_TOOLS.Core"
+                    xmlns:vmGenerator="clr-namespace:ZC_ALM_TOOLS.ViewModels.Generator"
+                    xmlns:vGenerator="clr-namespace:ZC_ALM_TOOLS.Views.Generator"
+                    xmlns:vmVci="clr-namespace:ZC_ALM_TOOLS.ViewModels.Vci"
+                    xmlns:vVci="clr-namespace:ZC_ALM_TOOLS.Views.Vci">
+
+
+  <!-- Conversores -->
+  <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+  <core:ContainsConverter x:Key="ContainsConverter"/>
+
+
+  
+  <!-- Data templates -->
+  <DataTemplate DataType="{x:Type vmGenerator:GeneratorMainViewModel}">
+    <vGenerator:GeneratorMainView />
+  </DataTemplate>
+  <DataTemplate DataType="{x:Type vmVci:VciMainViewModel}">
+    <vVci:VciMainView />
+  </DataTemplate>
+
+
+
+  <!-- Combo box -->
+  <Style x:Key="ModernComboBoxStyle" TargetType="ComboBox">
+    <Setter Property="Height" Value="35"/>
+    <Setter Property="Padding" Value="10,0"/>
+    <Setter Property="VerticalContentAlignment" Value="Center"/>
+    <Setter Property="Background" Value="White"/>
+    <Setter Property="BorderBrush" Value="#D0D0D0"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="Foreground" Value="#333333"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ComboBox">
+          <Grid>
+            <Border x:Name="MainBorder" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4"/>
+            <Grid Margin="{TemplateBinding Padding}">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+              </Grid.ColumnDefinitions>
+              <ContentPresenter IsHitTestVisible="False" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"/>
+              <Path x:Name="Arrow" Grid.Column="1" Data="M0,0 L4,4 L8,0" Stroke="#666" StrokeThickness="2" VerticalAlignment="Center" Margin="5,0,0,0"/>
+            </Grid>
+            <ToggleButton IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
+              <ToggleButton.Template>
+                <ControlTemplate TargetType="ToggleButton">
+                  <Border Background="Transparent" />
+                </ControlTemplate>
+              </ToggleButton.Template>
+            </ToggleButton>
+            <Popup x:Name="PART_Popup" AllowsTransparency="True" IsOpen="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}}" Placement="Bottom" PopupAnimation="Slide">
+              <Border Background="White" BorderBrush="#D0D0D0" BorderThickness="1" CornerRadius="4" MinWidth="{TemplateBinding ActualWidth}" MaxHeight="300">
+                <ScrollViewer>
+                  <ItemsPresenter SnapsToDevicePixels="True"/>
+                </ScrollViewer>
+              </Border>
+            </Popup>
+          </Grid>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="MainBorder" Property="BorderBrush" Value="#007ACC"/>
+              <Setter TargetName="MainBorder" Property="Background" Value="White"/>
+            </Trigger>
+            <Trigger Property="IsFocused" Value="True">
+              <Setter TargetName="MainBorder" Property="BorderBrush" Value="#007ACC"/>
+              <Setter TargetName="MainBorder" Property="Background" Value="White"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+
+
+  <!-- Boton principal -->
+  <Style x:Key="PrimaryButtonStyle" TargetType="Button">
+    <Setter Property="Background" Value="#003466"/>
+    <Setter Property="Foreground" Value="White"/>
+    <Setter Property="FontWeight" Value="Bold"/>
+    <Setter Property="BorderThickness" Value="0"/>
+    <Setter Property="Padding" Value="15,0"/>
+    <Setter Property="Height" Value="35"/>
+    <Setter Property="Cursor" Value="Hand"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Border Background="{TemplateBinding Background}" CornerRadius="4" BorderThickness="{TemplateBinding BorderThickness}" BorderBrush="{TemplateBinding BorderBrush}">
+            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+    <Style.Triggers>
+      <Trigger Property="IsMouseOver" Value="True">
+        <Setter Property="Background" Value="#005B96"/>
+      </Trigger>
+      <Trigger Property="IsEnabled" Value="False">
+        <Setter Property="Background" Value="#CCCCCC"/>
+      </Trigger>
+    </Style.Triggers>
+  </Style>
+
+
+
+  <!-- Boton de menu lateral -->
+  <Style x:Key="MenuButtonStyle" TargetType="Button">
+    <Setter Property="Background" Value="#003466"/>
+    <Setter Property="Foreground" Value="White"/>
+    <Setter Property="BorderBrush" Value="White"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="MinHeight" Value="45"/>
+    <Setter Property="Padding" Value="10"/>
+    <Setter Property="Cursor" Value="Hand"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="5" Margin="5,0">
+            <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center" Margin="10,0,0,0"/>
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+    <Style.Triggers>
+      <Trigger Property="IsMouseOver" Value="True">
+        <Setter Property="Background" Value="#005B96"/>
+      </Trigger>
+    </Style.Triggers>
+  </Style>
+
+
+
+  <!-- Boton de configuracion -->
+  <Style x:Key="SettingsButtonStyle" TargetType="Button">
+    <Setter Property="Foreground" Value="#555555"/>
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="BorderThickness" Value="0"/>
+    <Setter Property="FontSize" Value="18"/>
+    <Setter Property="Width" Value="35"/>
+    <Setter Property="Height" Value="35"/>
+    <Setter Property="Cursor" Value="Hand"/>
+    <Style.Triggers>
+      <Trigger Property="IsMouseOver" Value="True">
+        <Setter Property="Foreground" Value="Black"/>
+        <Setter Property="Background" Value="#E5E5E5"/>
+      </Trigger>
+    </Style.Triggers>
+  </Style>
+
+
+
+  <!-- Indicador de estado -->
+  <Style x:Key="StatusIndicatorStyle" TargetType="Border">
+    <Setter Property="Padding" Value="12,6"/>
+    <Setter Property="CornerRadius" Value="6"/>
+    <Setter Property="Margin" Value="0,0,10,0"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="Background" Value="#F5F5F5"/>
+    <Setter Property="BorderBrush" Value="#DDDDDD"/>
+    <Setter Property="TextBlock.Foreground" Value="#777777"/>
+    <Setter Property="TextBlock.FontWeight" Value="SemiBold"/>
+    <Style.Triggers>
+      <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=Tag}" Value="Ok">
+        <Setter Property="Background" Value="#DFF0D8"/>
+        <Setter Property="BorderBrush" Value="#3C763D"/>
+        <Setter Property="TextBlock.Foreground" Value="#3C763D"/>
+      </DataTrigger>
+      <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Path=Tag}" Value="Error">
+        <Setter Property="Background" Value="#F2DEDE"/>
+        <Setter Property="BorderBrush" Value="#A94442"/>
+        <Setter Property="TextBlock.Foreground" Value="#A94442"/>
+      </DataTrigger>
+    </Style.Triggers>
+  </Style>
+
+
+
+  <!-- Texto de estado -->
+  <Style x:Key="StatusTextStyle" TargetType="TextBlock">
+    <Setter Property="Text" Value="PENDIENTE"/>
+    <Setter Property="Margin" Value="5,0,0,0"/>
+    <Style.Triggers>
+      <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=Border}, Path=Tag}" Value="Ok">
+        <Setter Property="Text" Value="CORRECTO ✓"/>
+      </DataTrigger>
+      <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=Border}, Path=Tag}" Value="Error">
+        <Setter Property="Text" Value="DIFERENTE ✕"/>
+      </DataTrigger>
+    </Style.Triggers>
+  </Style>
+
+
+
+  <!-- Cabecera de datagrid -->
+  <Style TargetType="DataGridColumnHeader">
+    <Setter Property="Padding" Value="10,8"/>
+    <Setter Property="Background" Value="#F8F9FA"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="BorderThickness" Value="0,0,0,1"/>
+    <Setter Property="BorderBrush" Value="#DDD"/>
+  </Style>
+
+
+
+  <!-- Texto -->
+  <Style TargetType="TextBlock" x:Key="CeldaCentrada">
+    <Setter Property="Padding" Value="5,0"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
+  </Style>
+
+
+
+  <!-- Estado de celda de VciMappingView -->
+  <Style x:Key="VciMapping_EstadoCellStyle" TargetType="TextBlock">
+    <Setter Property="Foreground" Value="{Binding StateColor}"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Style.Triggers>
+      <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=DataGridCell}}" Value="True">
+        <Setter Property="Foreground" Value="White"/>
+      </DataTrigger>
+    </Style.Triggers>
+  </Style>
+
+
+
+  <!-- Estado de celda de VciAuditView -->
+  <Style x:Key="VciAudit_EstadoCellStyle" TargetType="TextBlock">
+    <Setter Property="Foreground" Value="#e74c3c"/>
+    <Setter Property="Text" Value="No Soportado (KOP/FUP)"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Style.Triggers>
+      <DataTrigger Binding="{Binding CanUpdateDependencies}" Value="True">
+        <Setter Property="Foreground" Value="#27ae60"/>
+        <Setter Property="Text" Value="Listo para SCL"/>
+      </DataTrigger>
+      <MultiDataTrigger>
+        <MultiDataTrigger.Conditions>
+          <Condition Binding="{Binding IsExportable}" Value="True"/>
+          <Condition Binding="{Binding CanUpdateDependencies}" Value="False"/>
+        </MultiDataTrigger.Conditions>
+        <Setter Property="Foreground" Value="#e67e22"/>
+        <Setter Property="Text" Value="Exportable (No Inyectable)"/>
+      </MultiDataTrigger>
+    </Style.Triggers>
+  </Style>
+
+
+
+  <!-- Estado de celda de ProcessGeneratorView -->
+  <Style x:Key="Process_EstadoCellStyle" TargetType="TextBlock">
+    <Setter Property="Padding" Value="5,0"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="Foreground" Value="#333333"/>
+    <Style.Triggers>
+      <DataTrigger Binding="{Binding Estado}" Value="Ok">
+        <Setter Property="Foreground" Value="Green"/>
+      </DataTrigger>
+      <DataTrigger Binding="{Binding Estado}" Value="Error">
+        <Setter Property="Foreground" Value="Red"/>
+      </DataTrigger>
+      <DataTrigger Binding="{Binding Estado}" Value="Pending">
+        <Setter Property="Foreground" Value="#999999"/>
+      </DataTrigger>
+    </Style.Triggers>
+  </Style>
+
+
+
+  <!-- Estado de celda de ParamsAlarmsView -->
+  <Style x:Key="Params_EstadoCellStyle" TargetType="TextBlock">
+    <Setter Property="Padding" Value="5,0"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="Foreground" Value="#F44336"/>
+    <Style.Triggers>
+      <DataTrigger Binding="{Binding Estado}" Value="Sincronizado">
+        <Setter Property="Foreground" Value="#4CAF50"/>
+      </DataTrigger>
+      <DataTrigger Binding="{Binding Estado}" Value="Pendiente">
+        <Setter Property="Foreground" Value="#999999"/>
+      </DataTrigger>
+      <DataTrigger Binding="{Binding Estado}" Value="Nuevo">
+        <Setter Property="Foreground" Value="#2196F3"/>
+      </DataTrigger>
+    </Style.Triggers>
+  </Style>
+
+
+
+  <!-- Estado de celda de DevicesView -->
+  <Style x:Key="Device_EstadoCellStyle" TargetType="TextBlock">
+    <Setter Property="Padding" Value="5,0"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
+    <Setter Property="Foreground" Value="#333333"/>
+    <Style.Triggers>
+      <DataTrigger Binding="{Binding Estado}" Value="Sincronizado">
+        <Setter Property="Foreground" Value="Green"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+      </DataTrigger>
+      <DataTrigger Binding="{Binding Estado, Converter={StaticResource ContainsConverter}, ConverterParameter='->'}" Value="True">
+        <Setter Property="Foreground" Value="OrangeRed"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+      </DataTrigger>
+      <DataTrigger Binding="{Binding Estado}" Value="Nuevo">
+        <Setter Property="Foreground" Value="DodgerBlue"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+      </DataTrigger>
+      <DataTrigger Binding="{Binding Estado}" Value="Eliminar">
+        <Setter Property="Foreground" Value="Red"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+      </DataTrigger>
+      <DataTrigger Binding="{Binding Estado}" Value="Pendiente">
+        <Setter Property="Foreground" Value="#999999"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+      </DataTrigger>
+    </Style.Triggers>
+  </Style>
+
+  
+  
+</ResourceDictionary>

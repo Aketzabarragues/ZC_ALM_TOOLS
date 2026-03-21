@@ -8,61 +8,15 @@
         Title="ZC ALM Tools" Height="850" Width="1600"
         WindowStartupLocation="CenterScreen" Background="#F5F6F8">
 
+
     <Window.Resources>
-        <BooleanToVisibilityConverter x:Key="BoolToVis" />
-
-        <DataTemplate DataType="{x:Type vmGenerator:GeneratorMainViewModel}">
-            <vGenerator:GeneratorMainView />
-        </DataTemplate>
-
-        <DataTemplate DataType="{x:Type vmVci:VciMainViewModel}">
-            <vVci:VciMainView />
-        </DataTemplate>
-
-        <Style x:Key="SettingsButtonStyle" TargetType="Button">
-            <Setter Property="Foreground" Value="#555555"/>
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="FontSize" Value="18"/>
-            <Setter Property="Width" Value="35"/>
-            <Setter Property="Height" Value="35"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Foreground" Value="Black"/>
-                    <Setter Property="Background" Value="#E5E5E5"/>
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-
-        <Style x:Key="MenuButtonStyle" TargetType="Button">
-            <Setter Property="Background" Value="#1f296e"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderBrush" Value="#2a3680"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="MinHeight" Value="45"/>
-            <Setter Property="Padding" Value="10"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" 
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="5" Margin="5,0">
-                            <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center" Margin="10,0,0,0"/>
-                        </Border>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#2a3680"/>
-                    <Setter Property="BorderBrush" Value="#4554b5"/>
-                </Trigger>
-            </Style.Triggers>
-        </Style>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/ZC_ALM_TOOLS;component/Resources/GlobalStyles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
     </Window.Resources>
+    
 
     <Grid>
         <Grid.ColumnDefinitions>
@@ -70,15 +24,14 @@
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <Border Grid.Column="0" Background="#19215d">
-
+        <Border Grid.Column="0" Background="#003466">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="50"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <Border Grid.Row="0" BorderBrush="#2a3680" BorderThickness="0,0,0,1">
+                <Border Grid.Row="0" BorderBrush="#DDD" BorderThickness="0,0,0,1">
                     <TextBlock Text="ZC ALM Tools" 
                                Foreground="White" 
                                FontWeight="Bold" 
@@ -117,7 +70,7 @@
             <Border Grid.Row="0" Background="White" BorderBrush="#DDD" BorderThickness="0,0,0,1">
                 <Grid>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,20,0">
-                        <TextBlock Text="Objetivo PLC:" Foreground="#666" VerticalAlignment="Center" Margin="0,0,10,0" FontWeight="SemiBold"/>
+                        <TextBlock Text="Selección PLC:" Foreground="#666" VerticalAlignment="Center" Margin="0,0,10,0" FontWeight="SemiBold"/>
 
                         <ComboBox ItemsSource="{Binding PlcTargets}" 
                                   SelectedItem="{Binding SelectedTarget}" 

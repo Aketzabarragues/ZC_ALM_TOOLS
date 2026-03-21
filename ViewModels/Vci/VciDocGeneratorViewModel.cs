@@ -42,48 +42,82 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
         /// <summary>
         /// Obtiene y consolida todos los bloques y tipos de datos (UDTs) desde la caché del PLC activo.
         /// </summary>
+        // ==================================================================================================================
+        /// <summary>
+        /// Obtiene y consolida todos los bloques y tipos de datos (UDTs) desde la caché del PLC activo.
+        /// </summary>
         public void LoadItems()
         {
-            PlcItems.Clear();
-
-            // 1. Extracción de Bloques (FC, FB, OB, DB)
-            var blocks = _tiaPlcService.GetAllBlocks();
-            foreach (var b in blocks)
+            try
             {
-                PlcItems.Add(new VciSelectableItem
+                LogService.Write("[VCI-DOC-GENERATOR] Iniciando escaneo y refresco de elementos...");
+                PlcItems.Clear();
+
+                // 1. Extracción de Bloques (FC, FB, OB, DB)
+                var blocks = _tiaPlcService.GetAllBlocks();
+                LogService.Write($"[VCI-DOC-GENERATOR] Bloques recuperados de la caché: {blocks?.Count ?? 0}");
+
+                if (blocks != null)
                 {
-                    OriginalItem = b,
-                    IsSelected = false,
-                    Name = b.Name,
-                    SimpleType = b.SimpleType,
-                    FolderPath = b.FolderPath
-                });
-            }
+                    foreach (var b in blocks)
+                    {
+                        PlcItems.Add(new VciSelectableItem
+                        {
+                            OriginalItem = b,
+                            IsSelected = false,
+                            Name = b.Name,
+                            SimpleType = b.SimpleType,
+                            FolderPath = b.FolderPath
+                        });
+                    }
+                }
 
-            // 2. Extracción de Tipos de Datos (UDT)
-            var types = _tiaPlcService.GetAllTypes();
-            foreach (var t in types)
-            {
-                PlcItems.Add(new VciSelectableItem
+                // 2. Extracción de Tipos de Datos (UDT)
+                var types = _tiaPlcService.GetAllTypes();
+                LogService.Write($"[VCI-DOC-GENERATOR] UDTs recuperados de la caché: {types?.Count ?? 0}");
+
+                if (types != null)
                 {
-                    OriginalItem = t,
-                    IsSelected = false,
-                    Name = t.Name,
-                    SimpleType = "UDT",
-                    FolderPath = t.FolderPath
-                });
+                    foreach (var t in types)
+                    {
+                        PlcItems.Add(new VciSelectableItem
+                        {
+                            OriginalItem = t,
+                            IsSelected = false,
+                            Name = t.Name,
+                            SimpleType = "UDT",
+                            FolderPath = t.FolderPath
+                        });
+                    }
+                }
+
+                // Comprobación de seguridad
+                if (PlcItems.Count == 0)
+                {
+                    LogService.Write("[VCI-DOC-GENERATOR] ATENCIÓN: La lista resultante está vacía. ¿Se ha seleccionado un PLC en el desplegable principal?");
+                    StatusService.Set("No se han encontrado bloques ni UDTs. Verifica que has seleccionado un PLC arriba.", StatusType.Warning);
+                    return;
+                }
+
+                LogService.Write("[VCI-DOC-GENERATOR] Ordenando elementos para la vista...");
+
+                // 3. Ordenación visual: Primero por Tipo de elemento y luego alfabéticamente por Nombre
+                var sortedList = PlcItems.OrderBy(i => i.SimpleType).ThenBy(i => i.Name).ToList();
+
+                PlcItems.Clear();
+                foreach (var item in sortedList)
+                {
+                    PlcItems.Add(item);
+                }
+
+                LogService.Write($"[VCI-DOC-GENERATOR] Refresco completado exitosamente. Total cargados: {PlcItems.Count}");
+                StatusService.Set($"Se han cargado {PlcItems.Count} elementos en el generador de ayuda.", StatusType.Ok);
             }
-
-            // 3. Ordenación visual: Primero por Tipo de elemento y luego alfabéticamente por Nombre
-            var sortedList = PlcItems.OrderBy(i => i.SimpleType).ThenBy(i => i.Name).ToList();
-
-            PlcItems.Clear();
-            foreach (var item in sortedList)
+            catch (System.Exception ex)
             {
-                PlcItems.Add(item);
+                LogService.Write($"[VCI-DOC-GENERATOR] Error crítico al cargar los elementos: {ex.Message}", true);
+                StatusService.Set("Error al cargar los elementos del PLC. Revisa los logs.", StatusType.Error);
             }
-
-            StatusService.Set($"Se han cargado {PlcItems.Count} elementos en el generador de ayuda.", StatusType.Ok);
         }
 
         // ==================================================================================================================
