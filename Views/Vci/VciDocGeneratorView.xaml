@@ -1,0 +1,36 @@
+﻿<UserControl x:Class="ZC_ALM_TOOLS.Views.Vci.VciDocGeneratorView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             mc:Ignorable="d" 
+             d:DesignHeight="500" d:DesignWidth="800">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="5">
+            <Button Content="Refrescar Elementos" Command="{Binding LoadItemsCommand}" Width="140" Margin="0,0,10,0"/>
+            <Button Content="Seleccionar Todo" Command="{Binding SelectAllCommand}" Width="120" Margin="0,0,5,0"/>
+            <Button Content="Deseleccionar Todo" Command="{Binding DeselectAllCommand}" Width="130" Margin="0,0,5,0"/>
+        </StackPanel>
+
+        <DataGrid Grid.Row="1" Margin="5" AutoGenerateColumns="False" CanUserAddRows="False"
+                  ItemsSource="{Binding PlcItems}">
+            <DataGrid.Columns>
+                <DataGridCheckBoxColumn Header="Sel." Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" Width="40"/>
+                <DataGridTextColumn Header="Nombre" Binding="{Binding Name}" Width="250" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Tipo" Binding="{Binding SimpleType}" Width="80" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Ruta en TIA Portal" Binding="{Binding FolderPath}" Width="*" IsReadOnly="True"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="5">
+            <Button Content="Exportar SCL y Generar Ayuda Web" Command="{Binding GenerateDocCommand}" 
+                    Width="250" Height="35" FontWeight="Bold" Background="#007ACC" Foreground="White"/>
+        </StackPanel>
+    </Grid>
+</UserControl>

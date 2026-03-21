@@ -171,10 +171,7 @@ namespace ZC_ALM_TOOLS.ViewModels
                 StatusService.Set($"Cambiando PLC a '{plc.Name}'. Indexando bloques del PLC en memoria RAM...", StatusType.Warning);
 
 
-                // 2. EL TRUCO PARA WFP EN ADD-INS: 
                 // Forzamos a la interfaz gráfica a procesar todos los cambios visuales pendientes 
-                // (como cerrar el menú del ComboBox y mostrar el texto de arriba) en este mismo milisegundo,
-                // sin cambiar de hilo y sin usar Task.Delay.
                 try
                 {
                     System.Windows.Threading.Dispatcher.CurrentDispatcher.Invoke(

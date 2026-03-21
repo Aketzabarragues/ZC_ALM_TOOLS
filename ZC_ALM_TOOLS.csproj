@@ -116,6 +116,7 @@
     <Compile Include="Services\TiaPortal\TiaVciService.cs" />
     <Compile Include="Services\Vci\VciWorkspaceService.cs" />
     <Compile Include="ViewModels\Generator\DevicesViewModel.cs" />
+    <Compile Include="ViewModels\Vci\VciDocGeneratorViewModel.cs" />
     <Compile Include="ViewModels\Generator\GeneratorMainViewModel.cs" />
     <Compile Include="ViewModels\Generator\ParamsAlarmsViewModel.cs" />
     <Compile Include="ViewModels\Generator\ProcessGeneratorViewModel.cs" />
@@ -139,6 +140,9 @@
     </Compile>
     <Compile Include="Views\MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Vci\VciDocGeneratorView.xaml.cs">
+      <DependentUpon>VciDocGeneratorView.xaml</DependentUpon>
     </Compile>
     <Compile Include="Views\Vci\VciAuditView.xaml.cs">
       <DependentUpon>VciAuditView.xaml</DependentUpon>
@@ -175,6 +179,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Views\MainWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\Vci\VciDocGeneratorView.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

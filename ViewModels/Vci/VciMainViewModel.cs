@@ -34,6 +34,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
         // ViewModels Hijos
         public VciMappingViewModel MappingVM { get; set; }
         public VciAuditViewModel AuditVM { get; set; }
+        public VciAuditViewModel DocGeneratorVM { get; set; }
 
 
         private TiaTarget _selectedTarget;

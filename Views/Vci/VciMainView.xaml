@@ -195,6 +195,9 @@
             <TabItem Header="📋 Auditoría y Sincronización">
                 <views:VciAuditView DataContext="{Binding AuditVM}"/>
             </TabItem>
+            <TabItem Header="Generador de Ayuda">
+                <views:VciDocGeneratorView DataContext="{Binding DocGeneratorVM}"/>
+            </TabItem>
         </TabControl>
     </Grid>
 </UserControl>
