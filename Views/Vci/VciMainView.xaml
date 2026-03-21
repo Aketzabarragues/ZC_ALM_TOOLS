@@ -13,7 +13,7 @@
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
 
         <Style x:Key="PrimaryButtonStyle" TargetType="Button">
-            <Setter Property="Background" Value="#007ACC"/>
+            <Setter Property="Background" Value="#003466"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="BorderThickness" Value="0"/>
@@ -144,17 +144,17 @@
                               Width="260" Height="35" Margin="0,0,10,0" VerticalContentAlignment="Center"
                               ToolTip="Selecciona un Workspace existente."/>
 
-                    <Button Content="➕ Nuevo" 
+                    <Button Content="Nuevo" 
                             Command="{Binding ToggleCreateModeCommand}" 
                             Style="{StaticResource PrimaryButtonStyle}"
                             Width="85" Margin="0,0,15,0"/>
 
-                    <Button Content="🗑️ Borrar" 
+                    <Button Content="Borrar" 
                             Command="{Binding DeleteWorkspaceCommand}" 
                             Style="{StaticResource PrimaryButtonStyle}"
                             Width="85" Margin="0,0,15,0"/>
                     
-                    <Button Content="✏️ Cambiar ruta" 
+                    <Button Content="Cambiar ruta" 
                             Command="{Binding ChangeWorkspaceFolderCommand}" 
                             Style="{StaticResource PrimaryButtonStyle}"
                             Width="120" 
@@ -175,12 +175,12 @@
                              Width="300" Height="35" Margin="0,0,10,0" VerticalContentAlignment="Center" Padding="5,0"
                              ToolTip="Ejemplo: Mi_Workspace_VCI"/>
 
-                    <Button Content="📁 Explorar ruta y Crear" 
+                    <Button Content="Explorar ruta y Crear" 
                             Command="{Binding CreateNewWorkspaceCommand}" 
                             Style="{StaticResource PrimaryButtonStyle}"
                             Width="180"/>
 
-                    <Button Content="❌ Cancelar" 
+                    <Button Content="Cancelar" 
                             Command="{Binding ToggleCreateModeCommand}" 
                             Style="{StaticResource PrimaryButtonStyle}"
                             Margin="10,0,0,0" Width="100"/>

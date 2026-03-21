@@ -7,32 +7,33 @@
              xmlns:viewmodels="clr-namespace:ZC_ALM_TOOLS.ViewModels.Vci" 
              d:DataContext="{d:DesignInstance Type=viewmodels:VciMappingViewModel}"
              mc:Ignorable="d" 
+             Background="#F0F0F0"
              d:DesignHeight="600" d:DesignWidth="1000">
         
         
         <UserControl.Resources>
-        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
-
+        
+            <BooleanToVisibilityConverter x:Key="BoolToVis"/>
         <Style x:Key="PrimaryButtonStyle" TargetType="Button">
-            <Setter Property="Background" Value="#007ACC"/>
+            <Setter Property="Background" Value="#003466"/>
             <Setter Property="Foreground" Value="White"/>
-            <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="15,0"/>
-            <Setter Property="Height" Value="35"/>
-            <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="FontWeight" Value="Bold"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Padding" Value="15,0"/>
+                <Setter Property="Height" Value="35"/>
+                <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Border Background="{TemplateBinding Background}" 
-                CornerRadius="4" 
-                BorderThickness="{TemplateBinding BorderThickness}" 
-                BorderBrush="{TemplateBinding BorderBrush}">
+                            CornerRadius="4" 
+                            BorderThickness="{TemplateBinding BorderThickness}" 
+                            BorderBrush="{TemplateBinding BorderBrush}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                     </ControlTemplate>
                 </Setter.Value>
-            </Setter>
+            </Setter>  
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
                     <Setter Property="Background" Value="#005B96"/>
@@ -60,12 +61,11 @@
             </Grid.ColumnDefinitions>
 
             <Button Grid.Column="0" 
-                    Content="🔍 Analizar Workspace Actual" 
+                    Content="Analizar Workspace Actual" 
                     Command="{Binding AnalyzeProjectCommand}"
                     Style="{StaticResource PrimaryButtonStyle}"
                     Width="240" 
                     Margin="0,0,0,0"
-                    Background="#007ACC" 
                     Foreground="White"
                     BorderBrush="#CED4DA"/>
 
@@ -127,12 +127,12 @@
         </DataGrid>
 
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
-            <Button Content="🗑️ Eliminar Mapeos" 
+            <Button Content="Eliminar Mapeos" 
                     Command="{Binding UnmapBlocksCommand}" 
                     Style="{StaticResource PrimaryButtonStyle}"
                     Width="200" Margin="0,0,15,0"/>
             
-            <Button Content="💾 Aplicar Mapeos" 
+            <Button Content="Aplicar Mapeos" 
                     Command="{Binding ApplyMappingsCommand}" 
                     Style="{StaticResource PrimaryButtonStyle}"
                     Width="200" Margin="0,0,0,0"/>

@@ -1,27 +1,87 @@
 ﻿<UserControl x:Class="ZC_ALM_TOOLS.Views.Vci.VciAuditView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             Background="#F4F4F4">
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:core="clr-namespace:ZC_ALM_TOOLS.Core"
+             xmlns:viewmodels="clr-namespace:ZC_ALM_TOOLS.ViewModels.Vci" 
+             d:DataContext="{d:DesignInstance Type=viewmodels:VciAuditViewModel}"
+             mc:Ignorable="d" 
+             Background="#F0F0F0"
+             d:DesignHeight="600" d:DesignWidth="1000">
+
+    <UserControl.Resources>
+        <Style x:Key="PrimaryButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#003466"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="15,0"/>
+            <Setter Property="Height" Value="35"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                CornerRadius="4" 
+                                BorderThickness="{TemplateBinding BorderThickness}" 
+                                BorderBrush="{TemplateBinding BorderBrush}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#005B96"/>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Background" Value="#CCCCCC"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+
     <Grid Margin="10">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
-            <Button Content="Cargar Bloques del PLC" Command="{Binding LoadBlocksCommand}" 
-                    Padding="15,5" Margin="0,0,10,0" Background="#3498db" Foreground="White" BorderThickness="0" FontWeight="Bold"/>
+        <Grid Grid.Row="0" Margin="0,0,0,15">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
 
-            <Button Content="Actualizar Dependencias SCL" Command="{Binding UpdateDependenciesCommand}" 
-                    Padding="15,5" Background="#e74c3c" Foreground="White" BorderThickness="0" FontWeight="Bold"/>
-        </StackPanel>
+            <Button Grid.Column="0" 
+                    Content="Cargar Bloques del PLC" 
+                    Command="{Binding LoadBlocksCommand}" 
+                    Style="{StaticResource PrimaryButtonStyle}"
+                    Width="210" Margin="0,0,15,0"/>
 
-        <DataGrid Grid.Row="1" ItemsSource="{Binding Blocks}" AutoGenerateColumns="False" 
-                  CanUserAddRows="False" SelectionMode="Single" HeadersVisibility="Column" 
-                  Background="White" BorderBrush="#DDD" RowBackground="White" AlternatingRowBackground="#F9F9F9">
+            <Button Grid.Column="1" 
+                    Content="Actualizar Dependencias SCL" 
+                    Command="{Binding UpdateDependenciesCommand}" 
+                    Style="{StaticResource PrimaryButtonStyle}"
+                    Width="250" Margin="0,0,0,0"/>
+        </Grid>
+
+        <DataGrid Grid.Row="1" ItemsSource="{Binding Blocks}" 
+                  AutoGenerateColumns="False" 
+                  CanUserAddRows="False" 
+                  SelectionMode="Single" 
+                  HeadersVisibility="Column" 
+                  GridLinesVisibility="Horizontal"
+                  Background="White" 
+                  BorderBrush="#CCCCCC" 
+                  RowBackground="White" 
+                  AlternatingRowBackground="#F9F9F9"
+                  RowHeaderWidth="0">
             <DataGrid.Columns>
 
-                <DataGridTemplateColumn Header="Sel." Width="40">
+                <DataGridTemplateColumn Width="50">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <CheckBox IsChecked="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" 
@@ -31,22 +91,22 @@
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
 
-                <DataGridTextColumn Header="Número" Binding="{Binding Number}" Width="60" IsReadOnly="True"/>
-                <DataGridTextColumn Header="Tipo" Binding="{Binding SimpleType}" Width="60" IsReadOnly="True"/>
-                <DataGridTextColumn Header="Nombre del Bloque" Binding="{Binding Name}" Width="250" IsReadOnly="True"/>
-                <DataGridTextColumn Header="Lenguaje" Binding="{Binding ProgrammingLanguage}" Width="80" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Número" Binding="{Binding Number}" Width="70" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Tipo" Binding="{Binding SimpleType}" Width="70" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Nombre del Bloque" Binding="{Binding Name}" Width="280" IsReadOnly="True" FontWeight="Bold"/>
+                <DataGridTextColumn Header="Lenguaje" Binding="{Binding ProgrammingLanguage}" Width="90" IsReadOnly="True"/>
 
-                <DataGridTemplateColumn Header="Estado" Width="150" IsReadOnly="True">
+                <DataGridTemplateColumn Header="Estado" Width="220" IsReadOnly="True">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
-                            <TextBlock Text="{Binding ProgrammingLanguage}" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding ProgrammingLanguage}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="5,0,0,0">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
-                                        <Setter Property="Foreground" Value="Red"/>
+                                        <Setter Property="Foreground" Value="#e74c3c"/>
                                         <Setter Property="Text" Value="No Soportado (KOP/FUP)"/>
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding CanUpdateDependencies}" Value="True">
-                                                <Setter Property="Foreground" Value="Green"/>
+                                                <Setter Property="Foreground" Value="#27ae60"/>
                                                 <Setter Property="Text" Value="Listo para SCL"/>
                                             </DataTrigger>
                                             <MultiDataTrigger>
@@ -54,7 +114,7 @@
                                                     <Condition Binding="{Binding IsExportable}" Value="True"/>
                                                     <Condition Binding="{Binding CanUpdateDependencies}" Value="False"/>
                                                 </MultiDataTrigger.Conditions>
-                                                <Setter Property="Foreground" Value="Orange"/>
+                                                <Setter Property="Foreground" Value="#e67e22"/>
                                                 <Setter Property="Text" Value="Exportable (No Inyectable)"/>
                                             </MultiDataTrigger>
                                         </Style.Triggers>

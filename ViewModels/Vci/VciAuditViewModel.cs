@@ -10,6 +10,7 @@ using ZC_ALM_TOOLS.Services.TiaPortal;
 
 namespace ZC_ALM_TOOLS.ViewModels.Vci
 {
+
     // ==================================================================================================================
     /// <summary>
     /// ViewModel que gestiona la pestaña de auditoria de VCI
@@ -29,6 +30,8 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
         public ICommand LoadBlocksCommand { get; }
         public ICommand UpdateDependenciesCommand { get; }
 
+
+
         // ==================================================================================================================
         /// <summary>
         /// Constructor
@@ -41,6 +44,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
             LoadBlocksCommand = new RelayCommand(ExecuteLoadBlocks);
             UpdateDependenciesCommand = new RelayCommand(ExecuteUpdateDependencies, CanExecuteUpdateDependencies);
         }
+
 
 
 
@@ -58,11 +62,15 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
             }
         }
 
+
+
         private bool CanExecuteUpdateDependencies()
         {
             // Solo se puede pulsar el botón si hay al menos un bloque válido seleccionado
             return Blocks != null && Blocks.Any(b => b.IsSelected && b.CanUpdateDependencies);
         }
+
+
 
         private async void ExecuteUpdateDependencies()
         {

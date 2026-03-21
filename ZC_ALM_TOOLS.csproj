@@ -102,6 +102,7 @@
     <Compile Include="Models\Generator\ProcessStage.cs" />
     <Compile Include="Models\TiaPortal\CachedPlcBlock.cs" />
     <Compile Include="Models\Vci\VciMatchState.cs" />
+    <Compile Include="Models\Vci\VciSelectableItem.cs" />
     <Compile Include="Models\Vci\VciWorkspaceModel.cs" />
     <Compile Include="Services\Common\AppConfigService.cs" />
     <Compile Include="Services\Common\ComparisonService.cs" />

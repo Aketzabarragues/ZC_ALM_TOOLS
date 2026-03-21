@@ -33,7 +33,6 @@ namespace ZC_ALM_TOOLS.ViewModels
         public ObservableCollection<TiaTarget> ScadaTargets { get; } = new ObservableCollection<TiaTarget>();
 
         // Selección Global de PLC
-
         private TiaTarget _selectedTarget;
         public TiaTarget SelectedTarget
         {
