@@ -55,10 +55,11 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                 var allBlocks = _tiaPlcService.GetAllBlocks();
                 Blocks = new ObservableCollection<CachedPlcBlock>(allBlocks.OrderBy(b => b.SimpleType).ThenBy(b => b.Number));
                 StatusService.Set($"Se han cargado {Blocks.Count} bloques en auditoría.", StatusType.Ok);
+                LogService.Write($"[VCI-AUDIT] [ExecuteLoadBlocks] Se han cargado {Blocks.Count} bloques en auditoría.");
             }
             catch (Exception ex)
             {
-                LogService.Write($"[VCI-AUDIT] Error cargando bloques: {ex.Message}", true);
+                LogService.Write($"[VCI-AUDIT] [ExecuteLoadBlocks] Error cargando bloques: {ex.Message}", true);
             }
         }
 
@@ -78,6 +79,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
             if (!selectedBlocks.Any()) return;
 
             StatusService.Set($"Iniciando actualización de dependencias de {selectedBlocks.Count} bloques...", StatusType.Warning);
+            LogService.Write($"[VCI-AUDIT] [ExecuteUpdateDependencies] Iniciando actualización de dependencias de {selectedBlocks.Count} bloques...");
 
             await Task.Delay(50);
 
@@ -87,10 +89,13 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
             if (success)
             {
                 StatusService.Set("Dependencias actualizadas y bloques re-importados con éxito.", StatusType.Ok);
+
+                LogService.Write($"[VCI-AUDIT] [ExecuteUpdateDependencies] Dependencias actualizadas y bloques re-importados con éxito.");
             }
             else
             {
                 StatusService.Set("Error durante la actualización de dependencias. Revisa el log.", StatusType.Error);
+                LogService.Write($"[VCI-AUDIT] [ExecuteUpdateDependencies] Error durante la actualización de dependencias", true);
             }
         }
 

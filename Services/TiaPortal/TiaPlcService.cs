@@ -373,7 +373,7 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                 var block = FindBlockByName(blockName);
                 if (block == null)
                 {
-                    LogService.Write($"[TIA-SERVICE] [ExportBlockToXml] No se encontró el bloque '{blockName}'.", true);
+                    LogService.Write($"[TIA-PLC-SERVICE] [ExportBlockToXml] No se encontró el bloque '{blockName}'.", true);
                     return false;
                 }
 
@@ -383,19 +383,52 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                 // Exportar el bloque
                 block.Export(new FileInfo(destinationPath), ExportOptions.WithDefaults);
 
-                LogService.Write($"[TIA-SERVICE] [ExportBlockToXml] Bloque '{blockName}' exportado correctamente a {destinationPath}");
+                LogService.Write($"[TIA-PLC-SERVICE] [ExportBlockToXml] Bloque '{blockName}' exportado correctamente a {destinationPath}");
                 return true;
             }
             catch (Exception ex)
             {
-                LogService.Write($"[TIA-SERVICE] [ExportBlockToXml] Error exportando bloque '{blockName}': {ex.Message}", true);
+                LogService.Write($"[TIA-PLC-SERVICE] [ExportBlockToXml] Error exportando bloque '{blockName}': {ex.Message}", true);
                 return false;
             }
         }
 
 
 
+        // ==================================================================================================================
+        /// <summary>
+        /// Exporta un bloque o UDT como archivo fuente de texto plano (.scl, .awl, .db, .udt)
+        /// </summary>
+        public bool ExportAsSource(object item, string destinationPath)
+        {
+            try
+            {
+                if (_currentPlc == null) return false;
 
+                // Borramos el archivo si ya existía de una compilación anterior
+                if (File.Exists(destinationPath)) File.Delete(destinationPath);
+
+                // Si es un bloque de código (FC, FB, OB, DB)
+                if (item is PlcBlock block)
+                {
+                    _currentPlc.ExternalSourceGroup.GenerateSource(new List<PlcBlock> { block }, new FileInfo(destinationPath), GenerateOptions.None);
+                    return true;
+                }
+                // Si es un Tipo de Datos de Usuario (UDT)
+                else if (item is PlcType udt)
+                {
+                    _currentPlc.ExternalSourceGroup.GenerateSource(new List<PlcType> { udt }, new FileInfo(destinationPath), GenerateOptions.None);
+                    return true;
+                }
+
+                return false;
+            }
+            catch (Exception ex)
+            {
+                LogService.Write($"[TIA-PLC-SERVICE] [ExportAsSource] Error exportando fuente a {destinationPath}: {ex.Message}", true);
+                return false;
+            }
+        }
 
 
 
