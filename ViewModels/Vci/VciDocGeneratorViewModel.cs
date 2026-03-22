@@ -19,6 +19,8 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
     /// </summary>
     public class VciDocGeneratorViewModel : ObservableObject
     {
+
+
         private readonly TiaPlcService _tiaPlcService;
 
         public ObservableCollection<VciSelectableItem> PlcItems { get; set; }
@@ -27,6 +29,8 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
         public ICommand SelectAllCommand { get; }
         public ICommand DeselectAllCommand { get; }
         public ICommand GenerateDocCommand { get; }
+
+
 
         // ==================================================================================================================
         /// <summary>
@@ -43,10 +47,8 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
             GenerateDocCommand = new RelayCommand(ExecuteGenerateDocCommand, CanExecuteGenerateDoc);
         }
 
-        // ==================================================================================================================
-        /// <summary>
-        /// Obtiene y consolida todos los bloques y tipos de datos (UDTs) desde la caché del PLC activo.
-        /// </summary>
+
+
         // ==================================================================================================================
         /// <summary>
         /// Obtiene y consolida todos los bloques y tipos de datos (UDTs) desde la caché del PLC activo.
@@ -62,22 +64,33 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                 var blocks = _tiaPlcService.GetAllBlocks();
                 LogService.Write($"[VCI-DOC-GENERATOR] [LoadItems] Bloques recuperados de la caché: {blocks?.Count ?? 0}");
 
+                // Extracción de bloques exportables (SCL, DB, STL)
                 if (blocks != null)
                 {
                     foreach (var b in blocks)
                     {
-                        PlcItems.Add(new VciSelectableItem
+                        try
+                        {                            
+                            if (b.IsExportable)
+                            {
+                                PlcItems.Add(new VciSelectableItem
+                                {
+                                    OriginalItem = b.Block,
+                                    IsSelected = false,
+                                    Name = b.Name,
+                                    SimpleType = b.SimpleType,
+                                    FolderPath = b.FolderPath
+                                });
+                            }
+                        }
+                        catch (Exception blockEx)
                         {
-                            OriginalItem = b.Block,
-                            IsSelected = false,
-                            Name = b.Name,
-                            SimpleType = b.SimpleType,
-                            FolderPath = b.FolderPath
-                        });
+                            LogService.Write($"[VCI-DOC-GENERATOR] [LoadItems] Error leyendo propiedades del bloque {b.Name}: {blockEx.Message}", true);
+                        }                       
                     }
                 }
 
-                // 2. Extracción de Tipos de Datos (UDT)
+                // Extracción de Tipos de Datos (UDT)
                 var types = _tiaPlcService.GetAllTypes();
                 LogService.Write($"[VCI-DOC-GENERATOR] [LoadItems] UDTs recuperados de la caché: {types?.Count ?? 0}");
 
@@ -125,6 +138,8 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
             }
         }
 
+
+
         // ==================================================================================================================
         /// <summary>
         /// Aplica un estado de selección masiva a todos los elementos del listado.
@@ -136,8 +151,6 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                 item.IsSelected = state;
             }
         }
-
-
 
 
 
@@ -254,7 +267,43 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                 StatusService.Set("Ejecutando script de Python para generar la documentación...", StatusType.Warning);
                 LogService.Write("[VCI-DOC-GENERATOR] [GenerateDocAsync] Preparando llamada al entorno de Python...");
 
-                // TODO: EjecutarPython();
+                StatusService.Set("Compilando documentación web (Python)...", StatusType.Warning);
+                LogService.Write("[VCI-DOC-GENERATOR] [GenerateDocAsync] Preparando llamada al entorno de Python...");
+
+                // Asegúrate de tener estas propiedades en tu ConfigGlobalSettings
+                string exePath = globalSettings.DocGeneratorExePath;
+                string wordPath = globalSettings.DocWordManualPath;
+                string destinoHtml = globalSettings.DocOutputPath;
+
+                // Verificaciones de seguridad antes de lanzar
+                if (!File.Exists(exePath))
+                {
+                    LogService.Write($"[VCI-DOC-GENERATOR] ERROR: No se encuentra el ejecutable en: {exePath}", true);
+                    StatusService.Set("Falta el ejecutable del generador. Revisa configuración.", StatusType.Error);
+                    return;
+                }
+
+                if (!File.Exists(wordPath))
+                {
+                    LogService.Write($"[VCI-DOC-GENERATOR] ERROR: No se encuentra el documento Word base en: {wordPath}", true);
+                    StatusService.Set("Falta el documento Word base.", StatusType.Error);
+                    return;
+                }
+
+                // Creamos directorio destino si no existe
+                if (!Directory.Exists(destinoHtml)) Directory.CreateDirectory(destinoHtml);
+
+                // Disparamos el proceso en segundo plano (le pasamos exportDir que es donde acabamos de exportar los SCL)
+                bool docSuccess = await StartDocGenerator(exePath, wordPath, exportDir, destinoHtml);
+
+                if (docSuccess)
+                {
+                    StatusService.Set("¡Documentación generada con éxito!", StatusType.Ok);
+                }
+                else
+                {
+                    StatusService.Set("Error compilando la documentación. Revisa el Log.", StatusType.Error);
+                }
             }
             catch (Exception ex)
             {
@@ -262,5 +311,83 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                 StatusService.Set("Error en el proceso de exportación. Revisa los logs.", StatusType.Error);
             }
         }
+
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Lanza el ejecutable de Python para generar el HTML de forma invisible e intercepta su consola.
+        /// </summary>
+        private async Task<bool> StartDocGenerator(string exePath, string wordPath, string fuentesPath, string destinoPath)
+        {
+            try
+            {
+                // Montamos los argumentos respetando el argparse de Python
+                string arguments = $"--word \"{wordPath}\" --fuentes \"{fuentesPath}\" --destino \"{destinoPath}\"";
+
+                LogService.Write($"[VCI-DOC-GENERATOR] [StartDocGenerator] Lanzando: {exePath} {arguments}");
+
+                // 1. Crear la info de inicio usando la librería del Add-In de Siemens
+                var startInfo = new Siemens.Engineering.AddIn.Utilities.ProcessStartInfo
+                {
+                    FileName = exePath,
+                    Arguments = arguments,
+                    CreateNoWindow = true,
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    StandardOutputEncoding = System.Text.Encoding.UTF8,
+                    StandardErrorEncoding = System.Text.Encoding.UTF8,
+                    WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden
+                };
+
+                // 2. Crear el proceso de Siemens
+                var myProcess = new Siemens.Engineering.AddIn.Utilities.Process
+                {
+                    StartInfo = startInfo
+                };
+
+                // 3. Suscribirse a los eventos para capturar los "log.info" y "log.error" de Python
+                myProcess.OutputDataReceived += (s, e) => {
+                    if (!string.IsNullOrEmpty(e.Data))
+                        LogService.Write($"[VCI-DOC-GENERATOR] [StartDocGenerator] {e.Data}");
+                };
+
+                myProcess.ErrorDataReceived += (s, e) => {
+                    if (!string.IsNullOrEmpty(e.Data))
+                        LogService.Write($"[VCI-DOC-GENERATOR] [StartDocGenerator] {e.Data}", true);
+                };
+
+                // 4. Lanzar proceso
+                if (myProcess.Start())
+                {
+                    myProcess.BeginOutputReadLine();
+                    myProcess.BeginErrorReadLine();
+
+                    LogService.Write("[VCI-DOC-GENERATOR] [StartDocGenerator] Compilador Python ejecutándose en segundo plano...");
+
+                    // Esperar de forma asíncrona a que termine para no bloquear la UI de TIA Portal
+                    await Task.Run(() =>
+                    {
+                        while (!myProcess.HasExited)
+                        {
+                            myProcess.WaitForExit();
+                        }
+                    });
+
+                    LogService.Write($"[VCI-DOC-GENERATOR] [StartDocGenerator] Compilador finalizado con código: {myProcess.ExitCode}");
+                    return myProcess.ExitCode == 0;
+                }
+                return false;
+            }
+            catch (Exception ex)
+            {
+                LogService.Write($"[VCI-DOC-GENERATOR] [StartDocGenerator] Error crítico lanzando Python: {ex.Message}", true);
+                return false;
+            }
+        }
+
+
+
     }
 }

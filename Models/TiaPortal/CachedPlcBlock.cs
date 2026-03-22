@@ -20,7 +20,6 @@ namespace ZC_ALM_TOOLS.Models.TiaPortal
         public string ApiType { get; set; }
         public string SimpleType { get; set; }
         public string FolderPath { get; set; }
-
         public string ProgrammingLanguage { get; set; }
 
         // ==================================================================================================================
