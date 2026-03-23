@@ -79,7 +79,8 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                                     IsSelected = false,
                                     Name = b.Name,
                                     SimpleType = b.SimpleType,
-                                    FolderPath = b.FolderPath
+                                    FolderPath = b.FolderPath,
+                                    Number = b.Number
                                 });
                             }
                         }
@@ -104,7 +105,8 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                             IsSelected = false,
                             Name = t.Name,
                             SimpleType = "UDT",
-                            FolderPath = t.FolderPath
+                            FolderPath = t.FolderPath,
+                            Number = 0
                         });
                     }
                 }
@@ -119,8 +121,17 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
 
                 LogService.Write("[VCI-DOC-GENERATOR] [LoadItems] Ordenando elementos para la vista...");
 
-                // 3. Ordenación visual: Primero por Tipo de elemento y luego alfabéticamente por Nombre
-                var sortedList = PlcItems.OrderBy(i => i.SimpleType).ThenBy(i => i.Name).ToList();
+                LogService.Write("[VCI-DOC-GENERATOR] [LoadItems] Ordenando elementos para la vista...");
+
+                // Ordenación visual: 
+                // 1º Por Tipo de elemento (DB, FB, FC, UDT...)
+                // 2º Por Número de bloque
+                // 3º Por Nombre
+                var sortedList = PlcItems
+                    .OrderBy(i => i.SimpleType)
+                    .ThenBy(i => i.Number)
+                    .ThenBy(i => i.Name)
+                    .ToList();
 
                 PlcItems.Clear();
                 foreach (var item in sortedList)

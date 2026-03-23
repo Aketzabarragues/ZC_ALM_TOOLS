@@ -23,5 +23,12 @@ namespace ZC_ALM_TOOLS.Models.Vci
         public string SimpleType { get; set; }
         public string FolderPath { get; set; }
 
+        private int _number;
+        public int Number
+        {
+            get => _number;
+            set { _number = value; OnPropertyChanged(); }
+        }
+
     }
 }

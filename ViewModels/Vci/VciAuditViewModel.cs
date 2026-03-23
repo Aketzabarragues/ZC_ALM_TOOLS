@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using ZC_ALM_TOOLS.Core;
 using ZC_ALM_TOOLS.Models.TiaPortal;
+using ZC_ALM_TOOLS.Models.Vci;
 using ZC_ALM_TOOLS.Services.Common;
 using ZC_ALM_TOOLS.Services.TiaPortal;
 
@@ -54,6 +55,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
             {
                 var allBlocks = _tiaPlcService.GetAllBlocks();
                 Blocks = new ObservableCollection<CachedPlcBlock>(allBlocks.OrderBy(b => b.SimpleType).ThenBy(b => b.Number));
+             
                 StatusService.Set($"Se han cargado {Blocks.Count} bloques en auditoría.", StatusType.Ok);
                 LogService.Write($"[VCI-AUDIT] [ExecuteLoadBlocks] Se han cargado {Blocks.Count} bloques en auditoría.");
             }
