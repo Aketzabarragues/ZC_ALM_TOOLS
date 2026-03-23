@@ -4,7 +4,9 @@
                     xmlns:vmGenerator="clr-namespace:ZC_ALM_TOOLS.ViewModels.Generator"
                     xmlns:vGenerator="clr-namespace:ZC_ALM_TOOLS.Views.Generator"
                     xmlns:vmVci="clr-namespace:ZC_ALM_TOOLS.ViewModels.Vci"
-                    xmlns:vVci="clr-namespace:ZC_ALM_TOOLS.Views.Vci">
+                    xmlns:vVci="clr-namespace:ZC_ALM_TOOLS.Views.Vci"
+                    xmlns:vmSettings="clr-namespace:ZC_ALM_TOOLS.ViewModels.Settings"
+                    xmlns:vSettings="clr-namespace:ZC_ALM_TOOLS.Views.Settings">
 
 
   <!-- Conversores -->
@@ -14,16 +16,17 @@
 
   
   <!-- Data templates -->
-  <DataTemplate DataType="{x:Type vmGenerator:GeneratorMainViewModel}">
+    <DataTemplate DataType="{x:Type vmGenerator:GeneratorMainViewModel}">
     <vGenerator:GeneratorMainView />
-  </DataTemplate>
-  <DataTemplate DataType="{x:Type vmVci:VciMainViewModel}">
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type vmVci:VciMainViewModel}">
     <vVci:VciMainView />
-  </DataTemplate>
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type vmSettings:SettingsMainViewModel}">
+        <vSettings:SettingsMainView />
+    </DataTemplate>
 
-
-
-  <!-- Combo box -->
+    <!-- Combo box -->
   <Style x:Key="ModernComboBoxStyle" TargetType="ComboBox">
     <Setter Property="Height" Value="35"/>
     <Setter Property="Padding" Value="10,0"/>
@@ -196,17 +199,29 @@
 
 
   <!-- Cabecera de datagrid -->
-  <Style TargetType="DataGridColumnHeader">
-    <Setter Property="Padding" Value="10,8"/>
-    <Setter Property="Background" Value="#F8F9FA"/>
-    <Setter Property="FontWeight" Value="SemiBold"/>
-    <Setter Property="BorderThickness" Value="0,0,0,1"/>
-    <Setter Property="BorderBrush" Value="#DDD"/>
-  </Style>
+    <Style TargetType="DataGridColumnHeader">
+        <Setter Property="Padding" Value="10,8"/>
+        <Setter Property="Background" Value="#F8F9FA"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        <Setter Property="BorderBrush" Value="#DDD"/>
+    </Style>
+    
+    
+    <Style TargetType="DataGrid">
+        <Setter Property="AutoGenerateColumns" Value="False"/>
+        <Setter Property="CanUserAddRows" Value="False"/>
+        <Setter Property="SelectionMode" Value="Single"/>
+        <Setter Property="HeadersVisibility" Value="Column"/>
+        <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+        <Setter Property="Background" Value="White"/>
+        <Setter Property="BorderBrush" Value="#CCCCCC"/>
+        <Setter Property="RowBackground" Value="White"/>
+        <Setter Property="AlternatingRowBackground" Value="#F9F9F9"/>
+        <Setter Property="RowHeaderWidth" Value="0"/>
+    </Style>
 
-
-
-  <!-- Texto -->
+    <!-- Texto -->
   <Style TargetType="TextBlock" x:Key="CeldaCentrada">
     <Setter Property="Padding" Value="5,0"/>
     <Setter Property="VerticalAlignment" Value="Center"/>
@@ -227,30 +242,7 @@
 
 
 
-  <!-- Estado de celda de VciAuditView -->
-  <Style x:Key="VciAudit_EstadoCellStyle" TargetType="TextBlock">
-    <Setter Property="Foreground" Value="#e74c3c"/>
-    <Setter Property="Text" Value="No Soportado (KOP/FUP)"/>
-    <Setter Property="FontWeight" Value="SemiBold"/>
-    <Style.Triggers>
-      <DataTrigger Binding="{Binding CanUpdateDependencies}" Value="True">
-        <Setter Property="Foreground" Value="#27ae60"/>
-        <Setter Property="Text" Value="Listo para SCL"/>
-      </DataTrigger>
-      <MultiDataTrigger>
-        <MultiDataTrigger.Conditions>
-          <Condition Binding="{Binding IsExportable}" Value="True"/>
-          <Condition Binding="{Binding CanUpdateDependencies}" Value="False"/>
-        </MultiDataTrigger.Conditions>
-        <Setter Property="Foreground" Value="#e67e22"/>
-        <Setter Property="Text" Value="Exportable (No Inyectable)"/>
-      </MultiDataTrigger>
-    </Style.Triggers>
-  </Style>
-
-
-
-  <!-- Estado de celda de ProcessGeneratorView -->
+    <!-- Estado de celda de ProcessGeneratorView -->
   <Style x:Key="Process_EstadoCellStyle" TargetType="TextBlock">
     <Setter Property="Padding" Value="5,0"/>
     <Setter Property="VerticalAlignment" Value="Center"/>

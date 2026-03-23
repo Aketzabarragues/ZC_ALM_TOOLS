@@ -115,15 +115,8 @@
                     <TextBlock Text="{Binding DimensionInfo}" FontSize="12" FontWeight="Bold" Foreground="#333"/>
                 </Border>
             </StackPanel>
-            <DataGrid Grid.Row="2" 
-                      ItemsSource="{Binding CurrentDevices}"
-                      AutoGenerateColumns="False" 
-                      CanUserAddRows="False"  
-                      IsReadOnly="True"
-                      GridLinesVisibility="Horizontal"
-                      HorizontalGridLinesBrush="#EEE"
-                      HeadersVisibility="Column"
-                      Background="White">                
+            <DataGrid Grid.Row="2"
+                      ItemsSource="{Binding CurrentDevices}">                
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="Nº" Binding="{Binding Numero}" Width="50" ElementStyle="{StaticResource CeldaCentrada}"/>
                     <DataGridTextColumn Header="Tag" Binding="{Binding Tag}" Width="180" FontWeight="Bold" ElementStyle="{StaticResource CeldaCentrada}"/>

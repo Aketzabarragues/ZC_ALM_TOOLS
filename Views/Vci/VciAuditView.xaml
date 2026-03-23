@@ -22,10 +22,12 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <Grid Grid.Row="0" Margin="0,0,0,15" Cursor="Hand">
             <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
@@ -38,23 +40,19 @@
                     Width="210" Margin="0,0,15,0"/>
 
             <Button Grid.Column="1" 
-                    Content="Actualizar Dependencias SCL" 
-                    Command="{Binding UpdateDependenciesCommand}" 
+                    Content="Seleccionar Todo" 
+                    Command="{Binding SelectAllCommand}"
                     Style="{StaticResource PrimaryButtonStyle}"
-                    Width="250" Margin="0,0,0,0"/>
+                    Width="160" Margin="0,0,10,0"/>
+            
+            <Button Grid.Column="2" 
+                    Content="Deseleccionar Todo" 
+                    Command="{Binding DeselectAllCommand}"
+                    Style="{StaticResource PrimaryButtonStyle}"
+                    Width="170" Margin="0,0,0,0"/>
         </Grid>
 
-        <DataGrid Grid.Row="1" ItemsSource="{Binding Blocks}" 
-                  AutoGenerateColumns="False" 
-                  CanUserAddRows="False" 
-                  SelectionMode="Single" 
-                  HeadersVisibility="Column" 
-                  GridLinesVisibility="Horizontal"
-                  Background="White" 
-                  BorderBrush="#CCCCCC" 
-                  RowBackground="White" 
-                  AlternatingRowBackground="#F9F9F9"
-                  RowHeaderWidth="0">
+        <DataGrid Grid.Row="1" ItemsSource="{Binding Blocks}">
             <DataGrid.Columns>
 
                 <DataGridTemplateColumn Width="50">
@@ -71,37 +69,19 @@
                 <DataGridTextColumn Header="Tipo" Binding="{Binding SimpleType}" Width="70" IsReadOnly="True"/>
                 <DataGridTextColumn Header="Nombre del Bloque" Binding="{Binding Name}" Width="280" IsReadOnly="True" FontWeight="Bold"/>
                 <DataGridTextColumn Header="Lenguaje" Binding="{Binding ProgrammingLanguage}" Width="90" IsReadOnly="True"/>
-
-                <DataGridTemplateColumn Header="Estado" Width="220" IsReadOnly="True">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding ProgrammingLanguage}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="5,0,0,0">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Foreground" Value="#e74c3c"/>
-                                        <Setter Property="Text" Value="No Soportado (KOP/FUP)"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding CanUpdateDependencies}" Value="True">
-                                                <Setter Property="Foreground" Value="#27ae60"/>
-                                                <Setter Property="Text" Value="Listo para SCL"/>
-                                            </DataTrigger>
-                                            <MultiDataTrigger>
-                                                <MultiDataTrigger.Conditions>
-                                                    <Condition Binding="{Binding IsExportable}" Value="True"/>
-                                                    <Condition Binding="{Binding CanUpdateDependencies}" Value="False"/>
-                                                </MultiDataTrigger.Conditions>
-                                                <Setter Property="Foreground" Value="#e67e22"/>
-                                                <Setter Property="Text" Value="Exportable (No Inyectable)"/>
-                                            </MultiDataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
+                <DataGridTextColumn Header="Ruta en TIA Portal" Binding="{Binding FolderPath}" IsReadOnly="True" Width="*"/>
 
             </DataGrid.Columns>
         </DataGrid>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+            <Button Grid.Column="1" 
+                    Content="Actualizar Dependencias SCL" 
+                    Command="{Binding UpdateDependenciesCommand}"
+                    Style="{StaticResource PrimaryButtonStyle}"
+                    Width="250" Margin="0,0,0,0"/>
+        </StackPanel>
+
+
     </Grid>
 </UserControl>

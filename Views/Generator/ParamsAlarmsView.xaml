@@ -106,14 +106,7 @@
             <TabControl Grid.Row="1" Background="White" BorderThickness="0,1,0,0" BorderBrush="#DDD">
 
                 <TabItem Header="Parámetros Reales">
-                    <DataGrid ItemsSource="{Binding CurrentRealParams}"
-                              AutoGenerateColumns="False" 
-                              CanUserAddRows="False"  
-                              IsReadOnly="True"
-                              GridLinesVisibility="Horizontal"
-                              HorizontalGridLinesBrush="#EEE"
-                              HeadersVisibility="Column"
-                              Background="White">                        
+                    <DataGrid ItemsSource="{Binding CurrentRealParams}">                        
 
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="DB" Binding="{Binding DbNumber}" Width="80" ElementStyle="{StaticResource CeldaCentrada}"/>

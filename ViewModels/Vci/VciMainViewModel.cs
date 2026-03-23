@@ -87,6 +87,8 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
         public RelayCommand DeleteWorkspaceCommand { get; }
         public RelayCommand ChangeWorkspaceFolderCommand { get; }
 
+
+
         // ==================================================================================================================
         /// <summary>
         /// Constructor

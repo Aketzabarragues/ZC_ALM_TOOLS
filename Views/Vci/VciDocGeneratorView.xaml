@@ -52,11 +52,7 @@
                     Width="170" Margin="0,0,0,0"/>
         </Grid>
 
-        <DataGrid Grid.Row="1" ItemsSource="{Binding PlcItems}" 
-                  AutoGenerateColumns="False" 
-                  CanUserAddRows="False" 
-                  Background="White" 
-                  RowHeaderWidth="0">
+        <DataGrid Grid.Row="1" ItemsSource="{Binding PlcItems}">
             <DataGrid.Columns>
                 <DataGridTemplateColumn Width="50">
                     <DataGridTemplateColumn.CellTemplate>

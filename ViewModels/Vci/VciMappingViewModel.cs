@@ -13,6 +13,7 @@ using ZC_ALM_TOOLS.Services.Vci;
 
 namespace ZC_ALM_TOOLS.ViewModels.Vci
 {
+
     // ==================================================================================================================
     /// <summary>
     /// ViewModel que gestiona la pestaña mapeado de archivos VCI, cruzando los datos del disco con TIA Portal

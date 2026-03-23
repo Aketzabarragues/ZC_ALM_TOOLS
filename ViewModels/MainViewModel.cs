@@ -2,18 +2,15 @@
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
-using System.Windows;
 using Microsoft.Win32;
 using Siemens.Engineering;
-using Siemens.Engineering.Hmi;
 using Siemens.Engineering.SW;
 using ZC_ALM_TOOLS.Core;
 using ZC_ALM_TOOLS.Models.TiaPortal;
-using ZC_ALM_TOOLS.Services;
 using ZC_ALM_TOOLS.Services.Common;
 using ZC_ALM_TOOLS.Services.TiaPortal;
-using ZC_ALM_TOOLS.ViewModels.Generator; // Ajusta según tus namespaces
+using ZC_ALM_TOOLS.ViewModels.Generator;
+using ZC_ALM_TOOLS.ViewModels.Settings;
 using ZC_ALM_TOOLS.ViewModels.Vci;
 
 namespace ZC_ALM_TOOLS.ViewModels
@@ -57,7 +54,7 @@ namespace ZC_ALM_TOOLS.ViewModels
         // ViewModels de los Módulos
         public GeneratorMainViewModel GeneratorVM { get; set; }
         public VciMainViewModel VciVM { get; set; }
-
+        public SettingsMainViewModel SettingsVM { get; set; }
 
 
         // Propiedades de Status Bar (Globales)
@@ -90,11 +87,13 @@ namespace ZC_ALM_TOOLS.ViewModels
             // Inicializamos los Módulos
             GeneratorVM = new GeneratorMainViewModel(_tiaPlcService, PlcTargets, HmiTargets, ScadaTargets);
             VciVM = new VciMainViewModel(_tiaPortal, _project, _tiaPlcService, _tiaVciService, PlcTargets);
+            SettingsVM = new SettingsMainViewModel();
 
             // Comandos de menú lateral
             ShowGeneratorCommand = new RelayCommand(() => CurrentView = GeneratorVM);
             ShowVciCommand = new RelayCommand(() => CurrentView = VciVM);
-            ConfigSettingsCommand = new RelayCommand(OpenSettingsEditor);
+            ConfigSettingsCommand = new RelayCommand(() => CurrentView = SettingsVM);
+
             DumpCacheCommand = new RelayCommand(ExecuteDumpCache);
 
 

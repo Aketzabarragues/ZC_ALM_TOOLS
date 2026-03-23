@@ -30,5 +30,8 @@ namespace ZC_ALM_TOOLS.Models.Vci
             set { _number = value; OnPropertyChanged(); }
         }
 
+        public string ProgrammingLanguage { get; set; }
+        public bool CanUpdateDependencies { get; set; }
+        public bool IsExportable { get; set; }
     }
 }

@@ -70,7 +70,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                     foreach (var b in blocks)
                     {
                         try
-                        {                            
+                        {
                             if (b.IsExportable)
                             {
                                 PlcItems.Add(new VciSelectableItem
@@ -80,14 +80,17 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                                     Name = b.Name,
                                     SimpleType = b.SimpleType,
                                     FolderPath = b.FolderPath,
-                                    Number = b.Number
+                                    Number = b.Number,
+                                    ProgrammingLanguage = b.ProgrammingLanguage,
+                                    CanUpdateDependencies = b.CanUpdateDependencies,
+                                    IsExportable = b.IsExportable
                                 });
                             }
                         }
                         catch (Exception blockEx)
                         {
                             LogService.Write($"[VCI-DOC-GENERATOR] [LoadItems] Error leyendo propiedades del bloque {b.Name}: {blockEx.Message}", true);
-                        }                       
+                        }
                     }
                 }
 
@@ -106,7 +109,10 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                             Name = t.Name,
                             SimpleType = "UDT",
                             FolderPath = t.FolderPath,
-                            Number = 0
+                            Number = 0,
+                            ProgrammingLanguage = "UDT",
+                            CanUpdateDependencies = false,
+                            IsExportable = true
                         });
                     }
                 }

@@ -147,15 +147,7 @@
                        FontSize="16" FontWeight="SemiBold" Foreground="#444" Margin="0,10,0,10"/>
 
             <DataGrid Grid.Row="3" 
-                      ItemsSource="{Binding ProjectedBlocks}"
-                      AutoGenerateColumns="False" 
-                      CanUserAddRows="False"  
-                      IsReadOnly="True"
-                      GridLinesVisibility="Horizontal"
-                      HorizontalGridLinesBrush="#EEE"
-                      HeadersVisibility="Column"
-                      Background="White"
-                      BorderBrush="#DDD" BorderThickness="1">
+                      ItemsSource="{Binding ProjectedBlocks}">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="Tipo" Binding="{Binding Tipo}" Width="60" ElementStyle="{StaticResource CeldaCentrada}"/>
                     <DataGridTextColumn Header="Archivo plantilla" Binding="{Binding ArchivoOrigen}" Width="250" ElementStyle="{StaticResource CeldaCentrada}"/>

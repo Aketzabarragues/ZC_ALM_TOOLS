@@ -50,11 +50,7 @@
         </Grid>
 
 
-        <DataGrid Grid.Row="1" ItemsSource="{Binding MappingActions}" 
-                  AutoGenerateColumns="False" 
-                  CanUserAddRows="False" 
-                  Background="White" 
-                  RowHeaderWidth="0">
+        <DataGrid Grid.Row="1" ItemsSource="{Binding MappingActions}">
             <DataGrid.Columns>
                 <DataGridTemplateColumn Width="50">
                     <DataGridTemplateColumn.CellTemplate>
