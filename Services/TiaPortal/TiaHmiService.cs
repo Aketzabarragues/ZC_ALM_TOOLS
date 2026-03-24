@@ -1,10 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Xml.Linq;
 using Siemens.Engineering;
 using Siemens.Engineering.Hmi;
 using Siemens.Engineering.Hmi.Communication;
 using Siemens.Engineering.Hmi.Tag;
 using Siemens.Engineering.HW.Features;
+using Siemens.Engineering.Library;
+using Siemens.Engineering.Library.MasterCopies;
 using ZC_ALM_TOOLS.Core; // Asegúrate de tener acceso a LogService
 using ZC_ALM_TOOLS.Models;
 using ZC_ALM_TOOLS.Models.Common;
@@ -16,6 +21,179 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
     public class TiaHmiService
     {
         public TiaHmiService() { }
+
+
+
+
+
+
+
+        public void RunXmlHmiPoC(HmiTarget hmiTarget, GlobalLibrary library, string newBaseName, string connectionName)
+        {
+            LogService.Write("[TIA-HMI-SERVICE] [RunXmlHmiPoC] Iniciando RunXmlHmiPoC...");
+            if (hmiTarget == null || library == null)
+            {
+                LogService.Write("[TIA-HMI-SERVICE] hmiTarget o library son nulos.", true);
+                return;
+            }
+
+            try
+            {
+                LogService.Write("[TIA-HMI-SERVICE] Navegando por MasterCopyFolder...");
+                var rootFolder = library.MasterCopyFolder;
+                if (rootFolder == null) throw new Exception("MasterCopyFolder de la librería es nulo.");
+
+                var ufFolder = rootFolder.Folders.Find("UF");
+                if (ufFolder == null) throw new Exception("Carpeta 'UF' no encontrada en la librería.");
+
+                var varsFolder = ufFolder.Folders.Find("Variables");
+                var imgsFolder = ufFolder.Folders.Find("Imagenes");
+
+                if (varsFolder == null) throw new Exception("Carpeta 'Variables' no encontrada en 'UF'.");
+                if (imgsFolder == null) throw new Exception("Carpeta 'Imagenes' no encontrada en 'UF'.");
+
+                LogService.Write("[TIA-HMI-SERVICE] Buscando plantillas UF_Alm y UF_Sinoptico...");
+                var tagTableTemplate = varsFolder.MasterCopies.Find("UF_Alm");
+                var screenTemplate = imgsFolder.MasterCopies.Find("UF_Sinoptico");
+
+                if (tagTableTemplate == null) throw new Exception("Plantilla 'UF_Alm' no encontrada.");
+                if (screenTemplate == null) throw new Exception("Plantilla 'UF_Sinoptico' no encontrada.");
+
+                string tempDir = Path.Combine(AppConfigService.TempPath, "HmiExport");
+                if (!Directory.Exists(tempDir)) Directory.CreateDirectory(tempDir);
+
+                // =========================================================================
+                // FASE 1: TABLA DE VARIABLES
+                // =========================================================================
+                LogService.Write("[TIA-HMI-SERVICE] Creando Tabla de variables temporal...");
+                StatusService.Set("Instanciando y exportando Tabla de Variables...", StatusType.Warning);
+                var tempTable = hmiTarget.TagFolder.TagTables.CreateFrom(tagTableTemplate);
+
+                if (tempTable == null) throw new Exception("CreateFrom devolvió nulo para la tabla de variables.");
+
+                string tableXmlPath = Path.Combine(tempDir, $"{tempTable.Name}.xml");
+                if (File.Exists(tableXmlPath)) File.Delete(tableXmlPath);
+
+                LogService.Write($"[TIA-HMI-SERVICE] Exportando tabla a XML: {tableXmlPath}");
+                tempTable.Export(new FileInfo(tableXmlPath), ExportOptions.WithDefaults);
+
+                // --- Borrar INMEDIATAMENTE tras exportar ---
+                LogService.Write("[TIA-HMI-SERVICE] Borrando tabla temporal original (pre-import)...");
+                tempTable.Delete();
+
+                LogService.Write("[TIA-HMI-SERVICE] Modificando XML de la tabla...");
+                XDocument tableDoc = XDocument.Load(tableXmlPath);
+
+                var tableNameNode = tableDoc.Descendants("Hmi.Tag.TagTable").Elements("AttributeList").Elements("Name").FirstOrDefault();
+                if (tableNameNode != null) tableNameNode.Value = $"Tabla_{newBaseName}";
+
+                foreach (var tagNode in tableDoc.Descendants("Hmi.Tag.Tag"))
+                {
+                    var nameNode = tagNode.Elements("AttributeList").Elements("Name").FirstOrDefault();
+                    if (nameNode != null) nameNode.Value = $"{nameNode.Value}_{newBaseName}";
+
+                    var connectionNode = tagNode.Elements("LinkList").Elements("Connection").Elements("Name").FirstOrDefault();
+                    if (connectionNode != null) connectionNode.Value = connectionName;
+                }
+                tableDoc.Save(tableXmlPath);
+
+                LogService.Write("[TIA-HMI-SERVICE] Importando XML de la tabla modificado...");
+                hmiTarget.TagFolder.TagTables.Import(new FileInfo(tableXmlPath), ImportOptions.None);
+
+
+                // =========================================================================
+                // FASE 2: PANTALLA
+                // =========================================================================
+                LogService.Write("[TIA-HMI-SERVICE] Creando Pantalla temporal...");
+                StatusService.Set("Instanciando y exportando Pantalla...", StatusType.Warning);
+                var tempScreen = hmiTarget.ScreenFolder.Screens.CreateFrom(screenTemplate);
+
+                if (tempScreen == null) throw new Exception("CreateFrom devolvió nulo para la pantalla.");
+
+                string screenXmlPath = Path.Combine(tempDir, $"{tempScreen.Name}.xml");
+                if (File.Exists(screenXmlPath)) File.Delete(screenXmlPath);
+
+                LogService.Write($"[TIA-HMI-SERVICE] Exportando pantalla a XML: {screenXmlPath}");
+                tempScreen.Export(new FileInfo(screenXmlPath), ExportOptions.WithDefaults);
+
+                // --- Borrar INMEDIATAMENTE tras exportar ---
+                LogService.Write("[TIA-HMI-SERVICE] Borrando pantalla temporal original (pre-import)...");
+                tempScreen.Delete();
+
+                LogService.Write("[TIA-HMI-SERVICE] Modificando XML de la pantalla y relinkando variables...");
+                XDocument screenDoc = XDocument.Load(screenXmlPath);
+
+                // 2.1 Renombrar Pantalla
+                var screenNameNode = screenDoc.Descendants("Hmi.Screen.Screen").Elements("AttributeList").Elements("Name").FirstOrDefault();
+                if (screenNameNode != null) screenNameNode.Value = $"Pantalla_{newBaseName}";
+
+                // 2.2 Relinkar variables conectadas a objetos (Botones, IO Fields, etc.)
+                var openLinkTags = screenDoc.Descendants("Tag")
+                                            .Where(e => (string)e.Attribute("TargetID") == "@OpenLink")
+                                            .Elements("Name");
+
+                int relinkCount = 0;
+                foreach (var nameNode in openLinkTags)
+                {
+                    nameNode.Value = $"{nameNode.Value}_{newBaseName}";
+                    relinkCount++;
+                }
+                LogService.Write($"[TIA-HMI-SERVICE] Se relinkaron {relinkCount} referencias a variables en la pantalla.");
+
+                screenDoc.Save(screenXmlPath);
+
+                LogService.Write("[TIA-HMI-SERVICE] Importando XML de la pantalla modificada...");
+                hmiTarget.ScreenFolder.Screens.Import(new FileInfo(screenXmlPath), ImportOptions.None);
+
+                LogService.Write($"[TIA-HMI-SERVICE] PoC XML Finalizado con éxito para '{newBaseName}'.");
+            }
+            catch (Exception ex)
+            {
+                LogService.Write($"[TIA-HMI-SERVICE] Error en XML PoC: {ex.Message}\nStack: {ex.StackTrace}", true);
+            }
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         public bool SyncHmiVariables(object hmiSoftwareObj, string plcName, ConfigDeviceCategory category, List<IDevice> devices)
         {
@@ -46,14 +224,14 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                 string connectionName = "";
                 LogService.Write($"[TIA-HMI-SERVICE] Analizando Conexiones (Total reportadas: {hmiTarget.Connections.Count})");
 
-                foreach (Connection connection in hmiTarget.Connections)
+                foreach (Siemens.Engineering.Hmi.Communication.Connection connection in hmiTarget.Connections)
                 {
                     LogService.Write($"[TIA-HMI-SERVICE] -> Conexión encontrada: '{connection.Name}'");
                     if (connection.Name.IndexOf(plcName, StringComparison.OrdinalIgnoreCase) >= 0)
                     {
                         connectionName = connection.Name;
                     }
-                        
+
                     LogService.Write($"[TIA-HMI-SERVICE] Analizando Conexiones (Total reportadas: {connection.Name})");
                     LogService.Write($"[TIA-HMI-SERVICE] Analizando Conexiones (Total reportadas: {connection.Parent})");
                 }

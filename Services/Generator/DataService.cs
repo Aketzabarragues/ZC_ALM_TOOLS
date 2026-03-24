@@ -59,6 +59,40 @@ namespace ZC_ALM_TOOLS.Services.Generator
 
         // ==================================================================================================================
         /// <summary>
+        /// Metodo para la carga de la lista de conexiones desde conexiones.xml
+        /// </summary>
+        public static List<Connection> LoadConections(string path)
+        {
+            var list = new List<Connection>();
+
+            if (!File.Exists(path))
+            {
+                LogService.Write($"[DATA-SERVICE] [LoadConections] No se encuentra conexion.xml: {path}", true);
+                return list;
+            }
+
+            try
+            {
+                XDocument doc = XDocument.Load(path);
+                // Buscamos los nodos <Conexion> y usamos el método FromXml del modelo
+                list = doc.Descendants("Conexion")
+                          .Select(x => Connection.FromXml(x))
+                          .ToList();
+
+                LogService.Write($"[DATA-SERVICE] [LoadConections] Cargadas {list.Count} conexiones.");
+            }
+            catch (Exception ex)
+            {
+                LogService.Write($"[DATA-SERVICE] [LoadConections] Error leyendo conexiones.xml: {ex.Message}", true);
+            }
+
+            return list;
+        }
+
+
+
+        // ==================================================================================================================
+        /// <summary>
         /// Metodo para la carga de la lista de etapas desde etapas.xml
         /// </summary>
         public static List<ProcessStage> LoadStages(string path)

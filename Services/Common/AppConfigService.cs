@@ -173,5 +173,25 @@ namespace ZC_ALM_TOOLS.Services.Common
         }
 
 
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Metodo para la lectura de conexiones 
+        /// </summary>
+        public static ConfigNetworkSettings GetNetworkConfig()
+        {
+            try
+            {
+                if (!File.Exists(AppConfigFile)) return new ConfigNetworkSettings();
+                var doc = XDocument.Load(AppConfigFile);
+                return ConfigNetworkSettings.FromXml(doc.Root?.Element("NetworkSettings"));
+            }
+            catch (Exception ex)
+            {
+                LogService.Write($"[APP-CONFIG-SERVICE] [GetNetworkConfig] Error en GetGlobalSettings: {ex.Message}", true);
+                return new ConfigNetworkSettings();
+            }
+        }
+
     }
 }

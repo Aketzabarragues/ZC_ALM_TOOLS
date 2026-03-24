@@ -1,12 +1,17 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Windows.Input;
+using Siemens.Engineering;
+using Siemens.Engineering.Hmi;
 using ZC_ALM_TOOLS.Core;
 using ZC_ALM_TOOLS.Models.Common;
 using ZC_ALM_TOOLS.Models.Generator;
+using ZC_ALM_TOOLS.Models.TiaPortal;
 using ZC_ALM_TOOLS.Services.Common;
 using ZC_ALM_TOOLS.Services.TiaPortal;
 
@@ -41,7 +46,15 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
     /// </summary>
     public class ProcessGeneratorViewModel : ObservableObject
     {
+        // ==================================================================================================================
+        // Tia portal
         private TiaPlcService _tiaPlcService;
+        private TiaHmiService _tiaHmiService;
+
+
+        public ObservableCollection<TiaTarget> HmiTargets { get; set; }
+
+
         private ConfigProcessSettings _processSettings;
         private Dictionary<string, List<object>> _engineeringCache;
         private ConfigGlobalSettings _globalSettings;
@@ -87,23 +100,138 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
         public RelayCommand GenerateCommand { get; set; }
         public RelayCommand RefreshTemplatesCommand { get; set; }
 
-
+        //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        //BORRAR!!!!!!!
+        public RelayCommand RunHmiHardcodedPoCCommand { get; }
 
 
         // ==================================================================================================================
         /// <summary>
         /// Constructor
         /// </summary>
-        public ProcessGeneratorViewModel(TiaPlcService tiaPlcService)
+        public ProcessGeneratorViewModel(TiaPlcService tiaPlcService, 
+                                         TiaHmiService tiaHmiService,
+                                         ObservableCollection<TiaTarget> hmiTargets)
         {
 
             _tiaPlcService = tiaPlcService;
+            _tiaHmiService = tiaHmiService;
+
+
+            HmiTargets = hmiTargets;
 
             // El botón Comparar solo se habilita si hay bloques en la lista
             CompareCommand = new RelayCommand(ExecuteCompare, () => ProjectedBlocks.Count > 0);
             GenerateCommand = new RelayCommand(ExecuteGenerate, () => CanGenerate);
             RefreshTemplatesCommand = new RelayCommand(() => LoadTemplates(_globalSettings));
+
+
+            //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            //BORRAR!!!!!!!
+            RunHmiHardcodedPoCCommand = new RelayCommand(ExecuteRunHmiHardcodedPoC, () => true);
         }
+
+
+
+
+        //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        //BORRAR!!!!!!!
+        private async void ExecuteRunHmiHardcodedPoC()
+        {
+            StatusService.Set("Iniciando PoC HMI (vía XML)...", StatusType.Ok);
+
+            try
+            {
+                LogService.Write("[DEVICE-VM] [PoC] Paso 1: Buscando HMI_1...");
+                var target = HmiTargets.FirstOrDefault(h => h.Name.Equals("HMI_1", StringComparison.OrdinalIgnoreCase));
+
+                if (target == null)
+                {
+                    LogService.Write("[DEVICE-VM] [PoC] ERROR: target (HMI_1) es nulo en la colección HmiTargets.", true);
+                    return;
+                }
+
+                var hmiTarget = target.SoftwareObject as HmiTarget;
+                if (hmiTarget == null)
+                {
+                    LogService.Write("[DEVICE-VM] [PoC] ERROR: target.SoftwareObject no es de tipo HmiTarget.", true);
+                    return;
+                }
+
+                await Task.Delay(50);
+
+                LogService.Write("[DEVICE-VM] [PoC] Paso 2: Abriendo librería...");
+                string libPath = @"D:\_PROYECTOS_DESARROLLO\_TiaPortalLibreria\Test\Test.al18";
+
+                if (_tiaPlcService == null) throw new Exception("_tiaPlcService es NULO.");
+                var library = _tiaPlcService.GetOrOpenGlobalLibrary(libPath);
+
+                if (library == null)
+                {
+                    LogService.Write("[DEVICE-VM] [PoC] ERROR: No se pudo cargar o abrir la librería HMI.", true);
+                    return;
+                }
+
+                await Task.Delay(50);
+
+                LogService.Write("[DEVICE-VM] [PoC] Paso 3: Comprobando TiaHmiService...");
+                if (_tiaHmiService == null)
+                {
+                    throw new Exception("¡_tiaHmiService es NULO! Posible fallo en la inyección de dependencias del DevicesViewModel.");
+                }
+
+                LogService.Write("[DEVICE-VM] [PoC] Paso 4: Llamando a TiaHmiService.RunXmlHmiPoC...");
+                _tiaHmiService.RunXmlHmiPoC(hmiTarget, library, "Prueba_001", "HMI_Conexion_1");
+
+                LogService.Write("[DEVICE-VM] [PoC] Finalizado.");
+                StatusService.Set("Prueba HMI completada.", StatusType.Ok);
+            }
+            catch (EngineeringSecurityException)
+            {
+                LogService.Write("[DEVICE-VM] TIA Portal está bloqueando la ejecución. Ve a TIA Portal y acepta el diálogo de seguridad para abrir la librería.", true);
+            }
+            catch (Exception ex)
+            {
+                LogService.Write($"[DEVICE-VM] Excepción crítica en PoC: {ex.Message}\nStack: {ex.StackTrace}", true);
+                StatusService.Set("Error en prueba HMI.", StatusType.Error);
+            }
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

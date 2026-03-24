@@ -59,7 +59,8 @@
                         Content="Sincronizar dispositivo" 
                         Style="{StaticResource PrimaryButtonStyle}"
                         Height="40" Margin="0,0,0,10"/>
-                
+
+
                 <TextBlock Text="*Sincroniza N_MAX, Constantes y Comentarios DB" FontSize="10" Foreground="#888" TextWrapping="Wrap" HorizontalAlignment="Center"/>
                 <TextBlock Text="Paso 3: Opciones HMI (Opcional)" FontWeight="SemiBold" Margin="0,15,0,5" Foreground="#444" Visibility="Hidden"/>
                 <Border Background="White" BorderBrush="#D0D0D0" BorderThickness="1" CornerRadius="4" Padding="12,10" Visibility="Hidden">

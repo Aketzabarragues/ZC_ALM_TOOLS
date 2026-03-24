@@ -23,6 +23,7 @@ namespace ZC_ALM_TOOLS.ViewModels
         private readonly TiaPortal _tiaPortal;
         private readonly Project _project;
         public TiaPlcService _tiaPlcService;
+        public TiaHmiService _tiaHmiService;
         public TiaVciService _tiaVciService;
 
         public ObservableCollection<TiaTarget> PlcTargets { get; } = new ObservableCollection<TiaTarget>();
@@ -82,10 +83,12 @@ namespace ZC_ALM_TOOLS.ViewModels
 
             _tiaPlcService = new TiaPlcService();
             _tiaVciService = new TiaVciService(project);
+            _tiaHmiService = new TiaHmiService();
 
+            _tiaPlcService.SetTiaPortalInstance(_tiaPortal);
 
             // Inicializamos los Módulos
-            GeneratorVM = new GeneratorMainViewModel(_tiaPlcService, PlcTargets, HmiTargets, ScadaTargets);
+            GeneratorVM = new GeneratorMainViewModel(_tiaPlcService, _tiaHmiService, PlcTargets, HmiTargets, ScadaTargets);
             VciVM = new VciMainViewModel(_tiaPortal, _project, _tiaPlcService, _tiaVciService, PlcTargets);
             SettingsVM = new SettingsMainViewModel();
 

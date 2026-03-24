@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using Siemens.Engineering;
 using Siemens.Engineering.Compiler;
+using Siemens.Engineering.Library;
 using Siemens.Engineering.SW;
 using Siemens.Engineering.SW.Blocks;
 using Siemens.Engineering.SW.ExternalSources;
@@ -45,6 +46,119 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
         public TiaPlcService()
         {
         }
+
+
+
+
+
+
+
+
+        // ==================================================================================================================
+        // GESTIÓN DE TIA PORTAL Y LIBRERÍAS
+        // ==================================================================================================================
+
+        private Siemens.Engineering.TiaPortal _tiaApp;
+
+        /// <summary>
+        /// Asigna la instancia principal de TIA Portal al servicio. 
+        /// (Debe llamarse desde el AddIn.cs o donde inicialices la conexión principal)
+        /// </summary>
+        public void SetTiaPortalInstance(Siemens.Engineering.TiaPortal tiaApp)
+        {
+            _tiaApp = tiaApp;
+        }
+
+        /// <summary>
+        /// Busca una librería global por nombre y, si no está abierta, la abre desde la ruta especificada.
+        /// </summary>
+        public GlobalLibrary GetOrOpenGlobalLibrary(string libraryPath)
+        {
+            if (_tiaApp == null)
+            {
+                LogService.Write("[TIA-PLC-SERVICE] [GetOrOpenGlobalLibrary] ERROR: Instancia de TIA Portal no asignada al servicio.", true);
+                return null;
+            }
+
+            if (string.IsNullOrWhiteSpace(libraryPath) || !File.Exists(libraryPath))
+            {
+                LogService.Write($"[TIA-PLC-SERVICE] [GetOrOpenGlobalLibrary] La ruta es inválida o el archivo no existe: {libraryPath}", true);
+                return null;
+            }
+
+            try
+            {
+                FileInfo libFile = new FileInfo(libraryPath);
+                string libraryName = Path.GetFileNameWithoutExtension(libFile.Name);
+
+                // 1. Comprobar si ya está abierta en la instancia actual
+                var openedLibrary = _tiaApp.GlobalLibraries.FirstOrDefault(l =>
+                    l.Name.Equals(libraryName, StringComparison.OrdinalIgnoreCase));
+
+                if (openedLibrary != null)
+                {
+                    LogService.Write($"[TIA-PLC-SERVICE] [GetOrOpenGlobalLibrary] Librería global '{libraryName}' ya se encuentra abierta.");
+                    return openedLibrary;
+                }
+
+                // 2. Si no está abierta, pedir a Openness que la abra
+                StatusService.Set($"Abriendo librería global '{libraryName}'...", StatusType.Warning);
+
+                // OpenMode.ReadOnly es crucial para evitar bloqueos si la librería está en uso por otro proceso
+                var newOpenedLibrary = _tiaApp.GlobalLibraries.Open(libFile, OpenMode.ReadOnly);
+
+                LogService.Write($"[TIA-PLC-SERVICE] [GetOrOpenGlobalLibrary] Librería '{libraryName}' abierta correctamente.");
+                return newOpenedLibrary;
+            }
+            catch (EngineeringSecurityException)
+            {
+                // Se relanza para que el ViewModel lo capture y avise al usuario en la UI
+                throw;
+            }
+            catch (Exception ex)
+            {
+                LogService.Write($"[TIA-PLC-SERVICE] [GetOrOpenGlobalLibrary] Excepción al abrir la librería: {ex.Message}", true);
+                return null;
+            }
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

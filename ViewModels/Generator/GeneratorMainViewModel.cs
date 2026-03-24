@@ -52,6 +52,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
         private readonly Dictionary<string, List<object>> _engineeringCache = new Dictionary<string, List<object>>();
 
         // Cache de configuracion xml
+        private ConfigNetworkSettings _configNetworkSettings;
         private ConfigProcessSettings _configProcessesSettings;
         private ConfigDeviceSettings _configDeviceSettings;
         private ConfigGlobalSettings _configGlobalSettings;
@@ -89,6 +90,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
         /// Constructor
         /// </summary>
         public GeneratorMainViewModel(TiaPlcService tiaPlcService,
+                                      TiaHmiService tiaHmiService,
                                       ObservableCollection<TiaTarget> plcTargets,
                                       ObservableCollection<TiaTarget> hmiTargets,
                                       ObservableCollection<TiaTarget> scadaTargets)
@@ -100,10 +102,11 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
             // Buscamos todos los dispositivos del proyecto         
             PlcTargets = plcTargets;
             HmiTargets = hmiTargets;
-            ScadaTargets = scadaTargets; 
+            ScadaTargets = scadaTargets;
 
             // Inicializamos servicios de Tia portal
             _tiaPlcService = tiaPlcService;
+            _tiaHmiService = tiaHmiService;
 
 
             // Seleccionamos el primer PLC por defecto para la comparación
@@ -111,6 +114,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
             // Inicializamos configuración y cargamos categorías
             AppConfigService.InitializeEnvironment();
+            _configNetworkSettings = AppConfigService.GetNetworkConfig();
             _configProcessesSettings = AppConfigService.GetProcessConfig();
             _configDeviceSettings = AppConfigService.GetDeviceSettings();
             _configGlobalSettings = AppConfigService.GetGlobalSettings();
@@ -190,8 +194,8 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
                 ClearExportFolder(AppConfigService.ExportPath);
 
-                LogService.Write("[MAIN-VM] [LoadExcelAndGenerateJson] Lanzando proceso Python...");
-                StatusService.Set("Ejecutando extractor Python...", StatusType.Ok);
+                LogService.Write("[MAIN-VM] [LoadExcelAndGenerateJson] Lanzando proceso extractor excel...");
+                StatusService.Set("Extrayendo datos de excel...", StatusType.Ok);
 
 
 
@@ -216,14 +220,14 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                     }
                     else
                     {
-                        StatusService.Set("Error: Python terminó pero no se encontraron los archivos XML.", StatusType.Error);
+                        StatusService.Set("Error: El extractor de excel terminó pero no se encontraron los archivos XML.", StatusType.Error);
                     }
                 }
                 else
                 {
                     // Si llegamos aquí, es que Python falló (ExitCode != 0)
                     StatusService.Set("Error en el script de extracción. Revisa el LOG.", StatusType.Error);
-                    MessageBox.Show("El extractor de Python ha fallado. Consulta los detalles en la pestaña de Log.",
+                    MessageBox.Show("El extractor de excel ha fallado. Consulta los detalles en la pestaña de Log.",
                                     "Error de Extracción", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
 
@@ -305,7 +309,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
             }
             catch (Exception ex)
             {
-                LogService.Write($"[MAIN-VM] [StartExtractor] Error crítico lanzando Python: {ex.Message}", true);
+                LogService.Write($"[MAIN-VM] [StartExtractor] Error crítico lanzando extractor de excel: {ex.Message}", true);
                 return false;
             }
         }
@@ -328,6 +332,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
             expectedFiles.Add(_configProcessesSettings.PRealXml);
             expectedFiles.Add(_configProcessesSettings.PIntXml);
             expectedFiles.Add(_configProcessesSettings.StageXml);
+            expectedFiles.Add(_configNetworkSettings.ConnectionsXml);
             expectedFiles.Add(_configDeviceSettings.DeviceDataConfigXml);
 
             for (int i = 0; i < 150; i++)
@@ -423,7 +428,17 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                     var data = DataService.LoadStages(pathStages);
                     _engineeringCache[_configProcessesSettings.StageName] = data.Cast<object>().ToList();
                 }
+            }
 
+            // Cargar configuración de red (Conexiones)
+            if (_configNetworkSettings != null)
+            {
+                string pathConnections = Path.Combine(folderPath, _configNetworkSettings.ConnectionsXml);
+                if (File.Exists(pathConnections))
+                {
+                    var data = DataService.LoadConections(pathConnections);
+                    _engineeringCache[_configNetworkSettings.ConnectionsName] = data.Cast<object>().ToList();
+                }
             }
 
         }

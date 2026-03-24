@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
+using Siemens.Engineering;
 using ZC_ALM_TOOLS.Core;
 using ZC_ALM_TOOLS.Models.Common;
 using ZC_ALM_TOOLS.Models.Generator;
@@ -82,9 +83,10 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
         /// <summary>
         /// Constructor
         /// </summary>
-        public DevicesViewModel(TiaPlcService tiaPlcService, TiaHmiService tiaHmiService,
-                              List<ConfigDeviceCategory> categories,
-                              ObservableCollection<TiaTarget> hmiTargets)
+        public DevicesViewModel(TiaPlcService tiaPlcService, 
+                                TiaHmiService tiaHmiService,
+                                List<ConfigDeviceCategory> categories,
+                                ObservableCollection<TiaTarget> hmiTargets)
         {
 
             _tiaPlcService = tiaPlcService;
@@ -94,6 +96,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
             SyncCommand = new RelayCommand(ExecuteSync, CanExecuteAction);
             CompareCommand = new RelayCommand(ExecuteCompareCommand, CanExecuteAction);
+
         }
 
 
@@ -488,9 +491,6 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                 StatusService.SetBusy(false);
             }
         }
-
-
-
 
 
 
