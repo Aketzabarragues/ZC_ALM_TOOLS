@@ -72,7 +72,8 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                             Name = device.DeviceItems[1].Name,
                             Type = TargetType.PLC,
                             SoftwareObject = plc,
-                            IsChecked = false
+                            IsChecked = false,
+                            DeviceItem = item
                         });
                     }
                     else if (software is HmiTarget hmi)
@@ -85,7 +86,8 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                             Name = device.Name,
                             Type = isScada ? TargetType.SCADA : TargetType.HMI,
                             SoftwareObject = hmi,
-                            IsChecked = false
+                            IsChecked = false,
+                            DeviceItem = item
                         });
                     }
                 }

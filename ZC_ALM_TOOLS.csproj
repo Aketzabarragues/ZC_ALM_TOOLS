@@ -80,6 +80,7 @@
     <Compile Include="Models\Common\ConfigNetworkSettings.cs" />
     <Compile Include="Models\Generator\Connection.cs" />
     <Compile Include="Models\TiaPortal\CachedPlcType.cs" />
+    <Compile Include="Models\TiaPortal\ProjectedBlock.cs" />
     <Compile Include="Models\Vci\VciMatchResult.cs" />
     <Compile Include="Models\Vci\VciMappingAction.cs" />
     <Compile Include="Models\Generator\Alarms.cs" />

@@ -6,8 +6,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using Microsoft.Win32;
-using Siemens.Engineering;
-using Siemens.Engineering.HW;
 using Siemens.Engineering.SW;
 using ZC_ALM_TOOLS.Core;
 using ZC_ALM_TOOLS.Models.Common;
@@ -34,7 +32,6 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
         public ObservableCollection<TiaTarget> HmiTargets { get; }
         public ObservableCollection<TiaTarget> ScadaTargets { get; }
 
-
         private TiaTarget _selectedTarget;
         public TiaTarget SelectedTarget
         {
@@ -46,7 +43,6 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                 NotifyPlcChanged();
             }
         }
-
 
         // Caché de datos cargados
         private readonly Dictionary<string, List<object>> _engineeringCache = new Dictionary<string, List<object>>();
@@ -95,6 +91,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                                       ObservableCollection<TiaTarget> hmiTargets,
                                       ObservableCollection<TiaTarget> scadaTargets)
         {
+            
             LogService.Clear();
             LogService.Write("[MAIN-VM] [MainViewModel] Inicializando MainViewModel...");
 
@@ -124,7 +121,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
             DevicesVM = new DevicesViewModel(_tiaPlcService, _tiaHmiService, _configDeviceCategories, HmiTargets);
             ParamsAlarmsVM = new ParamsAlarmsViewModel(_tiaPlcService);
 
-            ProcessGeneratorVM = new ProcessGeneratorViewModel(_tiaPlcService);
+            ProcessGeneratorVM = new ProcessGeneratorViewModel(_tiaPlcService, _tiaHmiService, HmiTargets);
             ProcessGeneratorVM.LoadTemplates(_configGlobalSettings);
 
 
@@ -213,7 +210,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                         // Actualizar ViewModels
                         DevicesVM.LoadData(_engineeringCache, _configDeviceSettings);
                         ParamsAlarmsVM.LoadData(_engineeringCache, _configProcessesSettings);
-                        ProcessGeneratorVM.LoadData(_engineeringCache, _configProcessesSettings, _configGlobalSettings);                        
+                        ProcessGeneratorVM.LoadData(_engineeringCache, _configProcessesSettings, _configGlobalSettings, _configNetworkSettings);                        
 
                         IsDataLoaded = true;
                         StatusService.Set("Listo. Todos los módulos cargados.", StatusType.Ok);

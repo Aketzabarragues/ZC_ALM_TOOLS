@@ -19,6 +19,7 @@ namespace ZC_ALM_TOOLS.Models.TiaPortal
 
         // La referencia real al objeto de software de Siemens
         public object SoftwareObject { get; set; }
+        public Siemens.Engineering.HW.DeviceItem DeviceItem { get; set; }
 
         public bool IsChecked
         {
@@ -35,5 +36,7 @@ namespace ZC_ALM_TOOLS.Models.TiaPortal
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }
+
+        
     }
 }

@@ -12,7 +12,7 @@ namespace ZC_ALM_TOOLS
         
         private const string s_DisplayNameOfAddIn = "ZC ALM TOOLS";
         private readonly TiaPortal _tiaPortal;
-
+        private Project _project;
 
         // =================================================================================================================
         // CONSTRUCTOR
@@ -47,10 +47,10 @@ namespace ZC_ALM_TOOLS
         // Iniciar aplicacion
         private void StartGeneratorTool(MenuSelectionProvider<IEngineeringObject> selectionProvider)
         {
-            var project = selectionProvider.GetSelection<Project>().FirstOrDefault(); // _tiaPortal.Projects.FirstOrDefault();
-            if (project == null) return;
+            _project = selectionProvider.GetSelection<Project>().FirstOrDefault(); // _tiaPortal.Projects.FirstOrDefault();
+            if (_project == null) return;
             
-            MainWindow window = new MainWindow(_tiaPortal, project);
+            MainWindow window = new MainWindow(_tiaPortal, _project);
             window.ShowDialog();
             //window.Show();
 

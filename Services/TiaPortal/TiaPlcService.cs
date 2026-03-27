@@ -28,8 +28,8 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
     {
 
         private PlcSoftware _currentPlc;
-
-
+        private Project _currentProject;
+        private Siemens.Engineering.TiaPortal _tiaApp;
 
         // Diccionarios de caché en RAM
         private List<CachedPlcBlock> _plcCache;
@@ -58,15 +58,16 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
         // GESTIÓN DE TIA PORTAL Y LIBRERÍAS
         // ==================================================================================================================
 
-        private Siemens.Engineering.TiaPortal _tiaApp;
+       
 
         /// <summary>
         /// Asigna la instancia principal de TIA Portal al servicio. 
         /// (Debe llamarse desde el AddIn.cs o donde inicialices la conexión principal)
         /// </summary>
-        public void SetTiaPortalInstance(Siemens.Engineering.TiaPortal tiaApp)
+        public void SetTiaPortalInstance(Siemens.Engineering.TiaPortal tiaApp, Project project)
         {
             _tiaApp = tiaApp;
+            _currentProject = project;
         }
 
         /// <summary>
@@ -121,45 +122,6 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                 return null;
             }
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -617,7 +579,7 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                     _currentPlc.ExternalSourceGroup.GenerateSource(listForExport, new FileInfo(sclTempPath), GenerateOptions.None);
 
                     // 3. Inyectar dependencias mediante C# (Expresiones regulares)
-                    var utf8Bom = new System.Text.UTF8Encoding(true);
+                    var utf8Bom = new UTF8Encoding(true);
 
                     string sclContent = File.ReadAllText(sclTempPath, utf8Bom);
                     string updatedScl = InjectRequiresIntoScl(sclContent, dependenciesText);
@@ -644,15 +606,26 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                 var finalUtf8Bom = new System.Text.UTF8Encoding(true);
                 File.WriteAllText(massiveImportPath, massiveSclFile.ToString(), finalUtf8Bom);
 
-                var extSources = _currentPlc.ExternalSourceGroup.ExternalSources;
-                PlcExternalSource source = extSources.CreateFromFile("UpdateMasivo_Temp", massiveImportPath);
 
-                // AQUÍ SÍ VA EL OVERWRITE. Al importar a TIA Portal, machacamos los bloques existentes.
-                source.GenerateBlocksFromSource(GenerateBlockOption.None);
+                // Solicitamos acceso exclusivo a TIA Portal para evitar que el usuario interfiera durante la sincronización                
+                using (ExclusiveAccess exclusiveAccess = _tiaApp.ExclusiveAccess("Actualizando masivamente dependencias SCL (ZC ALM TOOLS)..."))
+                {
+                    // Iniciamos la transaccion
+                    using (Transaction transaction = exclusiveAccess.Transaction(_currentProject, $"Iniciando actualizacion para {blocksToProcess.Count} bloques."))
+                    {
 
-                // Limpieza en TIA Portal
-                source.Delete();
+                        var extSources = _currentPlc.ExternalSourceGroup.ExternalSources;
+                        PlcExternalSource source = extSources.CreateFromFile("UpdateMasivo_Temp", massiveImportPath);
 
+                        // AQUÍ SÍ VA EL OVERWRITE. Al importar a TIA Portal, machacamos los bloques existentes.
+                        source.GenerateBlocksFromSource(GenerateBlockOption.None);
+
+                        // Limpieza en TIA Portal
+                        source.Delete();
+
+                        transaction.CommitOnDispose();
+                    }
+                }
                 LogService.Write("[TIA-PLC-SERVICE] [UpdateMassiveSclDependencies] Proceso completado con éxito.");
                 return true;
             }
@@ -667,7 +640,7 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
 
         // ==================================================================================================================
         /// <summary>
-        /// Lee el XML de Siemens y extrae todas las referencias cruzadas de forma infalible cruzando con la caché
+        /// Lee el XML de Siemens y extrae todas las referencias cruzadas con el formato estándar de Siemens LGF
         /// </summary>
         private string ExtractDependenciesFromXml(string xmlPath)
         {
@@ -676,17 +649,21 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                 XDocument doc = XDocument.Load(xmlPath);
 
                 // 1. FUERZA BRUTA: Sacamos TODOS los atributos "Name" de cualquier nodo del XML
-                // Esto atrapa TODO: <CallInfo Name="FC1">, <Component Name="DB1">, <Instruction Name="FC2">...
                 var allNamesInXml = doc.Descendants()
                     .Where(e => e.Attribute("Name") != null)
                     .Select(e => e.Attribute("Name").Value)
                     .Distinct()
                     .ToList();
 
-                // 2. Cruzamos todos esos nombres con nuestra caché de FCs y FBs
-                // Solo se guardará si realmente es un bloque de tu proyecto (Ignora "ADD", "TON", etc.)
+                // 2. Separamos FBs y FCs explícitamente para el formato de Siemens
                 var fcCalls = _plcCache
-                    .Where(b => (b.SimpleType == "FC" || b.SimpleType == "FB") && allNamesInXml.Contains(b.Name))
+                    .Where(b => b.SimpleType == "FC" && allNamesInXml.Contains(b.Name))
+                    .Select(b => b.Name)
+                    .OrderBy(name => name)
+                    .ToList();
+
+                var fbCalls = _plcCache
+                    .Where(b => b.SimpleType == "FB" && allNamesInXml.Contains(b.Name))
                     .Select(b => b.Name)
                     .OrderBy(name => name)
                     .ToList();
@@ -698,113 +675,84 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                     .OrderBy(name => name)
                     .ToList();
 
-                // 4. LOS UDTs: Los cazamos del Interface porque Siemens los envuelve en comillas (No hace falta caché)
-                var interfaceTypes = doc.Descendants()
+                // 4. LOS UDTs: Los cazamos del Interface y cruzamos con la caché en RAM
+                var quotedTypes = doc.Descendants()
                     .Where(e => e.Name.LocalName == "Member" && e.Attribute("Datatype") != null)
                     .Select(e => e.Attribute("Datatype").Value)
                     .Where(dt => dt.Contains("\""))
-                    .Select(dt =>
+                    .SelectMany(dt =>
                     {
-                        var match = Regex.Match(dt, "\"([^\"]+)\"");
-                        return match.Success ? match.Groups[1].Value : null;
+                        var matches = Regex.Matches(dt, "\"([^\"]+)\"");
+                        return matches.Cast<Match>().Select(m => m.Groups[1].Value);
                     })
-                    .Where(dt => !string.IsNullOrEmpty(dt) && dt != "String" && dt != "WString")
+                    .Where(name => !string.IsNullOrEmpty(name))
                     .Distinct()
+                    .ToList();
+
+                var interfaceTypes = _typeCache
+                    .Where(t => quotedTypes.Contains(t.Name))
+                    .Select(t => t.Name)
                     .OrderBy(name => name)
                     .ToList();
 
-                StringBuilder sb = new StringBuilder();
-                if (fcCalls.Any()) sb.AppendLine($"FC:  {string.Join(", ", fcCalls)}");
-                if (dbCalls.Any()) sb.AppendLine($"DB:  {string.Join(", ", dbCalls)}");
-                if (interfaceTypes.Any()) sb.AppendLine($"UDT: {string.Join(", ", interfaceTypes)}");
+                // 5. CONSTRUCCIÓN DEL STRING FORMATO SIEMENS
+                if (!fcCalls.Any() && !fbCalls.Any() && !dbCalls.Any() && !interfaceTypes.Any())
+                {
+                    return "--"; // Estándar Siemens cuando no hay datos
+                }
 
-                return sb.ToString().Trim();
+                StringBuilder sb = new StringBuilder();
+                sb.AppendLine(); // Salto de línea inicial para empezar debajo de "Requirements:"
+
+                if (fcCalls.Any()) sb.AppendLine($"    //   - FC:  {string.Join(", ", fcCalls)}");
+                if (fbCalls.Any()) sb.AppendLine($"    //   - FB:  {string.Join(", ", fbCalls)}");
+                if (dbCalls.Any()) sb.AppendLine($"    //   - DB:  {string.Join(", ", dbCalls)}");
+                if (interfaceTypes.Any()) sb.AppendLine($"    //   - UDT: {string.Join(", ", interfaceTypes)}");
+
+                return sb.ToString().TrimEnd(); // Evitamos un salto de línea extra al final
             }
             catch (Exception ex)
             {
                 LogService.Write($"[TIA-PLC-SERVICE] Error extrayendo XML: {ex.Message}", true);
-                return "";
+                return "--";
             }
         }
 
-
-
-
-
         // ==================================================================================================================
         /// <summary>
-        /// Inyecta la cabecera formateada /// <Requires> en el código SCL
+        /// Inyecta las dependencias en la cabecera estándar de Siemens (Requirements)
         /// </summary>
         private string InjectRequiresIntoScl(string originalScl, string dependenciesText)
         {
             if (string.IsNullOrWhiteSpace(dependenciesText))
-                dependenciesText = "Sin dependencias detectadas.";
+                dependenciesText = "--";
 
-            string newRequiresBlock = $"/// <Requires>\n(*\n{dependenciesText}\n*)\n/// </Requires>";
+            // El bloque exacto que queremos escribir
+            string newRequirementsBlock = $"// Requirements: {dependenciesText}";
 
-            // Si ya existe un bloque Requires, lo sustituimos
-            if (originalScl.Contains("/// <Requires>"))
+            // Expresión regular: Busca "// Requirements:" y todo lo que haya debajo 
+            // hasta chocar con el salto de línea previo a los guiones del separador (//---)
+            string pattern = @"//\s*Requirements:.*?(?=\r?\n\s*//-{5,})";
+
+            if (Regex.IsMatch(originalScl, pattern, RegexOptions.Singleline))
             {
-                return Regex.Replace(originalScl, @"/// <Requires>.*?/// </Requires>", newRequiresBlock, RegexOptions.Singleline);
+                // Reemplazamos el bloque existente por el nuevo actualizado
+                return Regex.Replace(originalScl, pattern, newRequirementsBlock, RegexOptions.Singleline);
+            }
+            else
+            {
+                // FALLBACK DE SEGURIDAD: 
+                // Si el programador borró la línea "Requirements:" por error, la inyectamos 
+                // nosotros mismos justo encima de los guiones que separan el Changelog.
+                string fallbackPattern = @"(\r?\n\s*//-{5,}\r?\n\s*//\s*Change log table:)";
+                if (Regex.IsMatch(originalScl, fallbackPattern))
+                {
+                    return Regex.Replace(originalScl, fallbackPattern, $"\r\n    {newRequirementsBlock}$1");
+                }
             }
 
-            // Si no existe, buscamos el bloque <Remarks> para ponerlo justo debajo
-            if (originalScl.Contains("/// </Remarks>"))
-            {
-                return originalScl.Replace("/// </Remarks>", "/// </Remarks>\n\n" + newRequiresBlock);
-            }
-
-            // Si no tiene Remarks, lo ponemos justo antes del primer REGION o BEGIN
-            if (originalScl.Contains("REGION "))
-            {
-                return Regex.Replace(originalScl, @"REGION ", newRequiresBlock + "\n\nREGION ", RegexOptions.None);
-            }
-
-            return originalScl; // Fallback de seguridad
+            return originalScl; // Si el archivo SCL está totalmente roto o vacío, no hacemos nada
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -831,7 +779,6 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
 
 
 
-
         // ==================================================================================================================
         /// <summary>
         /// Sincroniza el valor de una constante global de dimensionado
@@ -853,7 +800,17 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                     {
                         LogService.Write($"[TIA-PLC-SERVICE] [SyncGlobalConstant] Modificando {constantName}: {currentValue} -> {newValue}");
                         StatusService.Set($"{constantName} actualizado a {newValue}.", StatusType.Ok);
-                        constant.Value = newValue.ToString();
+
+                        // Solicitamos acceso exclusivo a TIA Portal para evitar que el usuario interfiera durante la sincronización                
+                        using (ExclusiveAccess exclusiveAccess = _tiaApp.ExclusiveAccess("Actualizando constante..."))
+                        {
+                            // Iniciamos la transaccion
+                            using (Transaction transaction = exclusiveAccess.Transaction(_currentProject, $"Cambiar constante {constantName}"))
+                            {                                
+                                constant.Value = newValue.ToString();
+                                transaction.CommitOnDispose();
+                            }
+                        }
                         return true;
                     }
                     else
@@ -927,92 +884,111 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
             {
                 LogService.Write($"[TIA-PLC-SERVICE] [SyncDispUserConstants]  === SINCRONIZANDO IDs: {tableName} ===");
 
-                // Buscamos la tabla de variabkles
+                // Buscamos la tabla de variables
                 var table = FindTagTableByName(tableName);
                 if (table == null) throw new Exception($"La tabla '{tableName}' no existe.");
 
-                var validExcelDevices = excelDevices.Where(d => d.Estado != "Eliminar").ToList();
-                var excelDict = validExcelDevices.ToDictionary(d => d.Numero.ToString());
+                // Aseguramos tener el proyecto actual
+                if (_currentProject == null) throw new Exception("No hay un proyecto activo asignado.");
 
-                StatusService.Set("Leyendo constantes actuales en el PLC...", StatusType.Ok);
-                var existingConstants = table.UserConstants.ToList();
-
-                // Actualizamos via OPENESS las variables para mantener las referencias cruzadas                
-                var toDelete = new List<PlcUserConstant>();
-                var toRename = new List<PlcUserConstant>();
-
-                // Creamos las listas con los datos a borrar y a modificar
-                foreach (var c in existingConstants)
+                // Solicitamos acceso exclusivo a TIA Portal para evitar que el usuario interfiera durante la sincronización                
+                using (ExclusiveAccess exclusiveAccess = _tiaApp.ExclusiveAccess("Sincronizando constantes (ZC ALM TOOLS)..."))
                 {
-                    if (!excelDict.ContainsKey(c.Value))
+                    // Iniciamos la transaccion
+                    using (Transaction transaction = exclusiveAccess.Transaction(_currentProject,$"Sincronizar Constantes {tableName}"))
                     {
-                        // Si no está en el excel, a la lista negra
-                        toDelete.Add(c);
-                    }
-                    else if (c.Name != excelDict[c.Value].CPTag)
-                    {
-                        // Si está en el excel pero con otro nombre, a la lista de renombrar
-                        toRename.Add(c);
-                    }
-                }
+                        var validExcelDevices = excelDevices.Where(d => d.Estado != "Eliminar").ToList();
+                        var excelDict = validExcelDevices.ToDictionary(d => d.Numero.ToString());
 
-                // Primero borramos las variables
-                if (toDelete.Any())
-                {
-                    StatusService.Set($"Borrando {toDelete.Count} variables obsoletas en TIA Portal...", StatusType.Warning);
-                    foreach (var c in toDelete)
-                    {
-                        LogService.Write($"[TIA-PLC-SERVICE] [SyncDispUserConstants] Borrando ID {c.Value}: {c.Name}");
-                        c.Delete();
-                    }
-                }
+                        StatusService.Set("Leyendo constantes actuales en el PLC...", StatusType.Ok);
+                        var existingConstants = table.UserConstants.ToList();
 
-                // Actualizamos los nombres
-                if (toRename.Any())
-                {
-                    StatusService.Set($"Renombrando {toRename.Count} variables en TIA Portal...", StatusType.Warning);
-                    foreach (var c in toRename)
-                    {
-                        LogService.Write($"[TIA-PLC-SERVICE] [SyncDispUserConstants] ID {c.Value}: {c.Name} -> {excelDict[c.Value].CPTag}");
-                        c.Name = excelDict[c.Value].CPTag;
-                    }
-                }
+                        // Actualizamos via OPENESS las variables para mantener las referencias cruzadas                
+                        var toDelete = new List<PlcUserConstant>();
+                        var toRename = new List<PlcUserConstant>();
 
-                // Añadimos las nuevas variables directamente en el XML
-                string xmlPath = Path.Combine(AppConfigService.TempPath, $"{tableName}.xml");
-                if (File.Exists(xmlPath)) File.Delete(xmlPath);
+                        // Creamos las listas con los datos a borrar y a modificar
+                        foreach (var c in existingConstants)
+                        {
+                            if (!excelDict.ContainsKey(c.Value))
+                            {
+                                // Si no está en el excel, a la lista negra
+                                toDelete.Add(c);
+                            }
+                            else if (c.Name != excelDict[c.Value].CPTag)
+                            {
+                                // Si está en el excel pero con otro nombre, a la lista de renombrar
+                                toRename.Add(c);
+                            }
+                        }
 
-                // Exportamos la tabla de variables
-                StatusService.Set("Exportando tabla para añadir nuevas variables...", StatusType.Ok);
-                table.Export(new FileInfo(xmlPath), ExportOptions.WithDefaults);
-                await Task.Delay(50);
+                        // Primero borramos las variables
+                        if (toDelete.Any())
+                        {
+                            StatusService.Set($"Borrando {toDelete.Count} variables obsoletas en TIA Portal...", StatusType.Warning);
+                            foreach (var c in toDelete)
+                            {
+                                LogService.Write($"[TIA-PLC-SERVICE] [SyncDispUserConstants] Borrando ID {c.Value}: {c.Name}");
+                                c.Delete();
+                            }
+                        }
 
-                StatusService.Set("Añadiendo variables y comentarios en el XML...", StatusType.Ok);
+                        // Actualizamos los nombres
+                        if (toRename.Any())
+                        {
+                            StatusService.Set($"Renombrando {toRename.Count} variables en TIA Portal...", StatusType.Warning);
+                            foreach (var c in toRename)
+                            {
+                                LogService.Write($"[TIA-PLC-SERVICE] [SyncDispUserConstants] ID {c.Value}: {c.Name} -> {excelDict[c.Value].CPTag}");
+                                c.Name = excelDict[c.Value].CPTag;
+                            }
+                        }
 
-                // Añadimos las variables nuevas en el xml
-                var tagEditor = new XmlTagTableEditorService(xmlPath);
-                tagEditor.ClearConstants();
-                foreach (var dev in validExcelDevices)
-                {
-                    tagEditor.AddConstant(dev.CPTag, dev.Numero, dev.CPComentario);
-                }
-                tagEditor.Save();
+                        // Añadimos las nuevas variables directamente en el XML
+                        string xmlPath = Path.Combine(AppConfigService.TempPath, $"{tableName}.xml");
+                        if (File.Exists(xmlPath)) File.Delete(xmlPath);
 
+                        // Exportamos la tabla de variables
+                        StatusService.Set("Exportando tabla para añadir nuevas variables...", StatusType.Ok);
 
-                // Importacion de xml modificado
-                LogService.Write($"[TIA-PLC-SERVICE] [SyncDispUserConstants] Re-importando tabla '{tableName}' en TIA Portal (Override)...");
-                StatusService.Set("Importando tabla modificada a TIA Portal...", StatusType.Ok);
+                        // Nota sobre await Task.Delay: Cuidado al mezclar llamadas asíncronas con transacciones en Openness.
+                        // Openness es muy estricto con el hilo de ejecución (UI Thread). Si usas Task.Delay, 
+                        // asegúrate de que no estás perdiendo el contexto del hilo COM subyacente.
+                        table.Export(new FileInfo(xmlPath), ExportOptions.WithDefaults);
+                        // await Task.Delay(50); // Te recomiendo probar si puedes quitar este Delay estando dentro de la transacción.
 
-                var parent = table.Parent;
-                if (parent is PlcTagTableUserGroup folder)
-                    folder.TagTables.Import(new FileInfo(xmlPath), ImportOptions.Override);
-                else if (parent is PlcTagTableGroup root)
-                    root.TagTables.Import(new FileInfo(xmlPath), ImportOptions.Override);
+                        StatusService.Set("Añadiendo variables y comentarios en el XML...", StatusType.Ok);
 
-                // Actualizar caché para que la aplicación vea la tabla nueva
-                PlcTagTable newTable = (parent is PlcTagTableUserGroup f) ? f.TagTables.Find(tableName) : ((PlcTagTableGroup)parent).TagTables.Find(tableName);
-                var cachedItem = _tagTableCache.FirstOrDefault(t => t.Name.Equals(tableName, StringComparison.OrdinalIgnoreCase));
-                if (cachedItem != null && newTable != null) cachedItem.Table = newTable;
+                        // Añadimos las variables nuevas en el xml
+                        var tagEditor = new XmlTagTableEditorService(xmlPath);
+                        tagEditor.ClearConstants();
+                        foreach (var dev in validExcelDevices)
+                        {
+                            tagEditor.AddConstant(dev.CPTag, dev.Numero, dev.CPComentario);
+                        }
+                        tagEditor.Save();
+
+                        // Importacion de xml modificado
+                        LogService.Write($"[TIA-PLC-SERVICE] [SyncDispUserConstants] Re-importando tabla '{tableName}' en TIA Portal (Override)...");
+                        StatusService.Set("Importando tabla modificada a TIA Portal...", StatusType.Ok);
+
+                        var parent = table.Parent;
+                        if (parent is PlcTagTableUserGroup folder)
+                            folder.TagTables.Import(new FileInfo(xmlPath), ImportOptions.Override);
+                        else if (parent is PlcTagTableGroup root)
+                            root.TagTables.Import(new FileInfo(xmlPath), ImportOptions.Override);
+
+                        // Actualizar caché para que la aplicación vea la tabla nueva
+                        PlcTagTable newTable = (parent is PlcTagTableUserGroup f) ? f.TagTables.Find(tableName) : ((PlcTagTableGroup)parent).TagTables.Find(tableName);
+                        var cachedItem = _tagTableCache.FirstOrDefault(t => t.Name.Equals(tableName, StringComparison.OrdinalIgnoreCase));
+                        if (cachedItem != null && newTable != null) cachedItem.Table = newTable;
+
+                        // 3. ¡VITAL! CONFIRMAR LA TRANSACCIÓN
+                        // Si llegamos hasta aquí sin excepciones, le decimos a TIA Portal: "Aplica los cambios".
+                        transaction.CommitOnDispose();
+
+                    } // <-- Aquí se cierra la transacción (se hace Commit si llamaste a CommitOnDispose, o Rollback si no).
+                } // <-- Aquí se libera el ExclusiveAccess y TIA Portal vuelve a ser clickeable por el usuario.
 
                 StatusService.Set("Sincronización de constantes finalizada.", StatusType.Ok);
                 return true;
@@ -1020,7 +996,11 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
             }
             catch (Exception ex)
             {
+                // Si ocurre cualquier error, salta aquí.
+                // Al salir del bloque 'using (transaction)' sin haber llamado a CommitOnDispose(),
+                // TIA Portal hace un ROLLBACK automático de las variables borradas, renombradas y la tabla importada.
                 LogService.Write($"[TIA-PLC-SERVICE] [SyncDispUserConstants] Error en actualizacion de constantes: {ex.Message}", true);
+                StatusService.Set("Error en la sincronización.", StatusType.Error);
                 return false;
             }
         }
@@ -1045,6 +1025,7 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                     LogService.Write($"[TIA-PLC-SERVICE] [SyncDispDbComments] ERROR: No se pudo encontrar el bloque '{dbName}'.", true);
                     return false;
                 }
+                                              
 
                 // Exportar a temporal
                 string xmlPath = Path.Combine(AppConfigService.TempPath, $"{dbName}.xml");
@@ -1074,19 +1055,29 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                 }
                 dbEditor.Save();
 
-                // Re-importar el bloque a TIA Portal
-                LogService.Write($"[TIA-PLC-SERVICE] [SyncDispDbComments] Re-importando bloque '{dbName}' en TIA Portal...");
-                var parent = genericBlock.Parent;
+                // Solicitamos acceso exclusivo a TIA Portal para evitar que el usuario interfiera durante la sincronización                
+                using (ExclusiveAccess exclusiveAccess = _tiaApp.ExclusiveAccess("Sincronizando Comentarios de DB (ZC ALM TOOLS)..."))
+                {
+                    // Iniciamos la transaccion
+                    using (Transaction transaction = exclusiveAccess.Transaction(_currentProject, $"Sincronizar DB {dbName}"))
+                    {
+                        // Re-importar el bloque a TIA Portal
+                        LogService.Write($"[TIA-PLC-SERVICE] [SyncDispDbComments] Re-importando bloque '{dbName}' en TIA Portal...");
+                        var parent = genericBlock.Parent;
 
-                if (parent is PlcBlockUserGroup folder)
-                    folder.Blocks.Import(new FileInfo(xmlPath), ImportOptions.Override);
-                else if (parent is PlcBlockGroup root)
-                    root.Blocks.Import(new FileInfo(xmlPath), ImportOptions.Override);
+                        if (parent is PlcBlockUserGroup folder)
+                            folder.Blocks.Import(new FileInfo(xmlPath), ImportOptions.Override);
+                        else if (parent is PlcBlockGroup root)
+                            root.Blocks.Import(new FileInfo(xmlPath), ImportOptions.Override);
 
-                // Actualizar caché
-                PlcBlock newBlock = (parent is PlcBlockUserGroup f) ? f.Blocks.Find(dbName) : ((PlcBlockGroup)parent).Blocks.Find(dbName);
-                var cachedItem = _plcCache.FirstOrDefault(b => b.Name.Equals(dbName, StringComparison.OrdinalIgnoreCase));
-                if (cachedItem != null && newBlock != null) cachedItem.Block = newBlock;
+                        // Actualizar caché
+                        PlcBlock newBlock = (parent is PlcBlockUserGroup f) ? f.Blocks.Find(dbName) : ((PlcBlockGroup)parent).Blocks.Find(dbName);
+                        var cachedItem = _plcCache.FirstOrDefault(b => b.Name.Equals(dbName, StringComparison.OrdinalIgnoreCase));
+                        if (cachedItem != null && newBlock != null) cachedItem.Block = newBlock;
+
+                        transaction.CommitOnDispose();
+                    }
+                }
 
                 LogService.Write($"[TIA-PLC-SERVICE] [SyncDispDbComments] Bloque {dbName} actualizado correctamente.");
                 return true;
@@ -1143,18 +1134,29 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                     // --------------------------------------------------
 
                     LogService.Write($"[TIA-PLC-SERVICE] [SyncParamsAlarmsDbComments] Re-importando bloque '{dbName}' en TIA Portal (Override)...");
-                    var parent = block.Parent;
 
-                    if (parent is PlcBlockUserGroup folder)
-                        folder.Blocks.Import(new FileInfo(tempPath), ImportOptions.Override);
-                    else if (parent is PlcBlockGroup root)
-                        root.Blocks.Import(new FileInfo(tempPath), ImportOptions.Override);
+                    // Solicitamos acceso exclusivo a TIA Portal para evitar que el usuario interfiera durante la sincronización                
+                    using (ExclusiveAccess exclusiveAccess = _tiaApp.ExclusiveAccess("Sincronizando Comentarios de DB (ZC ALM TOOLS)..."))
+                    {
+                        // Iniciamos la transaccion
+                        using (Transaction transaction = exclusiveAccess.Transaction(_currentProject, $"Sincronizar DB {dbName}"))
+                        {
 
-                    // Actualizar caché
-                    PlcBlock newBlock = (parent is PlcBlockUserGroup f) ? f.Blocks.Find(dbName) : ((PlcBlockGroup)parent).Blocks.Find(dbName);
-                    var cachedItem = _plcCache.FirstOrDefault(b => b.Name.Equals(dbName, StringComparison.OrdinalIgnoreCase));
-                    if (cachedItem != null && newBlock != null) cachedItem.Block = newBlock;
+                            var parent = block.Parent;
 
+                            if (parent is PlcBlockUserGroup folder)
+                                folder.Blocks.Import(new FileInfo(tempPath), ImportOptions.Override);
+                            else if (parent is PlcBlockGroup root)
+                                root.Blocks.Import(new FileInfo(tempPath), ImportOptions.Override);
+
+                            // Actualizar caché
+                            PlcBlock newBlock = (parent is PlcBlockUserGroup f) ? f.Blocks.Find(dbName) : ((PlcBlockGroup)parent).Blocks.Find(dbName);
+                            var cachedItem = _plcCache.FirstOrDefault(b => b.Name.Equals(dbName, StringComparison.OrdinalIgnoreCase));
+                            if (cachedItem != null && newBlock != null) cachedItem.Block = newBlock;
+
+                            transaction.CommitOnDispose();
+                        }
+                    }
                     LogService.Write($"[TIA-PLC-SERVICE] [SyncParamsAlarmsDbComments] Bloque {dbName} actualizado correctamente.");
                     return true;
                 }

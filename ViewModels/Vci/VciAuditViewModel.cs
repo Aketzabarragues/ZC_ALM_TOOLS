@@ -29,10 +29,10 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
             set { _blocks = value; OnPropertyChanged(); }
         }
 
-        public ICommand LoadBlocksCommand { get; }
-        public ICommand SelectAllCommand { get; }
-        public ICommand DeselectAllCommand { get; }
-        public ICommand UpdateDependenciesCommand { get; }
+        public RelayCommand LoadBlocksCommand { get; }
+        public RelayCommand SelectAllCommand { get; }
+        public RelayCommand DeselectAllCommand { get; }
+        public RelayCommand UpdateDependenciesCommand { get; }
 
 
 
@@ -142,6 +142,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
             {
                 StatusService.Set("Dependencias actualizadas y bloques re-importados con éxito.", StatusType.Ok);
                 LogService.Write($"[VCI-AUDIT] [ExecuteUpdateDependencies] Dependencias actualizadas y bloques re-importados con éxito.");
+
+                _tiaPlcService.BuildBlockCache();
+                ExecuteLoadBlocks();
 
                 // Opcional: Recargar la vista o desmarcar checks tras el éxito
                 foreach (var b in Blocks) b.IsSelected = false;

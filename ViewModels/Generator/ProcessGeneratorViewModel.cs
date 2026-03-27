@@ -17,28 +17,6 @@ using ZC_ALM_TOOLS.Services.TiaPortal;
 
 namespace ZC_ALM_TOOLS.ViewModels.Generator
 {
-    public class ProjectedBlock : ObservableObject
-    {
-        public string Tipo { get; set; }
-        public int NumeroProyectado { get; set; }
-        public string NombreProyectado { get; set; }
-        public string ArchivoOrigen { get; set; }
-
-        private SynchronizationStatus _estado = SynchronizationStatus.Pending;
-        public SynchronizationStatus Estado
-        {
-            get => _estado;
-            set { _estado = value; OnPropertyChanged(); }
-        }
-
-        private string _mensaje = "Esperando comprobación...";
-        public string Mensaje
-        {
-            get => _mensaje;
-            set { _mensaje = value; OnPropertyChanged(); }
-        }
-    }
-
 
     // ==================================================================================================================
     /// <summary>
@@ -58,6 +36,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
         private ConfigProcessSettings _processSettings;
         private Dictionary<string, List<object>> _engineeringCache;
         private ConfigGlobalSettings _globalSettings;
+        private ConfigNetworkSettings _configNetworkSettings;
 
         public ObservableCollection<Process> Processes { get; } = new ObservableCollection<Process>();
         public ObservableCollection<string> Templates { get; } = new ObservableCollection<string>();
@@ -146,61 +125,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
         {
             StatusService.Set("Iniciando PoC HMI (vía XML)...", StatusType.Ok);
 
-            try
-            {
-                LogService.Write("[DEVICE-VM] [PoC] Paso 1: Buscando HMI_1...");
-                var target = HmiTargets.FirstOrDefault(h => h.Name.Equals("HMI_1", StringComparison.OrdinalIgnoreCase));
-
-                if (target == null)
-                {
-                    LogService.Write("[DEVICE-VM] [PoC] ERROR: target (HMI_1) es nulo en la colección HmiTargets.", true);
-                    return;
-                }
-
-                var hmiTarget = target.SoftwareObject as HmiTarget;
-                if (hmiTarget == null)
-                {
-                    LogService.Write("[DEVICE-VM] [PoC] ERROR: target.SoftwareObject no es de tipo HmiTarget.", true);
-                    return;
-                }
-
-                await Task.Delay(50);
-
-                LogService.Write("[DEVICE-VM] [PoC] Paso 2: Abriendo librería...");
-                string libPath = @"D:\_PROYECTOS_DESARROLLO\_TiaPortalLibreria\Test\Test.al18";
-
-                if (_tiaPlcService == null) throw new Exception("_tiaPlcService es NULO.");
-                var library = _tiaPlcService.GetOrOpenGlobalLibrary(libPath);
-
-                if (library == null)
-                {
-                    LogService.Write("[DEVICE-VM] [PoC] ERROR: No se pudo cargar o abrir la librería HMI.", true);
-                    return;
-                }
-
-                await Task.Delay(50);
-
-                LogService.Write("[DEVICE-VM] [PoC] Paso 3: Comprobando TiaHmiService...");
-                if (_tiaHmiService == null)
-                {
-                    throw new Exception("¡_tiaHmiService es NULO! Posible fallo en la inyección de dependencias del DevicesViewModel.");
-                }
-
-                LogService.Write("[DEVICE-VM] [PoC] Paso 4: Llamando a TiaHmiService.RunXmlHmiPoC...");
-                _tiaHmiService.RunXmlHmiPoC(hmiTarget, library, "Prueba_001", "HMI_Conexion_1");
-
-                LogService.Write("[DEVICE-VM] [PoC] Finalizado.");
-                StatusService.Set("Prueba HMI completada.", StatusType.Ok);
-            }
-            catch (EngineeringSecurityException)
-            {
-                LogService.Write("[DEVICE-VM] TIA Portal está bloqueando la ejecución. Ve a TIA Portal y acepta el diálogo de seguridad para abrir la librería.", true);
-            }
-            catch (Exception ex)
-            {
-                LogService.Write($"[DEVICE-VM] Excepción crítica en PoC: {ex.Message}\nStack: {ex.StackTrace}", true);
-                StatusService.Set("Error en prueba HMI.", StatusType.Error);
-            }
+            
         }
 
 
@@ -239,12 +164,12 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
         /// <summary>
         /// Carga los datos provenientes del MainViewModel
         /// </summary>
-        public void LoadData(Dictionary<string, List<object>> cache, ConfigProcessSettings settings, ConfigGlobalSettings globalSettings)
+        public void LoadData(Dictionary<string, List<object>> cache, ConfigProcessSettings settings, ConfigGlobalSettings globalSettings, ConfigNetworkSettings NetworkSettings)
         {
             _engineeringCache = cache;
             _processSettings = settings;
             _globalSettings = globalSettings;
-
+            _configNetworkSettings = NetworkSettings;
             if (_engineeringCache.TryGetValue(_processSettings.ProcessName, out var procList))
             {
                 Processes.Clear();

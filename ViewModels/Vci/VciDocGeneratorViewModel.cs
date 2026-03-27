@@ -25,10 +25,10 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
 
         public ObservableCollection<VciSelectableItem> PlcItems { get; set; }
 
-        public ICommand LoadItemsCommand { get; }
-        public ICommand SelectAllCommand { get; }
-        public ICommand DeselectAllCommand { get; }
-        public ICommand GenerateDocCommand { get; }
+        public RelayCommand LoadItemsCommand { get; }
+        public RelayCommand SelectAllCommand { get; }
+        public RelayCommand DeselectAllCommand { get; }
+        public RelayCommand GenerateDocCommand { get; }
 
 
 
@@ -276,15 +276,11 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                 }
 
                 LogService.Write($"[VCI-DOC-GENERATOR] [GenerateDocAsync] Exportación de fuentes finalizada. Correctos: {successCount} | Errores: {errorCount}");
-                StatusService.Set($"Fase 1 completada: {successCount} archivos fuente exportados.", StatusType.Ok);
+                StatusService.Set($"{successCount} archivos fuente exportados.", StatusType.Ok);
 
                 await Task.Delay(500);
 
                 // 3. FASE 3 PARTE 2: Llamada a Python
-                StatusService.Set("Ejecutando script de Python para generar la documentación...", StatusType.Warning);
-                LogService.Write("[VCI-DOC-GENERATOR] [GenerateDocAsync] Preparando llamada al entorno de Python...");
-
-                StatusService.Set("Compilando documentación web (Python)...", StatusType.Warning);
                 LogService.Write("[VCI-DOC-GENERATOR] [GenerateDocAsync] Preparando llamada al entorno de Python...");
 
                 // Asegúrate de tener estas propiedades en tu ConfigGlobalSettings
@@ -381,7 +377,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                     myProcess.BeginOutputReadLine();
                     myProcess.BeginErrorReadLine();
 
-                    LogService.Write("[VCI-DOC-GENERATOR] [StartDocGenerator] Compilador Python ejecutándose en segundo plano...");
+                    LogService.Write("[VCI-DOC-GENERATOR] [StartDocGenerator] Compilador documentacion ejecutándose en segundo plano...");
 
                     // Esperar de forma asíncrona a que termine para no bloquear la UI de TIA Portal
                     await Task.Run(() =>

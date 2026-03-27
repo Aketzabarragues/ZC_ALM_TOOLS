@@ -4,6 +4,8 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks; // <-- Añadido para poder usar Task.Delay y async/await
+using System.Windows.Input;
+using Siemens.Engineering;
 using ZC_ALM_TOOLS.Core;
 using ZC_ALM_TOOLS.Models;
 using ZC_ALM_TOOLS.Models.Vci;
@@ -59,6 +61,8 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
         public RelayCommand AnalyzeProjectCommand { get; }
         public RelayCommand ApplyMappingsCommand { get; }
         public RelayCommand UnmapBlocksCommand { get; }
+        public RelayCommand SelectAllCommand { get; }
+        public RelayCommand DeselectAllCommand { get; }
 
 
         // ==================================================================================================================
@@ -77,6 +81,26 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
             AnalyzeProjectCommand = new RelayCommand(ExecuteAnalyzeProjectCommand, CanExecuteAnalyze);
             ApplyMappingsCommand = new RelayCommand(ExecuteApplyMappingsCommand, CanExecuteApply);
             UnmapBlocksCommand = new RelayCommand(ExecuteUnmapBlocksCommand, CanExecuteUnmap);
+
+            SelectAllCommand = new RelayCommand(() => SetAllSelection(true));
+            DeselectAllCommand = new RelayCommand(() => SetAllSelection(false));
+        }
+
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Aplica un estado de selección masiva a todos los elementos del listado.
+        /// </summary>
+        private void SetAllSelection(bool state)
+        {
+            foreach (var item in MappingActions)
+            {
+                if (item.IsSelectable)
+                {
+                    item.IsSelected = state;
+                }                
+            }
         }
 
 
@@ -291,83 +315,76 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                 return;
             }
 
-            int totalItems = itemsToMap.Count;
             LogService.Write($"[VCI-MAPPING-VM] [ExecuteApplyMappings] Iniciando mapeo de {itemsToMap.Count} bloques...");
             await Task.Delay(50);
             StatusService.SetBusy(true);
 
-            int successCount = 0;
-            int currentItem = 0;
-            string basePath = WorkspacePath.TrimEnd('\\') + "\\";
-
             try
             {
                 string wsName = WorkspaceName;
+                string basePath = WorkspacePath.TrimEnd('\\') + "\\";
 
-                LogService.Write($"[VCI-MAPPING-VM] [ExecuteApplyMappings] Nombre de Workspace detectado para TIA Portal: '{wsName}'");
-                await Task.Delay(50);
-
-                
+                // 1. Preparamos la lista (El Lote)
+                var batchList = new List<(string BlockName, IEngineeringObject PlcObject, string RelativePath)>();
 
                 foreach (var item in itemsToMap)
                 {
-                    currentItem++;
-                    StatusService.Set($"Vinculando [{currentItem}/{totalItems}]: {item.BlockName}...", StatusType.Warning);
-                    await Task.Delay(10);
-
-                    LogService.Write($"[VCI-MAPPING-VM] [ExecuteApplyMappings] --- Procesando '{item.BlockName}' ---");
-                    LogService.Write($"[VCI-MAPPING-VM] [ExecuteApplyMappings] Ruta absoluta en disco: '{item.DiskPath}'");
-
                     var plcBlock = _tiaPlcService.FindBlockByName(item.BlockName);
-
                     if (plcBlock != null)
                     {
                         string relativePath = item.DiskPath.StartsWith(basePath, StringComparison.OrdinalIgnoreCase)
                             ? "\\" + item.DiskPath.Substring(basePath.Length).TrimStart('\\')
                             : "\\" + Path.GetFileName(item.DiskPath);
 
-                        var result = _tiaVciService.MapObjectToWorkspace(wsName, plcBlock, relativePath);
-
-                        if (result == VciMapResult.Success)
-                        {
-                            successCount++;
-                            LogService.Write($"[VCI-MAPPING-VM] [ExecuteApplyMappings] ÉXITO: '{item.BlockName}' mapeado perfectamente.");
-                            item.State = VciMatchState.YaEnlazado; // AZUL
-                        }
-                        else if (result == VciMapResult.SuccessWithWarning)
-                        {
-                            successCount++; // Lo contamos como éxito porque en TIA Portal sí se ha mapeado
-                            LogService.Write($"[VCI-MAPPING-VM] [ExecuteApplyMappings] ADVERTENCIA: '{item.BlockName}' mapeado pero con errores visuales.");
-                            item.State = VciMatchState.ErrorAlEnlazar; // NARANJA
-                        }
-                        else // Error
-                        {
-                            LogService.Write($"[VCI-MAPPING-VM] [ExecuteApplyMappings] FALLO CRÍTICO al mapear '{item.BlockName}'.", true);
-                            item.State = VciMatchState.ErrorAlEnlazar; // NARANJA
-                        }
+                        batchList.Add((item.BlockName, plcBlock, relativePath));
                     }
                     else
                     {
-                        LogService.Write($"[VCI-MAPPING-VM] [ExecuteApplyMappings] FALLO: Bloque '{item.BlockName}' no encontrado en caché.", true);
                         item.State = VciMatchState.ErrorAlEnlazar;
+                        item.IsSelected = false;
                     }
-
-                    item.IsSelected = false; // Desmarcamos la casilla tras procesarlo
                 }
 
-                LogService.Write($"[VCI-MAPPING-VM] [ExecuteApplyMappings] Mapeo finalizado. {successCount} de {totalItems} exitosos.");
+                // 2. Enviamos el lote completo al servicio
+                var results = _tiaVciService.MapObjectsToWorkspace(wsName, batchList);
 
-                if (successCount == totalItems)
+                // 3. Procesamos los resultados visuales
+                int successCount = 0;
+                foreach (var item in itemsToMap)
+                {
+                    if (results.TryGetValue(item.BlockName, out VciMapResult res))
+                    {
+                        if (res == VciMapResult.Success)
+                        {
+                            item.State = VciMatchState.YaEnlazado;
+                            successCount++;
+                        }
+                        else if (res == VciMapResult.SuccessWithWarning)
+                        {
+                            item.State = VciMatchState.ErrorAlEnlazar;
+                            successCount++;
+                        }
+                        else item.State = VciMatchState.ErrorAlEnlazar;
+                    }
+                    item.IsSelected = false;
+                }
+
+                if (successCount == itemsToMap.Count)
+                {
                     StatusService.Set($"Se han mapeado todos los bloques ({successCount}) correctamente.", StatusType.Ok);
+                    LogService.Write($"[VCI-MAPPING-VM][ExecuteApplyMappings] Se han mapeado todos los bloques ({successCount}) correctamente.");
+                }
+                    
                 else
-                    StatusService.Set($"Mapeo finalizado con errores. {successCount} de {totalItems} exitosos.", StatusType.Error);
-
-                await Task.Delay(50);
-
+                {
+                    StatusService.Set($"Mapeo finalizado con errores. {successCount} de {itemsToMap.Count} exitosos.", StatusType.Error);
+                    LogService.Write($"[VCI-MAPPING-VM][ExecuteApplyMappings] Mapeo finalizado con errores. {successCount} de {itemsToMap.Count} exitosos.");
+                }
+                    
             }
             catch (Exception ex)
             {
-                LogService.Write($"[VCI-MAPPING-VM] [ExecuteApplyMappings] EXCEPCIÓN: {ex.Message}", true);
+                LogService.Write($"[VCI-MAPPING-VM][ExecuteApplyMappings]  Error: {ex.Message}", true);
                 StatusService.Set("Error al aplicar los mapeos. Revisa los logs.", StatusType.Error);
             }
             finally
@@ -394,7 +411,6 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
         /// </summary>
         private async Task ExecuteUnmapBlocks()
         {
-            // Filtramos SOLO los que el usuario ha marcado y que están "Ya Enlazados" (Azules)
             var itemsToUnmap = MappingActions.Where(m => m.IsSelected && m.State == VciMatchState.YaEnlazado).ToList();
 
             if (!itemsToUnmap.Any())
@@ -403,45 +419,34 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                 return;
             }
 
-            LogService.Write($"[VCI-MAPPING-VM] [ExecuteUnmapBlocks] Iniciando desvinculación de {itemsToUnmap.Count} bloques...");
-            await Task.Delay(50);
+            LogService.Write($"[VCI-MAPPING-VM] [ExecuteUnmapBlocks] Iniciando desvinculación masiva...");
             StatusService.SetBusy(true);
+            await Task.Delay(50);
 
             try
             {
                 string wsName = WorkspaceName;
-                int successCount = 0;
 
+                // 1. Preparamos el lote
+                var batchList = new List<(string BlockName, IEngineeringObject PlcObject)>();
                 foreach (var item in itemsToUnmap)
                 {
-                    StatusService.Set($"Desvinculando bloque: {item.BlockName}...", StatusType.Warning);
-                    await Task.Delay(10);
-
                     var plcBlock = _tiaPlcService.FindBlockByName(item.BlockName);
-
-                    if (plcBlock != null)
-                    {
-                        bool ok = _tiaVciService.UnmapObjectFromWorkspace(wsName, plcBlock);
-                        if (ok)
-                        {
-                            successCount++;
-                            LogService.Write($"[VCI-MAPPING-VM] [ExecuteUnmapBlocks] ÉXITO: '{item.BlockName}' desvinculado correctamente.");
-                        }
-                    }
+                    if (plcBlock != null) batchList.Add((item.BlockName, plcBlock));
                 }
 
-                LogService.Write($"[VCI-MAPPING-VM] [ExecuteUnmapBlocks] Desvinculación finalizada. {successCount} de {itemsToUnmap.Count} exitosos.");
-                await Task.Delay(50);
-                StatusService.Set($"Se han eliminado {successCount} mapeos en TIA Portal.", StatusType.Ok);
+                // 2. Enviamos al servicio
+                int successCount = _tiaVciService.UnmapObjectsFromWorkspace(wsName, batchList);
 
+                StatusService.Set($"Se han eliminado {successCount} mapeos en TIA Portal.", StatusType.Ok);
                 foreach (var item in itemsToUnmap) item.IsSelected = false;
 
-                // Refrescamos la vista esperando asíncronamente
+                // Refrescamos la vista
                 await ExecuteAnalyzeProject();
             }
             catch (Exception ex)
             {
-                LogService.Write($"[VCI-MAPPING-VM] [ExecuteUnmapBlocks] EXCEPCIÓN: {ex.Message}", true);
+                LogService.Write($"[VCI-MAPPING-VM] [ExecuteUnmapBlocks] Error: {ex.Message}", true);
                 StatusService.Set("Error al desvincular mapeos. Revisa los logs.", StatusType.Error);
             }
             finally

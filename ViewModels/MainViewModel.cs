@@ -82,10 +82,10 @@ namespace ZC_ALM_TOOLS.ViewModels
             _project = project;
 
             _tiaPlcService = new TiaPlcService();
-            _tiaVciService = new TiaVciService(project);
+            _tiaVciService = new TiaVciService(tiaPortal, project);
             _tiaHmiService = new TiaHmiService();
 
-            _tiaPlcService.SetTiaPortalInstance(_tiaPortal);
+            _tiaPlcService.SetTiaPortalInstance(_tiaPortal, _project);
 
             // Inicializamos los Módulos
             GeneratorVM = new GeneratorMainViewModel(_tiaPlcService, _tiaHmiService, PlcTargets, HmiTargets, ScadaTargets);
@@ -191,21 +191,6 @@ namespace ZC_ALM_TOOLS.ViewModels
 
                 StatusService.Set($"PLC '{plc.Name}' enlazado e indexado correctamente.", StatusType.Ok);
             }
-        }
-
-
-
-        // ==================================================================================================================
-        /// <summary>
-        /// Abrir editor de configuracion
-        /// </summary>
-        private void OpenSettingsEditor() => OpenEditor(AppConfigService.AppConfigFile, "Editando ajustes...");
-
-        private void OpenEditor(string path, string message)
-        {
-            if (!File.Exists(path)) return;
-            Siemens.Engineering.AddIn.Utilities.Process.Start("notepad.exe", $"\"{path}\"");
-            StatusService.Set(message, StatusType.Ok);
         }
 
 
