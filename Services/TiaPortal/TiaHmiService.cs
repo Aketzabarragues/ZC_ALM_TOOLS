@@ -59,7 +59,7 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                 if (tagTableTemplate == null) throw new Exception("Plantilla 'UF_Alm' no encontrada.");
                 if (screenTemplate == null) throw new Exception("Plantilla 'UF_Sinoptico' no encontrada.");
 
-                string tempDir = Path.Combine(AppConfigService.TempPath, "HmiExport");
+                string tempDir = Path.Combine(AppConfigService.TempExportPathXml, "HmiExport");
                 if (!Directory.Exists(tempDir)) Directory.CreateDirectory(tempDir);
 
                 // =========================================================================

@@ -7,17 +7,7 @@
         xmlns:vVci="clr-namespace:ZC_ALM_TOOLS.Views.Vci"
         Title="ZC ALM Tools" Height="850" Width="1600"
         WindowStartupLocation="CenterScreen" Background="#F5F6F8">
-
-
-    <Window.Resources>
-        <ResourceDictionary>
-            <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="pack://application:,,,/ZC_ALM_TOOLS;component/Resources/GlobalStyles.xaml" />
-            </ResourceDictionary.MergedDictionaries>
-        </ResourceDictionary>
-    </Window.Resources>
     
-
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="140"/>
@@ -60,7 +50,7 @@
             </Grid>
         </Border>
 
-        <Grid Grid.Column="1">
+        <Grid Grid.Column="1" Cursor="">
             <Grid.RowDefinitions>
                 <RowDefinition Height="50"/>
                 <RowDefinition Height="*"/>
@@ -69,6 +59,14 @@
 
             <Border Grid.Row="0" Background="White" BorderBrush="#DDD" BorderThickness="0,0,0,1">
                 <Grid>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="20,0,0,0">
+                        <TextBlock Text="📁" FontSize="16" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBlock Text="Proyecto:" Foreground="#666" VerticalAlignment="Center" Margin="0,0,5,0" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding ProjectName, FallbackValue='Desconectado'}" 
+                       Foreground="#007ACC" VerticalAlignment="Center" FontWeight="Bold" FontSize="14"/>
+                    </StackPanel>
+                    
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,20,0">
                         <TextBlock Text="Selección PLC:" Foreground="#666" VerticalAlignment="Center" Margin="0,0,10,0" FontWeight="SemiBold"/>
 

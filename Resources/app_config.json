@@ -1,0 +1,115 @@
+{
+  "GlobalSettings": {
+    "ProcessTemplatePath": "C:\\Plantilla",
+    "DocWordManualPath": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_UTILS\\ZC_Documentacion\\dist\\ESTANDAR ALIMENTACION.docx",
+    "DocExportSourcesPath": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_UTILS\\bloques",
+    "DocOutputPath": "D:\\Zeus Control\\Proyectos\\GitHub\\ZC_ALM_UTILS\\_Ayuda_generada"
+  },
+  "DeviceSettings": {
+    "TiaTable": "000_Config_Dispositivos",
+    "ExcelSheet": "CONFIGURACION",
+    "ConfigCells": {
+      "Disp_ED": "Num_Disp_ED",
+      "Disp_EA": "Num_Disp_EA",
+      "Disp_SA": "Num_Disp_SA",
+      "Disp_V": "Num_Disp_V",
+      "Disp_M": "Num_Disp_M",
+      "Disp_M_VF": "Num_Disp_M_VF"
+    }
+  },
+  "Devices": [
+    {
+      "Name": "Entrada Digital",
+      "ExcelSheet": "DISP_ED",
+      "ExcelTable": "Tabla_Disp_ED",
+      "ModelClass": "Disp_ED",
+      "TiaTable": "002_Disp_ED",
+      "TiaDbName": "DB2000_ED",
+      "TiaDbArrayName": "ED",
+      "GlobalConfigKey": "Num_Disp_ED",
+      "PlcCountConstant": "N_MAX_DISP_ED"
+    },
+    {
+      "Name": "Entrada Analogica",
+      "ExcelSheet": "DISP_EA",
+      "ExcelTable": "Tabla_Disp_EA",
+      "ModelClass": "Disp_EA",
+      "TiaTable": "002_Disp_EA",
+      "TiaDbName": "DB2001_EA",
+      "TiaDbArrayName": "EA",
+      "GlobalConfigKey": "Num_Disp_EA",
+      "PlcCountConstant": "N_MAX_DISP_EA"
+    },
+    {
+      "Name": "Salida Analogica",
+      "ExcelSheet": "DISP_SA",
+      "ExcelTable": "Tabla_Disp_SA",
+      "ModelClass": "Disp_SA",
+      "TiaTable": "002_Disp_SA",
+      "TiaDbName": "DB2006_SA",
+      "TiaDbArrayName": "SA",
+      "GlobalConfigKey": "Num_Disp_SA",
+      "PlcCountConstant": "N_MAX_DISP_SA"
+    },
+    {
+      "Name": "Válvula",
+      "ExcelSheet": "DISP_V",
+      "ExcelTable": "Tabla_Disp_V",
+      "ModelClass": "Disp_V",
+      "TiaTable": "002_Disp_V",
+      "TiaDbName": "DB2010_V",
+      "TiaDbArrayName": "V",
+      "GlobalConfigKey": "Num_Disp_V",
+      "PlcCountConstant": "N_MAX_DISP_V"
+    },
+    {
+      "Name": "Motor",
+      "ExcelSheet": "DISP_M",
+      "ExcelTable": "Tabla_Disp_M",
+      "ModelClass": "Disp_M",
+      "TiaTable": "002_Disp_M",
+      "TiaDbName": "DB2015_M",
+      "TiaDbArrayName": "M",
+      "GlobalConfigKey": "Num_Disp_M",
+      "PlcCountConstant": "N_MAX_DISP_M"
+    },
+    {
+      "Name": "Motor variador",
+      "ExcelSheet": "DISP_M_VF",
+      "ExcelTable": "Tabla_Disp_M_VF",
+      "ModelClass": "Disp_M_VF",
+      "TiaTable": "002_Disp_M_VF",
+      "TiaDbName": "DB2016_M_VF",
+      "TiaDbArrayName": "M_VF",
+      "GlobalConfigKey": "Num_Disp_M_VF",
+      "PlcCountConstant": "N_MAX_DISP_M_VF"
+    }
+  ],
+  "ProcessSettings": {
+    "ExcelSheet": "CONFIGURACION",
+    "ExcelTable": "Tabla_Procesos",
+	"SuffixConstReal": "_N_MAX_PREAL",
+	"SuffixConstInt": "_N_MAX_PINT",
+	"SuffixConstAlm": "_N_MAX_ALM",
+	"SuffixConstAlmHmi": "_N_MAX_ALM_HMI",
+	"SuffixDbReal": "_PREAL",
+	"SuffixDbInt": "_PINT",
+	"SuffixDbAlm": "_ALM"
+  },
+   "PRealSettings": {
+    "ExcelSheet": "P_REAL",
+    "ExcelTable": "Tabla_PReal"
+  },
+   "PIntSettings": {
+    "ExcelSheet": "P_INT",
+    "ExcelTable": "Tabla_PInt"
+  },
+   "AlarmSettings": {
+    "ExcelSheet": "ALARMAS",
+    "ExcelTable": "Tabla_Alarmas"
+  },
+  "NetworkSettings":{
+	 "ExcelSheet": "TOPOLOGIA",
+	 "ExcelTable": "Tabla_Conexiones"
+  }
+}

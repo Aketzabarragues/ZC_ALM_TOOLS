@@ -9,7 +9,6 @@ using ZC_ALM_TOOLS.Core;
 using ZC_ALM_TOOLS.Models.Vci;
 using ZC_ALM_TOOLS.Services.Common;
 using ZC_ALM_TOOLS.Services.TiaPortal;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 
 namespace ZC_ALM_TOOLS.ViewModels.Vci
 {
@@ -210,7 +209,8 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                 if (string.IsNullOrWhiteSpace(exportDir))
                 {
                     LogService.Write("[VCI-DOC-GENERATOR] [GenerateDocAsync] AVISO: 'DocExportSourcesPath' está vacío en app_config.xml. Usando directorio por defecto.");
-                    exportDir = AppConfigService.ExportPath;
+                    exportDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "ZC_Exportaciones_SCL");
+                    StatusService.Set("Aviso: Ruta de exportación no definida en el JSON. Guardando en el Escritorio.", StatusType.Warning);
                 }
 
                 LogService.Write($"[VCI-DOC-GENERATOR] [GenerateDocAsync] Iniciando exportación de {selectedItems.Count} fuentes a disco...");
@@ -284,12 +284,11 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                 LogService.Write("[VCI-DOC-GENERATOR] [GenerateDocAsync] Preparando llamada al entorno de Python...");
 
                 // Asegúrate de tener estas propiedades en tu ConfigGlobalSettings
-                string exePath = globalSettings.DocGeneratorExePath;
                 string wordPath = globalSettings.DocWordManualPath;
                 string destinoHtml = globalSettings.DocOutputPath;
 
                 // Verificaciones de seguridad antes de lanzar
-                if (!File.Exists(exePath))
+                /*if (!File.Exists(exePath))
                 {
                     LogService.Write($"[VCI-DOC-GENERATOR] ERROR: No se encuentra el ejecutable en: {exePath}", true);
                     StatusService.Set("Falta el ejecutable del generador. Revisa configuración.", StatusType.Error);
@@ -317,6 +316,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                 {
                     StatusService.Set("Error compilando la documentación. Revisa el Log.", StatusType.Error);
                 }
+                */
             }
             catch (Exception ex)
             {
@@ -339,7 +339,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                 string arguments = $"--word \"{wordPath}\" --fuentes \"{fuentesPath}\" --destino \"{destinoPath}\"";
 
                 LogService.Write($"[VCI-DOC-GENERATOR] [StartDocGenerator] Lanzando: {exePath} {arguments}");
-
+                /*
                 // 1. Crear la info de inicio usando la librería del Add-In de Siemens
                 var startInfo = new Siemens.Engineering.AddIn.Utilities.ProcessStartInfo
                 {
@@ -391,6 +391,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                     LogService.Write($"[VCI-DOC-GENERATOR] [StartDocGenerator] Compilador finalizado con código: {myProcess.ExitCode}");
                     return myProcess.ExitCode == 0;
                 }
+                */
                 return false;
             }
             catch (Exception ex)

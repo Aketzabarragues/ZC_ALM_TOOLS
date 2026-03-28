@@ -1,5 +1,4 @@
-﻿using System.Xml.Linq;
-using ZC_ALM_TOOLS.Core;
+﻿using ZC_ALM_TOOLS.Core;
 
 namespace ZC_ALM_TOOLS.Models.Generator
 {
@@ -33,31 +32,6 @@ namespace ZC_ALM_TOOLS.Models.Generator
         // Propiedades de estado
         private string _Estado = "Sin comprobar";
         public string Estado { get => _Estado; set { _Estado = value; OnPropertyChanged(); } }
-
-        // ==================================================================================================================
-        /// <summary>
-        /// Metodo para leer dispositivo motor desde XML
-        /// </summary>
-        public static Disp_M FromXml(XElement x) => new Disp_M
-        {
-            UID = DataHelper.GetXmlVal(x, "UID"),
-            Numero = DataHelper.GetXmlInt(x, "Numero"),
-            Tag = DataHelper.GetXmlVal(x, "Tag"),
-            Descripcion = DataHelper.GetXmlVal(x, "Descripcion"),
-            FAT = DataHelper.GetXmlVal(x, "FAT"),
-            SByte = DataHelper.GetXmlVal(x, "S.Byte"),
-            SBit = DataHelper.GetXmlVal(x, "S.Bit"),
-            RTByte = DataHelper.GetXmlVal(x, "RT.Byte"),
-            RTBit = DataHelper.GetXmlVal(x, "RT.Bit"),
-            RMByte = DataHelper.GetXmlVal(x, "RM.Byte"),
-            RMBit = DataHelper.GetXmlVal(x, "RM.Bit"),
-            GrAlarma = DataHelper.GetXmlVal(x, "Gr.Alarma"),
-            Cuadro = DataHelper.GetXmlVal(x, "Cuadro"),
-            Observaciones = DataHelper.GetXmlVal(x, "Observaciones"),
-            CPTag = DataHelper.GetXmlVal(x, "CP.Tag"),
-            CPComentario = DataHelper.GetXmlVal(x, "CP.Comentario")
-        };
-
 
     }
 

@@ -1,5 +1,4 @@
-﻿using System.Xml.Linq;
-using ZC_ALM_TOOLS.Core;
+﻿using ZC_ALM_TOOLS.Core;
 
 namespace ZC_ALM_TOOLS.Models.Generator
 {
@@ -31,22 +30,6 @@ namespace ZC_ALM_TOOLS.Models.Generator
             get => _estado;
             set { _estado = value; OnPropertyChanged(); }
         }
-
-        // ==================================================================================================================
-        /// <summary>
-        /// Metodo para leer etapa de un proceso desde XML
-        /// </summary>
-        public static ProcessStage FromXml(XElement x) => new ProcessStage
-        {
-            Uid = DataHelper.GetXmlVal(x, "UID"),
-            ProcessUid = DataHelper.GetXmlInt(x, "UID.Proceso"),
-            Numero = DataHelper.GetXmlInt(x, "Numero"),
-            Proceso = DataHelper.GetXmlVal(x, "Proceso"),
-            ValorEtapa = DataHelper.GetXmlInt(x, "Valor.Etapa"),
-            Descripcion = DataHelper.GetXmlVal(x, "Descripcion"),
-            NombreVariable = DataHelper.GetXmlVal(x, "Nombre.Variable"),
-            CpTag = DataHelper.GetXmlVal(x, "CP.Tag"),
-            CpComentario = DataHelper.GetXmlVal(x, "CP.Comentario")
-        };
+                
     }
 }

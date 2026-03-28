@@ -1,5 +1,4 @@
-﻿using System.Xml.Linq;
-using ZC_ALM_TOOLS.Core;
+﻿using ZC_ALM_TOOLS.Core;
 
 namespace ZC_ALM_TOOLS.Models.Generator
 {
@@ -19,18 +18,5 @@ namespace ZC_ALM_TOOLS.Models.Generator
         public string ID_Local { get; set; }
         public string Puerto_Local { get; set; }
 
-        // ==================================================================================================================
-        /// <summary>
-        /// Instancia una Conexion leyendo directamente de un nodo <Conexion> del XML generado por Python
-        /// </summary>
-        public static Connection FromXml(XElement x) => new Connection
-        {
-            Equipo_Origen = DataHelper.GetXmlVal(x, "Equipo_Origen"),
-            Equipo_Destino = DataHelper.GetXmlVal(x, "Equipo_Destino"),
-            Protocolo = DataHelper.GetXmlVal(x, "Protocolo"),
-            Nombre_Conexion_TIA = DataHelper.GetXmlVal(x, "Nombre_Conexion_TIA"),
-            ID_Local = DataHelper.GetXmlVal(x, "ID_Local"),
-            Puerto_Local = DataHelper.GetXmlVal(x, "Puerto_Local")
-        };
     }
 }

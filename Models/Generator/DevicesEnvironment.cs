@@ -6,18 +6,12 @@ using ZC_ALM_TOOLS.Services.TiaPortal;
 
 namespace ZC_ALM_TOOLS.Models.Generator
 {
-
-    // ==================================================================================================================
     /// <summary>
-    /// Clase de contexto que encapsula la preparación y validación del entorno necesario 
-    /// (existencia de tablas, bloques de datos y lectura de límites N_MAX) antes de ejecutar 
-    /// operaciones de comparación o sincronización de dispositivos con TIA Portal.
+    /// Valida que el entorno (Excel + TIA Portal) esté listo para operar con una categoría de dispositivos.
     /// </summary>
     public class DevicesEnvironment
     {
         public bool IsValid { get; private set; } = false;
-
-        // Datos extraídos listos para usar
         public int ExcelNMax { get; private set; }
 
         public DevicesEnvironment(
@@ -29,42 +23,46 @@ namespace ZC_ALM_TOOLS.Models.Generator
         {
             if (category == null || settings == null || cache == null) return;
 
-            // Extraer el valor de N_MAX del Excel
-            if (cache.TryGetValue(settings.Disp_N_Max, out var limits))
+            // 1. Extraer N_MAX de la caché (Cargado previamente por DataService.GetNMaxConfigsAsync)
+            // Buscamos en la caché la lista de límites y filtramos por la clase del modelo (ej. "Disp_ED")
+            // 1. Extraer N_MAX de la caché (Cargado previamente por DataService)
+            if (cache.TryGetValue("CONFIG_LIMITS", out var limits))
             {
-                var limitItem = limits.Cast<Disp_Config>().FirstOrDefault(x => x.Nombre == category.GlobalConfigKey);
-                ExcelNMax = limitItem?.Valor ?? 0;
+                var limitEntry = limits.Cast<Disp_Config>().FirstOrDefault(x => x.Nombre == category.ModelClass);
+                ExcelNMax = limitEntry?.Valor ?? 0;
             }
 
-            // Si solo queríamos extraer el dato de Excel (ej. para la UI), paramos aquí
+            // 2. Si solo es consulta para UI (sin PLC), marcamos válido y salimos
             if (!validatePlc || tiaPlcService == null)
             {
                 IsValid = true;
                 return;
             }
 
-            // Validación contra TIA Portal
-            LogService.Write($"[DEVICES-ENVIRONMENT] Validando entorno PLC para categoría '{category.Name}'...");
+            // 3. Validación contra TIA Portal (Usa los nombres definidos en el JSON)
+            LogService.Write($"[DEVICES-ENVIRONMENT] [DevicesEnvironment] Validando entorno PLC para '{category.Name}'...");
 
-            if (tiaPlcService.FindTagTableByName(settings.ConfigTableName) == null)
+            // Validar Tabla de Constantes (Configuración Global)
+            if (tiaPlcService.FindTagTableByName(settings.TiaTable) == null)
             {
-                StatusService.Set($"Error: No se encuentra la tabla de constantes '{settings.ConfigTableName}'.", StatusType.Error);
+                StatusService.Set($"Error: No existe la tabla de constantes '{settings.TiaTable}'.", StatusType.Error);
                 return;
             }
 
+            // Validar Tabla de Variables (Específica del Dispositivo)
             if (tiaPlcService.FindTagTableByName(category.TiaTable) == null)
             {
-                StatusService.Set($"Error: No se encuentra la tabla de variables '{category.TiaTable}'.", StatusType.Error);
+                StatusService.Set($"Error: No existe la tabla de variables '{category.TiaTable}'.", StatusType.Error);
                 return;
             }
 
+            // Validar Bloque de Datos (DB de Instancia/Global)
             if (tiaPlcService.FindBlockByName(category.TiaDbName) == null)
             {
-                StatusService.Set($"Error: No se encuentra el bloque de datos '{category.TiaDbName}'.", StatusType.Error);
+                StatusService.Set($"Error: No existe el bloque '{category.TiaDbName}'.", StatusType.Error);
                 return;
             }
 
-            // Todo existe y está listo para ser sincronizado/comparado
             IsValid = true;
         }
     }

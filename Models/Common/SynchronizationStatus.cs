@@ -1,4 +1,5 @@
-﻿namespace ZC_ALM_TOOLS.Models.Common
+﻿
+namespace ZC_ALM_TOOLS.Models.Common
 {
 
     // ==================================================================================================================

@@ -1,16 +1,18 @@
 ﻿using System.Reflection;
+using System.Resources;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Windows;
 
 // La información general de un ensamblado se controla mediante el siguiente 
 // conjunto de atributos. Cambie estos valores de atributo para modificar la información
 // asociada con un ensamblado.
-[assembly: AssemblyTitle("Siemens_DB_Tool")]
+[assembly: AssemblyTitle("ZC_ALM_TOOLS")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("Siemens_DB_Tool")]
-[assembly: AssemblyCopyright("Copyright ©  2025")]
+[assembly: AssemblyProduct("ZC_ALM_TOOLS")]
+[assembly: AssemblyCopyright("Copyright ©  2026")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -19,8 +21,25 @@ using System.Runtime.InteropServices;
 // COM, establezca el atributo ComVisible en true en este tipo.
 [assembly: ComVisible(false)]
 
-// El siguiente GUID sirve como id. de typelib si este proyecto se expone a COM.
-[assembly: Guid("b8ba93b5-01b3-4765-8ec9-c16955f8815f")]
+//Para comenzar a compilar aplicaciones que se puedan traducir, establezca
+//<UICulture>CultureYouAreCodingWith</UICulture> en el archivo .csproj
+//dentro de <PropertyGroup>.  Por ejemplo, si utiliza inglés de EE.UU.
+//en los archivos de código fuente, establezca <UICulture> en en-US.  A continuación, quite la marca de comentario
+//del atributo NeutralResourceLanguage.  Actualice "en-US" en
+//la siguiente línea para que coincida con el valor UICulture del archivo de proyecto.
+
+//[assembly: NeutralResourcesLanguage("en-US", UltimateResourceFallbackLocation.Satellite)]
+
+
+[assembly: ThemeInfo(
+    ResourceDictionaryLocation.None, //donde se encuentran los diccionarios de recursos específicos del tema
+                                     //(se utiliza si no se encuentra ningún recurso en la página,
+                                     // ni diccionarios de recursos de la aplicación)
+    ResourceDictionaryLocation.SourceAssembly //donde se encuentra el diccionario de recursos genérico
+                                              //(se utiliza si no se encuentra ningún recurso en la página,
+                                              // aplicación o diccionarios de recursos específicos del tema)
+)]
+
 
 // La información de versión de un ensamblado consta de los cuatro valores siguientes:
 //
@@ -31,4 +50,3 @@ using System.Runtime.InteropServices;
 //
 [assembly: AssemblyVersion("1.0.0.0")]
 [assembly: AssemblyFileVersion("1.0.0.0")]
-

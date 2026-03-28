@@ -1,5 +1,4 @@
-﻿using System.IO;
-using ZC_ALM_TOOLS.Core;
+﻿using ZC_ALM_TOOLS.Core;
 
 namespace ZC_ALM_TOOLS.Models.Vci
 {

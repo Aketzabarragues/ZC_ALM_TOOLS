@@ -1,5 +1,4 @@
-﻿using System.Xml.Linq;
-using ZC_ALM_TOOLS.Core;
+﻿using ZC_ALM_TOOLS.Core;
 
 namespace ZC_ALM_TOOLS.Models.Generator
 {
@@ -33,27 +32,6 @@ namespace ZC_ALM_TOOLS.Models.Generator
         public string Estado { get => _Estado; set { _Estado = value; OnPropertyChanged(); } }
 
 
-        // ==================================================================================================================
-        /// <summary>
-        /// Metodo para leer dispositivo entrada analogica desde XML
-        /// </summary>
-        public static Disp_EA FromXml(XElement x) => new Disp_EA
-        {
-            UID = DataHelper.GetXmlVal(x, "UID"),
-            Numero = DataHelper.GetXmlInt(x, "Numero"),
-            Tag = DataHelper.GetXmlVal(x, "Tag"),
-            Descripcion = DataHelper.GetXmlVal(x, "Descripcion"),
-            FAT = DataHelper.GetXmlVal(x, "FAT"),
-            EByte = DataHelper.GetXmlVal(x, "E.Byte"), // Ojo al punto, coincide con tu XML
-            Unidades = DataHelper.GetXmlVal(x, "UNIDADES"),
-            RII = DataHelper.GetXmlVal(x, "RII"),
-            RSI = DataHelper.GetXmlVal(x, "RSI"),
-            GrAlarma = DataHelper.GetXmlVal(x, "Gr.Alarma"),
-            Cuadro = DataHelper.GetXmlVal(x, "Cuadro"),
-            Observaciones = DataHelper.GetXmlVal(x, "Observaciones"),
-            CPTag = DataHelper.GetXmlVal(x, "CP.Tag"),
-            CPComentario = DataHelper.GetXmlVal(x, "CP.Comentario")
-        };
     }
 
 

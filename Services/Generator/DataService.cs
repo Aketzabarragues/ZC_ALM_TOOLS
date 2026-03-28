@@ -1,317 +1,232 @@
-﻿using System;
+﻿// Archivo: Services/Generator/DataService.cs
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection;
-using System.Xml.Linq;
-using ZC_ALM_TOOLS.Models;
+using System.Threading.Tasks;
+using ClosedXML.Excel;
 using ZC_ALM_TOOLS.Models.Common;
 using ZC_ALM_TOOLS.Models.Generator;
 using ZC_ALM_TOOLS.Services.Common;
 
 namespace ZC_ALM_TOOLS.Services.Generator
 {
-
-
-    // ==================================================================================================================
-    /// <summary>
-    /// Servicio encargado exclusivamente de leer los XML generados por Python
-    /// y convertirlos en objetos C# usando los Modelos definidos. 
-    /// </summary>
     public static class DataService
     {
-
-
-
-        // ==================================================================================================================
-        /// <summary>
-        /// Metodo para la carga de la lista de procesos desde procesos.xml
-        /// </summary>
-        public static List<Process> LoadProcess(string path)
+        // =====================================================================================================
+        // MOTOR BASE ASÍNCRONO DE EXTRACCIÓN 
+        // =====================================================================================================
+        private static async Task<List<T>> LoadTableDataAsync<T>(string excelPath, string sheetName, string tableName, Func<IXLRangeRow, Dictionary<string, int>, int, T> mapper)
         {
-            var list = new List<Process>();
-
-            if (!File.Exists(path))
+            return await Task.Run(() =>
             {
-                LogService.Write($"[DATA-SERVICE] [LoadProcess] No se encuentra procesos.xml: {path}", true);
-                return list;
-            }
+                var list = new List<T>();
+                if (!File.Exists(excelPath)) return list;
 
-            try
-            {
-                XDocument doc = XDocument.Load(path);
-                // Buscamos los nodos <Proceso> y usamos el método FromXml del modelo
-                list = doc.Descendants("Proceso")
-                          .Select(x => Process.FromXml(x))
-                          .ToList();
-
-                LogService.Write($"[DATA-SERVICE] [LoadProcess] Cargados {list.Count} procesos desde el índice.");
-            }
-            catch (Exception ex)
-            {
-                LogService.Write($"[DATA-SERVICE] [LoadProcess] Error leyendo procesos.xml: {ex.Message}", true);
-            }
-
-            return list;
-        }
-
-
-
-        // ==================================================================================================================
-        /// <summary>
-        /// Metodo para la carga de la lista de conexiones desde conexiones.xml
-        /// </summary>
-        public static List<Connection> LoadConections(string path)
-        {
-            var list = new List<Connection>();
-
-            if (!File.Exists(path))
-            {
-                LogService.Write($"[DATA-SERVICE] [LoadConections] No se encuentra conexion.xml: {path}", true);
-                return list;
-            }
-
-            try
-            {
-                XDocument doc = XDocument.Load(path);
-                // Buscamos los nodos <Conexion> y usamos el método FromXml del modelo
-                list = doc.Descendants("Conexion")
-                          .Select(x => Connection.FromXml(x))
-                          .ToList();
-
-                LogService.Write($"[DATA-SERVICE] [LoadConections] Cargadas {list.Count} conexiones.");
-            }
-            catch (Exception ex)
-            {
-                LogService.Write($"[DATA-SERVICE] [LoadConections] Error leyendo conexiones.xml: {ex.Message}", true);
-            }
-
-            return list;
-        }
-
-
-
-        // ==================================================================================================================
-        /// <summary>
-        /// Metodo para la carga de la lista de etapas desde etapas.xml
-        /// </summary>
-        public static List<ProcessStage> LoadStages(string path)
-        {
-            var list = new List<ProcessStage>();
-
-            if (!File.Exists(path))
-            {
-                LogService.Write($"[DATA-SERVICE] [LoadStages] No se encuentra etapas.xml: {path}", true);
-                return list;
-            }
-
-            try
-            {
-                XDocument doc = XDocument.Load(path);
-                // Buscamos los nodos <Etapa> y usamos el método FromXml del modelo
-                list = doc.Descendants("Etapa")
-                          .Select(x => ProcessStage.FromXml(x))
-                          .ToList();
-
-                LogService.Write($"[DATA-SERVICE] [LoadStages] Cargadas {list.Count} etapas.");
-            }
-            catch (Exception ex)
-            {
-                LogService.Write($"[DATA-SERVICE] [LoadStages] Error leyendo etapas.xml: {ex.Message}", true);
-            }
-
-            return list;
-        }
-
-
-
-        // ==================================================================================================================
-        /// <summary>
-        /// Metodo para la carga de la lista de parametros desde p_real.xml o p_int.xml
-        /// </summary>
-        public static List<Parameter> LoadParameters(string path)
-        {
-            var list = new List<Parameter>();
-
-            if (!File.Exists(path))
-            {
-                LogService.Write($"[DATA-SERVICE] [LoadParameters] No se encuentra archivo de parámetros: {path}", true);
-                return list;
-            }
-
-            try
-            {
-                XDocument doc = XDocument.Load(path);
-                // Buscamos los nodos <Parametro> y usamos el método FromXml del modelo
-                list = doc.Descendants("Parametro")
-                          .Select(x => Parameter.FromXml(x))
-                          .ToList();
-
-                LogService.Write($"[DATA-SERVICE] [LoadParameters] Cargados {list.Count} parámetros desde {Path.GetFileName(path)}.");
-            }
-            catch (Exception ex)
-            {
-                LogService.Write($"[DATA-SERVICE] [LoadParameters] Error leyendo parámetros en {Path.GetFileName(path)}: {ex.Message}", true);
-            }
-
-            return list;
-        }
-
-
-
-        // ==================================================================================================================
-        /// <summary>
-        /// Metodo para la carga de la lista de alarmas desde alarmas.xml
-        /// </summary>
-        public static List<Alarms> LoadAlarms(string path)
-        {
-            var list = new List<Alarms>();
-
-            if (!File.Exists(path))
-            {
-                LogService.Write($"[DATA-SERVICE] [LoadAlarms] No se encuentra archivo de alarmas: {path}", true);
-                return list;
-            }
-
-            try
-            {
-                XDocument doc = XDocument.Load(path);
-                // Buscamos los nodos <Alarma> y usamos el método FromXml del modelo
-                list = doc.Descendants("Alarma")
-                          .Select(x => Alarms.FromXml(x))
-                          .ToList();
-
-                LogService.Write($"[DATA-SERVICE] [LoadAlarms] Cargadas {list.Count} alarmas desde {Path.GetFileName(path)}.");
-            }
-            catch (Exception ex)
-            {
-                LogService.Write($"[DATA-SERVICE] [LoadAlarms] Error leyendo alarmas en {Path.GetFileName(path)}: {ex.Message}", true);
-            }
-
-            return list;
-        }
-
-
-
-        // ==================================================================================================================
-        /// <summary>
-        /// Metodo para la carga de la lista de numero maximo de dispositivos desde config_disp.xml
-        /// </summary>
-        public static List<Disp_Config> LoadDeviceNMax(string path)
-        {
-            var list = new List<Disp_Config>();
-
-            if (!File.Exists(path))
-            {
-                LogService.Write($"[DATA-SERVICE] [LoadDeviceNMax] No se encuentra el archivo de límites: {path}", true);
-                return list;
-            }
-
-            try
-            {
-                XDocument doc = XDocument.Load(path);
-                list = doc.Descendants("Item")
-                          .Select(x => Disp_Config.FromXml(x))
-                          .ToList();
-
-                LogService.Write($"[DATA-SERVICE] [LoadDeviceNMax] Cargados {list.Count} límites de dimensionado.");
-            }
-            catch (Exception ex)
-            {
-                LogService.Write($"[DATA-SERVICE] [LoadDeviceNMax] Error leyendo límites de dispositivos: {ex.Message}", true);
-            }
-
-            return list;
-        }
-
-
-
-        // ==================================================================================================================
-        /// <summary>
-        /// Metodo para la carga de la lista de dispositivos usando Reflexión para instanciar la clase correcta (Disp_V, Disp_M, etc.) desde los archivos de dispositivos en xml
-        /// </summary>
-        public static List<object> LoadDispCategoryData(string path, ConfigDeviceCategory category)
-        {
-            var list = new List<object>();
-
-            if (!File.Exists(path)) return list;
-
-            try
-            {
-                XDocument doc = XDocument.Load(path);
-
-                // Construimos el nombre de la clase dinámicamente
-                string className = $"ZC_ALM_TOOLS.Models.Generator.{category.ModelClass}";
-                Type modelType = Type.GetType(className);
-
-                if (modelType == null)
+                try
                 {
-                    LogService.Write($"[DATA-SERVICE] [LoadDispCategoryData] Error: No se encuentra la clase {className}", true);
-                    return list;
-                }
-
-                // Buscamos el método estático "FromXml"
-                var method = modelType.GetMethod("FromXml", BindingFlags.Public | BindingFlags.Static);
-
-                if (method == null)
-                {
-                    LogService.Write($"[DATA-SERVICE] [LoadDispCategoryData] Error: La clase {category.ModelClass} no tiene método FromXml", true);
-                    return list;
-                }
-
-                foreach (var element in doc.Root.Elements())
-                {
-                    // Invocamos el método estático para crear el objeto
-                    var instance = method.Invoke(null, new object[] { element });
-                    if (instance != null)
+                    using (var wb = new XLWorkbook(excelPath))
                     {
-                        list.Add(instance);
+                        if (!wb.TryGetWorksheet(sheetName, out var ws)) return list;
+
+                        var table = ws.Tables.FirstOrDefault(t => t.Name.Equals(tableName, StringComparison.OrdinalIgnoreCase));
+                        if (table == null)
+                        {
+                            LogService.Write($"[DATA-SERVICE] Tabla '{tableName}' no encontrada en la hoja '{sheetName}'.", true);
+                            return list;
+                        }
+
+                        // Mapeo seguro secuencial (Evita offsets si la tabla no empieza en la Columna A)
+                        var headers = new Dictionary<string, int>();
+                        int colIndex = 1;
+                        
+                        foreach (var field in table.Fields)
+                        {
+                            string key = NormalizeKey(field.Name);
+                            if (!headers.ContainsKey(key)) headers.Add(key, colIndex);
+                            colIndex++;
+                        }
+
+                        int rowIndex = 1;
+                        foreach (var row in table.DataRange.Rows())
+                        {
+                            list.Add(mapper(row, headers, rowIndex++));
+                        }
                     }
                 }
-
-                string fileName = Path.GetFileName(path).ToLower();
-                LogService.Write($"[DATA-SERVICE] [LoadDispCategoryData] Cargados {list.Count} dispositivos de tipo '{category.Name}' desde {fileName}.");
-            }
-            catch (Exception ex)
-            {
-                LogService.Write($"[DATA-SERVICE] [LoadDispCategoryData] Error cargando {category.ModelClass}: {ex.Message}", true);
-            }
-
-            return list;
+                catch (Exception ex)
+                {
+                    LogService.Write($"[DATA-SERVICE] Error en Tabla '{tableName}': {ex.Message}", true);
+                }
+                return list;
+            });
         }
 
-
-
-        // ==================================================================================================================
-        /// <summary>
-        /// Metodo para la crear una instancia vacía de un modelo (Disp_ED, Disp_V, etc.) basado en su categoría
-        /// </summary>
-        public static IDevice CreateEmptyDispData(ConfigDeviceCategory category)
+        // =====================================================================================================
+        // HELPERS DE EXTRACCIÓN ROBUSTA (NORMALIZACIÓN, ALIAS Y FALLBACKS)
+        // =====================================================================================================
+        private static string NormalizeKey(string key)
         {
-            try
-            {
-                string className = $"ZC_ALM_TOOLS.Models.{category.ModelClass}";
-                Type modelType = Type.GetType(className);
+            if (string.IsNullOrWhiteSpace(key)) return "";
+            return new string(key.Where(char.IsLetterOrDigit).ToArray()).ToUpperInvariant();
+        }
 
-                if (modelType == null)
+        private static string GetStr(IXLRangeRow r, Dictionary<string, int> h, params string[] cols)
+        {
+            foreach (var col in cols)
+            {
+                if (h.TryGetValue(NormalizeKey(col), out int idx))
                 {
-                    // Intento de búsqueda profunda en los ensamblados si el GetType básico falla
-                    modelType = AppDomain.CurrentDomain.GetAssemblies()
-                        .SelectMany(a => a.GetTypes())
-                        .FirstOrDefault(t => t.Name == category.ModelClass);
+                    string val = r.Cell(idx).GetString();
+                    if (!string.IsNullOrWhiteSpace(val)) return val.Trim();
                 }
-
-                if (modelType == null) throw new Exception($"Tipo no encontrado: {category.ModelClass}");
-
-                // Creamos la instancia y la devolvemos como la interfaz común
-                return (IDevice)Activator.CreateInstance(modelType);
             }
-            catch (Exception ex)
+            return string.Empty;
+        }
+
+        private static int GetInt(IXLRangeRow r, Dictionary<string, int> h, int defaultVal, params string[] cols)
+        {
+            foreach (var col in cols)
             {
-                LogService.Write($"[DATA-SERVICE] [CreateEmptyDispData] Error creando instancia de {category.ModelClass}: {ex.Message}", true);
-                // Devolvemos un objeto básico para no romper la ejecución
-                return new Disp_ED();
+                if (h.TryGetValue(NormalizeKey(col), out int idx))
+                {
+                    string val = r.Cell(idx).GetString();
+                    if (string.IsNullOrWhiteSpace(val)) continue;
+
+                    val = val.Trim();
+                    if (val.Contains(".")) val = val.Split('.')[0];
+                    if (int.TryParse(val, out int res)) return res;
+                }
             }
+            return defaultVal;
+        }
+
+        private static string GetUidFallback(string extractedUid) =>
+            string.IsNullOrEmpty(extractedUid) ? Guid.NewGuid().ToString() : extractedUid;
+
+        // =====================================================================================================
+        // MÉTODOS PÚBLICOS DE EXTRACCIÓN (POCOS)
+        // =====================================================================================================
+
+        public static async Task<List<Process>> LoadProcessAsync(string path, string sheet, string table) =>
+            await LoadTableDataAsync(path, sheet, table, (r, h, i) => new Process
+            {
+                Id = GetUidFallback(GetStr(r, h, "UID", "ID", "GUID")),
+                Nombre = GetStr(r, h, "NOMBRE", "PROCESO", "PROCESS"),
+                NumEtapas = GetInt(r, h, 0, "NUMETAPAS", "ETAPAS"),
+                MaxPReal = GetInt(r, h, 0, "PREAL", "MAXPREAL"),
+                MaxPInt = GetInt(r, h, 0, "PINT", "MAXPINT"),
+                NumAlarmas = GetInt(r, h, 0, "ALARMAS", "NUMALARMAS", "ALARMS")
+            });
+
+        public static async Task<List<Parameter>> LoadParametersAsync(string path, string sheet, string table) =>
+            await LoadTableDataAsync(path, sheet, table, (r, h, i) => new Parameter
+            {
+                Uid = GetUidFallback(GetStr(r, h, "UID", "ID", "GUID")),
+                Numero = GetInt(r, h, i, "NUMERO", "NUM", "NO"),
+                Proceso = GetStr(r, h, "PROCESO", "PROCESS"),
+                DbNumber = GetInt(r, h, 0, "NUMDB", "DBNUMBER", "DB"),
+                Producto = GetStr(r, h, "PRODUCTO", "PRODUCT"),
+                Tipo = GetStr(r, h, "TIPO", "TYPE"),
+                Descripcion = GetStr(r, h, "DESCRIPCION", "DESC"),
+                ComentarioDB = GetStr(r, h, "COMENTARIODB", "COMENTARIO"),
+                Visibilidad = GetStr(r, h, "VISIBILIDAD", "VIS")
+            });
+
+        public static async Task<List<Alarms>> LoadAlarmsAsync(string path, string sheet, string table) =>
+            await LoadTableDataAsync(path, sheet, table, (r, h, i) => new Alarms
+            {
+                UID = GetUidFallback(GetStr(r, h, "UID", "ID", "GUID")),
+                Numero = GetInt(r, h, i, "NUMERO", "NUM", "NO"),
+                Proceso = GetStr(r, h, "PROCESO", "PROCESS"),
+                DbNumber = GetInt(r, h, 0, "NUMDB", "DBNUMBER", "DB"),
+                Descripcion = GetStr(r, h, "DESCRIPCION", "DESC"),
+                ComentarioDB = GetStr(r, h, "COMENTARIODB", "COMENTARIO")
+            });
+
+        public static async Task<List<ProcessStage>> LoadStagesAsync(string path, string sheet, string table) =>
+            await LoadTableDataAsync(path, sheet, table, (r, h, i) => new ProcessStage
+            {
+                Uid = GetUidFallback(GetStr(r, h, "UID", "ID", "GUID")),
+                ProcessUid = GetInt(r, h, 0, "PROCESSUID", "PROCUID", "PROCESOID"),
+                Numero = GetInt(r, h, i, "NUMERO", "NUM", "NO"),
+                Proceso = GetStr(r, h, "PROCESO", "PROCESS"),
+                ValorEtapa = GetInt(r, h, 0, "VALORETAPA", "ETAPA"),
+                Descripcion = GetStr(r, h, "DESCRIPCION", "DESC"),
+                NombreVariable = GetStr(r, h, "NOMBREVARIABLE", "VARIABLE", "VAR"),
+                CpTag = GetStr(r, h, "CPTAG"),
+                CpComentario = GetStr(r, h, "CPCOMENTARIO")
+            });
+
+        public static async Task<List<Connection>> LoadConectionsAsync(string path, string sheet, string table) =>
+            await LoadTableDataAsync(path, sheet, table, (r, h, i) => new Connection
+            {
+                Equipo_Origen = GetStr(r, h, "EQUIPOORIGEN", "ORIGEN"),
+                Equipo_Destino = GetStr(r, h, "EQUIPODESTINO", "DESTINO"),
+                Protocolo = GetStr(r, h, "PROTOCOLO", "PROT"),
+                Nombre_Conexion_TIA = GetStr(r, h, "NOMBRECONEXIONTIA", "CONEXIONTIA", "CONEXION"),
+                ID_Local = GetStr(r, h, "IDLOCAL"),
+                Puerto_Local = GetStr(r, h, "PUERTOLOCAL", "PUERTO")
+            });
+
+        public static async Task<List<object>> LoadDispCategoryDataAsync(string path, ConfigDeviceCategory cat) =>
+            await LoadTableDataAsync<object>(path, cat.ExcelSheet, cat.ExcelTable, (r, h, i) => {
+                IDevice d = CreateEmptyDispData(cat);
+
+                // Mapeo estricto core de IDevice con fallbacks
+                d.UID = GetUidFallback(GetStr(r, h, "UID", "ID", "GUID"));
+                d.Numero = GetInt(r, h, i, "NUMERO", "NUM", "NO");
+                d.Tag = GetStr(r, h, "TAG");
+                d.Descripcion = GetStr(r, h, "DESCRIPCION", "DESC");
+                d.CPTag = GetStr(r, h, "CPTAG");
+                d.CPComentario = GetStr(r, h, "CPCOMENTARIO");
+
+                // Mapeo dinámico por reflexión ignorando missing y soportando alias limpios
+                foreach (var prop in d.GetType().GetProperties().Where(p => p.CanWrite))
+                {
+                    if (new[] { "UID", "Numero", "Tag", "Descripcion", "CPTag", "CPComentario", "Estado" }.Contains(prop.Name)) continue;
+
+                    string val = GetStr(r, h, prop.Name);
+                    if (!string.IsNullOrEmpty(val))
+                    {
+                        if (prop.PropertyType == typeof(string)) prop.SetValue(d, val);
+                        else if (prop.PropertyType == typeof(int))
+                        {
+                            if (val.Contains(".")) val = val.Split('.')[0];
+                            if (int.TryParse(val, out int res)) prop.SetValue(d, res);
+                        }
+                    }
+                }
+                return d;
+            });
+
+        public static async Task<List<Disp_Config>> LoadDeviceNMaxAsync(string path, ConfigDeviceSettings settings)
+        {
+            return await Task.Run(() => {
+                var list = new List<Disp_Config>();
+                if (!File.Exists(path) || settings?.ConfigCells == null) return list;
+                try
+                {
+                    using (var wb = new XLWorkbook(path))
+                    {
+                        if (!wb.TryGetWorksheet(settings.ExcelSheet, out var ws)) return list;
+                        foreach (var kvp in settings.ConfigCells)
+                        {
+                            var range = wb.DefinedNames.FirstOrDefault(nr => nr.Name.Equals(kvp.Value, StringComparison.OrdinalIgnoreCase))?.Ranges.FirstOrDefault();
+                            if (range != null) list.Add(new Disp_Config { Nombre = kvp.Key, Valor = (int)range.FirstCell().GetDouble() });
+                        }
+                    }
+                }
+                catch (Exception ex) { LogService.Write($"[DATA-SERVICE] Error leyendo límites N_MAX: {ex.Message}", true); }
+                return list;
+            });
+        }
+
+        public static IDevice CreateEmptyDispData(ConfigDeviceCategory cat)
+        {
+            Type t = AppDomain.CurrentDomain.GetAssemblies().SelectMany(a => a.GetTypes()).FirstOrDefault(x => x.Name == cat.ModelClass);
+            if (t == null) throw new Exception($"Clase de Modelo '{cat.ModelClass}' no encontrada en el ensamblado.");
+            return (IDevice)Activator.CreateInstance(t);
         }
     }
 }

@@ -1,5 +1,4 @@
-﻿using System.Xml.Linq;
-using ZC_ALM_TOOLS.Core;
+﻿using ZC_ALM_TOOLS.Core;
 
 namespace ZC_ALM_TOOLS.Models.Generator
 {
@@ -30,27 +29,7 @@ namespace ZC_ALM_TOOLS.Models.Generator
         private string _Estado = "Sin comprobar";
         public string Estado { get => _Estado; set { _Estado = value; OnPropertyChanged(); } }
 
-        // ==================================================================================================================
-        /// <summary>
-        /// Metodo para leer dispositivo entrada digital desde XML
-        /// </summary>
-        public static Disp_ED FromXml(XElement x) => new Disp_ED
-        {
-            UID = DataHelper.GetXmlVal(x, "UID"),
-            Numero = DataHelper.GetXmlInt(x, "Numero"),
-            Tag = DataHelper.GetXmlVal(x, "Tag"),
-            Descripcion = DataHelper.GetXmlVal(x, "Descripcion"),
-            FAT = DataHelper.GetXmlVal(x, "FAT"),
-            EByte = DataHelper.GetXmlVal(x, "E.Byte"),
-            EBit = DataHelper.GetXmlVal(x, "E.Bit"),
-            GrAlarma = DataHelper.GetXmlVal(x, "Gr.Alarma"),
-            Cuadro = DataHelper.GetXmlVal(x, "Cuadro"),
-            Observaciones = DataHelper.GetXmlVal(x, "Observaciones"),
-            CPTag = DataHelper.GetXmlVal(x, "CP.Tag"),
-            CPComentario = DataHelper.GetXmlVal(x, "CP.Comentario")
-        };
-    
-
+        
     }
 
 }

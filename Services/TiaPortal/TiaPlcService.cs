@@ -527,12 +527,15 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
             {
                 LogService.Write($"[TIA-PLC-SERVICE] [UpdateMassiveSclDependencies] Iniciando proceso para {blocksToProcess.Count} bloques.");
 
-                string tempDir = Path.Combine(AppConfigService.TempPath, "SCL_Deps");
+                string tempDir = AppConfigService.TempExportPathVci;
                 if (!Directory.Exists(tempDir)) Directory.CreateDirectory(tempDir);
 
                 // Exportaremos los bloques finales aquí para dárselos a tu herramienta Python de documentación
-                string pythonDocsDir = Path.Combine(AppConfigService.TempPath, "SCL_Exported_For_Docs");
-                if (!Directory.Exists(pythonDocsDir)) Directory.CreateDirectory(pythonDocsDir);
+                string pythonDocsDir = AppConfigService.GetGlobalSettings().DocExportSourcesPath;
+                if (string.IsNullOrWhiteSpace(pythonDocsDir))
+                {
+                    pythonDocsDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "ZC_Exportaciones_SCL");
+                }
 
                 StringBuilder massiveSclFile = new StringBuilder();
 
@@ -945,7 +948,7 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                         }
 
                         // Añadimos las nuevas variables directamente en el XML
-                        string xmlPath = Path.Combine(AppConfigService.TempPath, $"{tableName}.xml");
+                        string xmlPath = Path.Combine(AppConfigService.TempExportPathXml, $"{tableName}.xml");
                         if (File.Exists(xmlPath)) File.Delete(xmlPath);
 
                         // Exportamos la tabla de variables
@@ -1028,7 +1031,7 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                                               
 
                 // Exportar a temporal
-                string xmlPath = Path.Combine(AppConfigService.TempPath, $"{dbName}.xml");
+                string xmlPath = Path.Combine(AppConfigService.TempExportPathXml, $"{dbName}.xml");
                 if (File.Exists(xmlPath)) File.Delete(xmlPath);
 
                 LogService.Write($"[TIA-PLC-SERVICE] [SyncDispDbComments] Exportando bloque para edición: {xmlPath}");
@@ -1107,7 +1110,7 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                 if (block == null) throw new Exception($"Bloque '{dbName}' no encontrado.");
 
                 // Exportar a temporal
-                string tempPath = Path.Combine(Path.GetTempPath(), $"{dbName}.xml");
+                string tempPath = Path.Combine(AppConfigService.TempExportPathXml, $"{dbName}.xml");
                 if (File.Exists(tempPath)) File.Delete(tempPath);
 
                 LogService.Write($"[TIA-PLC-SERVICE] [SyncParamsAlarmsDbComments] Exportando DB a XML temporal...");

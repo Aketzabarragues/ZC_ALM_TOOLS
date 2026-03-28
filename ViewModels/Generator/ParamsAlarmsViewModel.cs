@@ -289,7 +289,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                 StatusService.Set("Exportando Bloques de Datos desde TIA Portal...", StatusType.Ok);
                 await Task.Delay(50);
 
-                string tempDir = AppConfigService.TempPath;
+                string tempDir = AppConfigService.TempExportPathXml;
                 string tempReal = Path.Combine(tempDir, "db_real.xml");
                 string tempInt = Path.Combine(tempDir, "db_int.xml");
                 string tempAlm = Path.Combine(tempDir, "db_alm.xml");

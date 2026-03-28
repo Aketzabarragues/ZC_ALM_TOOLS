@@ -6,31 +6,25 @@ using ZC_ALM_TOOLS.Services.TiaPortal;
 
 namespace ZC_ALM_TOOLS.Models.Generator
 {
-    // ==================================================================================================================
-    /// <summary>
-    /// Clase de contexto que encapsula la preparación y validación del entorno necesario 
-    /// (existencia de tablas, constantes y bloques de datos) antes de ejecutar 
-    /// operaciones de comparación o sincronización de parámetros y alarmas con TIA Portal.
-    /// </summary>
     public class ParamsAlarmsEnvironment
     {
         public bool IsValid { get; private set; } = false;
 
+        // Propiedades de nombres calculados para TIA Portal
         public string TableName { get; private set; }
         public string ConstReal { get; private set; }
         public string ConstInt { get; private set; }
         public string ConstAlm { get; private set; }
         public string ConstAlmHmi { get; private set; }
 
-        public int DbNumReal { get; private set; }
-        public int DbNumInt { get; private set; }
-        public int DbNumAlm { get; private set; }
-
         public string DbNameReal { get; private set; }
         public string DbNameInt { get; private set; }
         public string DbNameAlm { get; private set; }
 
-        // El constructor recibe todo lo necesario y se auto-configura
+        public int DbNumReal { get; private set; }
+        public int DbNumInt { get; private set; }
+        public int DbNumAlm { get; private set; }
+
         public ParamsAlarmsEnvironment(
             Process process,
             ConfigProcessSettings settings,
@@ -43,53 +37,65 @@ namespace ZC_ALM_TOOLS.Models.Generator
             bool checkEnteros = true,
             bool checkAlarmas = true)
         {
-            if (process == null || tiaPlcService == null) return;
+            // Validaciones iniciales de nulidad
+            if (process == null || settings == null || tiaPlcService == null) return;
 
-            // 1. Calcular Nombres
+            // 1. Construcción dinámica de nombres según estándar del JSON
             TableName = $"{process.Id}_{process.Nombre}";
             ConstReal = $"{process.Id}{settings.SuffixConstReal}";
             ConstInt = $"{process.Id}{settings.SuffixConstInt}";
             ConstAlm = $"{process.Id}{settings.SuffixConstAlm}";
             ConstAlmHmi = $"{process.Id}{settings.SuffixConstAlmHmi}";
 
+            // Extraer números de DB (asumimos que todos los parámetros de una lista van al mismo DB)
             DbNumReal = reales.FirstOrDefault()?.DbNumber ?? -1;
             DbNumInt = enteros.FirstOrDefault()?.DbNumber ?? -1;
             DbNumAlm = alarmas.FirstOrDefault()?.DbNumber ?? -1;
 
-            DbNameReal = $"DB{DbNumReal}{settings.SuffixDbReal}";
-            DbNameInt = $"DB{DbNumInt}{settings.SuffixDbInt}";
-            DbNameAlm = $"DB{DbNumAlm}{settings.SuffixDbAlm}";
+            // Construcción de nombres de DBs (Ej: DB200_PREAL)
+            DbNameReal = DbNumReal != -1 ? $"DB{DbNumReal}{settings.SuffixDbReal}" : null;
+            DbNameInt = DbNumInt != -1 ? $"DB{DbNumInt}{settings.SuffixDbInt}" : null;
+            DbNameAlm = DbNumAlm != -1 ? $"DB{DbNumAlm}{settings.SuffixDbAlm}" : null;
 
-            // 2. Validación directa contra TIA Portal
-            LogService.Write($"[PARAMS-ALARMS-ENVIRONMENT] Buscando tabla '{TableName}' y DBs asociados...");
+            // 2. Validación de existencia en el proyecto de TIA Portal
+            LogService.Write($"[PARAMS-ENVIRONMENT] Validando entorno para proceso: {process.Nombre}");
 
+            // La tabla de variables es obligatoria
             if (tiaPlcService.FindTagTableByName(TableName) == null)
             {
-                StatusService.Set($"Error: No se encuentra la tabla '{TableName}' en el PLC.", StatusType.Error);
-                return; // Se queda IsValid = false
-            }
-
-            bool doCheckReal = !forSync || checkReales;
-            bool doCheckInt = !forSync || checkEnteros;
-            bool doCheckAlm = !forSync || checkAlarmas;
-
-            if (doCheckReal && DbNumReal != -1 && tiaPlcService.FindBlockByName(DbNameReal) == null)
-            {
-                StatusService.Set($"Error: No se encuentra el bloque '{DbNameReal}'.", StatusType.Error);
-                return;
-            }
-            if (doCheckInt && DbNumInt != -1 && tiaPlcService.FindBlockByName(DbNameInt) == null)
-            {
-                StatusService.Set($"Error: No se encuentra el bloque '{DbNameInt}'.", StatusType.Error);
-                return;
-            }
-            if (doCheckAlm && DbNumAlm != -1 && tiaPlcService.FindBlockByName(DbNameAlm) == null)
-            {
-                StatusService.Set($"Error: No se encuentra el bloque '{DbNameAlm}'.", StatusType.Error);
+                StatusService.Set($"Error: Tabla de variables '{TableName}' no encontrada.", StatusType.Error);
                 return;
             }
 
-            // Si sobrevive a los checks, es válido
+            // Validación condicional de bloques (solo si hay datos y se requiere check)
+            if ((!forSync || checkReales) && DbNameReal != null)
+            {
+                if (tiaPlcService.FindBlockByName(DbNameReal) == null)
+                {
+                    StatusService.Set($"Error: Bloque '{DbNameReal}' no encontrado.", StatusType.Error);
+                    return;
+                }
+            }
+
+            if ((!forSync || checkEnteros) && DbNameInt != null)
+            {
+                if (tiaPlcService.FindBlockByName(DbNameInt) == null)
+                {
+                    StatusService.Set($"Error: Bloque '{DbNameInt}' no encontrado.", StatusType.Error);
+                    return;
+                }
+            }
+
+            if ((!forSync || checkAlarmas) && DbNameAlm != null)
+            {
+                if (tiaPlcService.FindBlockByName(DbNameAlm) == null)
+                {
+                    StatusService.Set($"Error: Bloque '{DbNameAlm}' no encontrado.", StatusType.Error);
+                    return;
+                }
+            }
+
+            // Si llegamos aquí, el entorno PLC coincide con la definición del Excel
             IsValid = true;
         }
     }

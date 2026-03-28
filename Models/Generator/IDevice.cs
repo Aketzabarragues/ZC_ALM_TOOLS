@@ -8,6 +8,7 @@ namespace ZC_ALM_TOOLS.Models.Generator
     /// </summary>
     public interface IDevice
     {
+        string UID { get; set; }
         int Numero { get; set; }
         string Tag { get; set; }
         string Descripcion { get; set; }

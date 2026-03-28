@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Xml.Linq;
+using Newtonsoft.Json;
 using ZC_ALM_TOOLS.Models;
 using ZC_ALM_TOOLS.Models.Common;
 
@@ -16,39 +17,62 @@ namespace ZC_ALM_TOOLS.Services.Common
     public static class AppConfigService
     {
 
-
+        private static AppSettings _appConfigCache;
 
         // ==================================================================================================================
         // Rutas base centralizadas
         public static string BasePath => Path.Combine(Path.GetTempPath(), "_ZC_ALM_TOOLS");
         public static string LogFile => Path.Combine(BasePath, "app_debug.log");
-        public static string ConfigPath => Path.Combine(BasePath, "Config");
         public static string ExportPath => Path.Combine(BasePath, "Export");
         public static string TempPath => Path.Combine(BasePath, "Temp");
-
-
-
-        // ==================================================================================================================
-        // Archivo de configuración
-        public static string AppConfigFile => Path.Combine(ConfigPath, "app_config.xml");
+        public static string TempExportPathXml => Path.Combine(TempPath, "Xml");
+        public static string TempExportPathVci => Path.Combine(TempPath, "Vci");
+        public static string AppConfigFile => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "app_config.json");
 
 
 
         // ==================================================================================================================
         /// <summary>
-        /// Metodo que prepara el entorno de carpetas y archivos base 
+        /// Prepara el entorno de carpetas base y garantiza la existencia/carga del app_config.json
         /// </summary>
         public static void InitializeEnvironment()
         {
-            // Crear directorios si no existen
-            if (!Directory.Exists(ConfigPath)) Directory.CreateDirectory(ConfigPath);
-            if (!Directory.Exists(ExportPath)) Directory.CreateDirectory(ExportPath);
-            if (!Directory.Exists(TempPath)) Directory.CreateDirectory(TempPath);
-
-            // Crear configuración general por defecto si no existe en la carpeta
-            if (!File.Exists(AppConfigFile))
+            try
             {
-                CreateAppConfigFile(AppConfigFile);
+                //  Si el directorio base ya existe, intentamos eliminarlo para partir de cero (limpieza de logs, temp, etc). Si falla, lo ignoramos y seguimos adelante para no bloquear el arranque de la app.
+                if (Directory.Exists(BasePath))
+                {
+                    try
+                    {
+                        Directory.Delete(BasePath, true);
+                    }
+                    catch (Exception)
+                    {
+                    }
+                }
+
+
+                // Crear árbol de directorios efímeros
+                if (!Directory.Exists(BasePath)) Directory.CreateDirectory(BasePath);
+                if (!Directory.Exists(ExportPath)) Directory.CreateDirectory(ExportPath);
+                if (!Directory.Exists(TempPath)) Directory.CreateDirectory(TempPath);
+                if (!Directory.Exists(TempExportPathXml)) Directory.CreateDirectory(TempExportPathXml);
+                if (!Directory.Exists(TempExportPathVci)) Directory.CreateDirectory(TempExportPathVci);
+
+                // Comprobar si existe el archivo JSON en la ruta de ejecución
+                if (!File.Exists(AppConfigFile))
+                {
+                    LogService.Write("[APP-CONFIG] [InitializeEnvironment] app_config.json no encontrado. Procediendo a extraerlo de los recursos...");
+                    CreateAppConfigFile(AppConfigFile);
+                }
+
+                // 3. Cargar en memoria
+                LoadConfigToMemory();
+            }
+            catch (Exception ex)
+            {
+                LogService.Write($"[APP-CONFIG] [InitializeEnvironment] Error inicializando entorno: {ex.Message}", true);
+                throw;
             }
         }
 
@@ -56,51 +80,72 @@ namespace ZC_ALM_TOOLS.Services.Common
 
         // ==================================================================================================================
         /// <summary>
-        /// Metodo que crea el archivo de configuracion si no existe 
+        /// Crea el archivo de configuración extrayéndolo de los recursos embebidos (.dll / .exe)
         /// </summary>
         private static void CreateAppConfigFile(string targetPath)
         {
-
             var assembly = Assembly.GetExecutingAssembly();
-            string resourceName = "ZC_ALM_TOOLS.Resources.app_config.xml";
+            string resourceName = "ZC_ALM_TOOLS.Resources.app_config.json";
 
-            var names = Assembly.GetExecutingAssembly().GetManifestResourceNames();
-            foreach (var name in names) { LogService.Write("[APP-CONFIG-SERVICE] [CreateAppConfigFile] Recurso encontrado: " + name); }
-
-            using (Stream stream = assembly.GetManifestResourceStream(resourceName))
+            try
             {
-                if (stream == null)
+                using (Stream stream = assembly.GetManifestResourceStream(resourceName))
                 {
-                    LogService.Write("[APP-CONFIG-SERVICE] [CreateAppConfigFile] ERROR: No se encontró el recurso embebido " + resourceName, true);
-                    return;
-                }
+                    if (stream == null)
+                    {
+                        string availableResources = string.Join(", ", assembly.GetManifestResourceNames());
+                        throw new FileNotFoundException($"No se encontró el recurso '{resourceName}'. Recursos detectados: {availableResources}");
+                    }
 
-                using (FileStream fileStream = new FileStream(targetPath, FileMode.Create))
+                    using (FileStream fileStream = new FileStream(targetPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                    {
+                        stream.CopyTo(fileStream);
+                    }
+                }
+                LogService.Write("[APP-CONFIG] [CreateAppConfigFile] Configuración JSON maestra extraída y creada correctamente.");
+            }
+            catch (UnauthorizedAccessException)
+            {
+                LogService.Write($"[APP-CONFIG] [CreateAppConfigFile] Error. No se puede escribir en {targetPath}.", true);
+                throw;
+            }
+        }
+
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Método privado centralizado para leer el archivo físico y volcarlo a la caché de RAM
+        /// </summary>
+        private static void LoadConfigToMemory()
+        {
+            if (!File.Exists(AppConfigFile)) return;
+
+            string json = File.ReadAllText(AppConfigFile);
+            _appConfigCache = JsonConvert.DeserializeObject<AppSettings>(json);
+            LogService.Write("[APP-CONFIG] [LoadConfigToMemory] Configuración JSON cargada en memoria correctamente.");
+        }
+
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Recarga la configuración desde el archivo JSON a la memoria RAM (Caché).
+        /// </summary>
+        public static void Reload()
+        {
+            try
+            {
+                if (File.Exists(AppConfigFile))
                 {
-                    stream.CopyTo(fileStream);
+                    string json = File.ReadAllText(AppConfigFile);
+                    _appConfigCache = JsonConvert.DeserializeObject<AppSettings>(json);
+                    LogService.Write("[APP-CONFIG] [Reload] Configuración JSON recargada en memoria correctamente.");
                 }
             }
-            LogService.Write("[APP-CONFIG-SERVICE] [CreateAppConfigFile] Configuración maestra extraída correctamente de los recursos del Add-In.");
-        }
-
-
-
-        // ==================================================================================================================
-        /// <summary>
-        /// Metodo para la lectura de ajustes globales 
-        /// </summary>
-        public static ConfigGlobalSettings GetGlobalSettings()
-        {
-            try
-            {
-                if (!File.Exists(AppConfigFile)) return new ConfigGlobalSettings();
-                var doc = XDocument.Load(AppConfigFile);
-                return ConfigGlobalSettings.FromXml(doc.Root?.Element("GlobalSettings"));
-            }
             catch (Exception ex)
             {
-                LogService.Write($"[APP-CONFIG-SERVICE] [GetGlobalSettings] Error en GetGlobalSettings: {ex.Message}", true);
-                return new ConfigGlobalSettings(); // Devuelve objeto vacío para evitar nulos
+                LogService.Write($"[APP-CONFIG] [Reload] ERROR recargando JSON: {ex.Message}", true);
             }
         }
 
@@ -108,90 +153,67 @@ namespace ZC_ALM_TOOLS.Services.Common
 
         // ==================================================================================================================
         /// <summary>
-        /// Metodo para la lectura de ajuste de dispositivos 
+        /// Lectura de la configuracion global de la aplicación desde la caché en memoria. Si no está cargada, devuelve una instancia vacía para evitar nulls.
         /// </summary>
-        public static ConfigDeviceSettings GetDeviceSettings()
-        {
-            try
-            {
-                if (!File.Exists(AppConfigFile)) return new ConfigDeviceSettings();
-                var doc = XDocument.Load(AppConfigFile);
-                return ConfigDeviceSettings.FromXml(doc.Root?.Element("DeviceSettings"));
-            }
-            catch (Exception ex)
-            {
-                LogService.Write($"[APP-CONFIG-SERVICE] [GetDeviceSettings] Error en GetDeviceSettings: {ex.Message}", true);
-                return new ConfigDeviceSettings();
-            }
-        }
+        public static ConfigGlobalSettings GetGlobalSettings() => _appConfigCache?.GlobalSettings ?? new ConfigGlobalSettings();
 
 
 
         // ==================================================================================================================
         /// <summary>
-        /// Metodo para la lectura de categoria de dispositivos (lista de tipos de dispositivos)
+        /// Lectura de la configuracion de dispositivos desde la caché en memoria. Si no está cargada, devuelve una instancia vacía para evitar nulls.
         /// </summary>
-        public static List<ConfigDeviceCategory> GetDeviceCategories()
-        {
-            if (!File.Exists(AppConfigFile)) return new List<ConfigDeviceCategory>();
-
-            try
-            {
-                var doc = XDocument.Load(AppConfigFile);
-
-                // Buscamos todos los nodos <DeviceCategory> y dejamos que el modelo haga el trabajo
-                return doc.Descendants("DeviceCategory")
-                          .Select(x => ConfigDeviceCategory.FromXml(x))
-                          .ToList();
-            }
-            catch (Exception ex)
-            {
-                LogService.Write($"[APP-CONFIG-SERVICE] [GetDeviceCategories] Error cargando categorías de dispositivos: {ex.Message}", true);
-                return new List<ConfigDeviceCategory>();
-            }
-        }
+        public static ConfigDeviceSettings GetDeviceSettings() => _appConfigCache?.DeviceSettings ?? new ConfigDeviceSettings();
 
 
 
         // ==================================================================================================================
         /// <summary>
-        /// Metodo para la lectura de configuracion de procesos 
+        /// Lectura de la lista de categorías de dispositivos desde la caché en memoria. Si no está cargada, devuelve una lista vacía para evitar nulls.
         /// </summary>
-        public static ConfigProcessSettings GetProcessConfig()
-        {
-            try
-            {
-                if (!File.Exists(AppConfigFile)) return new ConfigProcessSettings();
-                var doc = XDocument.Load(AppConfigFile);
-                return ConfigProcessSettings.FromXml(doc.Root?.Element("ProcessSettings"));
-            }
-            catch (Exception ex)
-            {
-                LogService.Write($"[APP-CONFIG-SERVICE] [GetProcessConfig] Error en GetProcessConfig: {ex.Message}", true);
-                return new ConfigProcessSettings();
-            }
-        }
+        public static List<ConfigDeviceCategory> GetDeviceCategories() => _appConfigCache?.Devices ?? new List<ConfigDeviceCategory>();
 
 
 
         // ==================================================================================================================
         /// <summary>
-        /// Metodo para la lectura de conexiones 
+        /// Lectura de la configuracion de procesos desde la caché en memoria. Si no está cargada, devuelve una instancia vacía para evitar nulls.
         /// </summary>
-        public static ConfigNetworkSettings GetNetworkConfig()
-        {
-            try
-            {
-                if (!File.Exists(AppConfigFile)) return new ConfigNetworkSettings();
-                var doc = XDocument.Load(AppConfigFile);
-                return ConfigNetworkSettings.FromXml(doc.Root?.Element("NetworkSettings"));
-            }
-            catch (Exception ex)
-            {
-                LogService.Write($"[APP-CONFIG-SERVICE] [GetNetworkConfig] Error en GetGlobalSettings: {ex.Message}", true);
-                return new ConfigNetworkSettings();
-            }
-        }
+        public static ConfigProcessSettings GetProcessConfig() => _appConfigCache?.ProcessSettings ?? new ConfigProcessSettings();
+
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Lectura de la configuracion de red desde la caché en memoria. Si no está cargada, devuelve una instancia vacía para evitar nulls.
+        /// </summary>
+        public static ConfigNetworkSettings GetNetworkConfig() => _appConfigCache?.NetworkSettings ?? new ConfigNetworkSettings();
+
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Lectura de la configuracion de PReal desde la caché en memoria. Si no está cargada, devuelve una instancia vacía para evitar nulls.
+        /// </summary>
+        public static ConfigPRealSettings GetPRealConfig() => _appConfigCache?.PRealSettings;
+
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Lectura de la configuracion de PInt desde la caché en memoria. Si no está cargada, devuelve una instancia vacía para evitar nulls.
+        /// </summary>
+        public static ConfigPIntSettings GetPIntConfig() => _appConfigCache?.PIntSettings;
+
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Lectura de la configuracion de alarmas desde la caché en memoria. Si no está cargada, devuelve una instancia vacía para evitar nulls.
+        /// </summary>
+        public static ConfigAlarmSettings GetAlarmConfig() => _appConfigCache?.AlarmSettings;
+
+
 
     }
 }

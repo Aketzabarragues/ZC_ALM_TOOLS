@@ -1,5 +1,4 @@
-﻿using System.Xml.Linq;
-using ZC_ALM_TOOLS.Core;
+﻿using ZC_ALM_TOOLS.Core;
 
 namespace ZC_ALM_TOOLS.Models.Generator
 {
@@ -32,21 +31,6 @@ namespace ZC_ALM_TOOLS.Models.Generator
             set { _estado = value; OnPropertyChanged(); }
         }
 
-        // ==================================================================================================================
-        /// <summary>
-        /// Metodo para leer parametros desde XML
-        /// </summary>
-        public static Parameter FromXml(XElement x) => new Parameter
-        {
-            Uid = DataHelper.GetXmlVal(x, "UID"),
-            Numero = DataHelper.GetXmlInt(x, "Numero"),
-            Proceso = DataHelper.GetXmlVal(x, "Proceso"),
-            DbNumber = DataHelper.GetXmlInt(x, "Num.DB"),
-            Producto = DataHelper.GetXmlVal(x, "Producto"),
-            Tipo = DataHelper.GetXmlVal(x, "Tipo"),
-            Descripcion = DataHelper.GetXmlVal(x, "Descripcion"),
-            ComentarioDB = DataHelper.GetXmlVal(x, "ComentarioDB"),
-            Visibilidad = DataHelper.GetXmlVal(x, "Visibilidad")
-        };
+
     }
 }

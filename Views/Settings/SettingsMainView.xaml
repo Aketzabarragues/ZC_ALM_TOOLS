@@ -6,15 +6,7 @@
              mc:Ignorable="d" 
              Background="#F0F0F0"
              d:DesignHeight="800" d:DesignWidth="1200">
-
-    <UserControl.Resources>
-        <ResourceDictionary>
-            <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="pack://application:,,,/ZC_ALM_TOOLS;component/Resources/GlobalStyles.xaml" />
-            </ResourceDictionary.MergedDictionaries>
-        </ResourceDictionary>
-    </UserControl.Resources>
-
+    
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -40,14 +32,8 @@
                     <StackPanel Margin="25,20">
                         <TextBlock Text="Rutas de Ejecutables y Plantillas" FontWeight="Bold" FontSize="16" Margin="0,0,0,15" Foreground="#003466"/>
 
-                        <TextBlock Text="Ruta Extractor (.exe):" FontWeight="SemiBold" Margin="0,5,0,2"/>
-                        <TextBox Text="{Binding GlobalSettings.ExtractorExePath, UpdateSourceTrigger=PropertyChanged}" Height="30" Padding="5"/>
-
                         <TextBlock Text="Plantilla Procesos (SCL):" FontWeight="SemiBold" Margin="0,15,0,2"/>
                         <TextBox Text="{Binding GlobalSettings.ProcessTemplatePath, UpdateSourceTrigger=PropertyChanged}" Height="30" Padding="5"/>
-
-                        <TextBlock Text="Ruta DocGenerator (.exe):" FontWeight="SemiBold" Margin="0,15,0,2"/>
-                        <TextBox Text="{Binding GlobalSettings.DocGeneratorExePath, UpdateSourceTrigger=PropertyChanged}" Height="30" Padding="5"/>
 
                         <TextBlock Text="Manual Word (Estandar):" FontWeight="SemiBold" Margin="0,15,0,2"/>
                         <TextBox Text="{Binding GlobalSettings.DocWordManualPath, UpdateSourceTrigger=PropertyChanged}" Height="30" Padding="5"/>
@@ -74,11 +60,12 @@
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Nombre" Binding="{Binding Name}" Width="150" FontWeight="Bold"/>
                             <DataGridTextColumn Header="Hoja Excel" Binding="{Binding ExcelSheet}" Width="120"/>
-                            <DataGridTextColumn Header="Grupo TIA" Binding="{Binding TiaGroup}" Width="150"/>
+                            <DataGridTextColumn Header="Hoja Excel" Binding="{Binding ExcelTable}" Width="120"/>
+                            <DataGridTextColumn Header="Clase Modelo" Binding="{Binding ModelClass}" Width="120"/>
                             <DataGridTextColumn Header="Tabla TIA" Binding="{Binding TiaTable}" Width="150"/>
                             <DataGridTextColumn Header="Bloque Datos (DB)" Binding="{Binding TiaDbName}" Width="150"/>
                             <DataGridTextColumn Header="Nombre Array" Binding="{Binding TiaDbArrayName}" Width="120"/>
-                            <DataGridTextColumn Header="Clase Modelo" Binding="{Binding ModelClass}" Width="120"/>
+                            <DataGridTextColumn Header="Constante Max" Binding="{Binding GlobalConfigKey}" Width="150"/>
                             <DataGridTextColumn Header="Constante Max" Binding="{Binding PlcCountConstant}" Width="150"/>
                         </DataGrid.Columns>
                     </DataGrid>
@@ -99,7 +86,13 @@
 
                             <StackPanel Grid.Column="0">
                                 <TextBlock Text="Tabla Constantes Dispositivos:" FontWeight="SemiBold" Margin="0,5,0,2"/>
-                                <TextBox Text="{Binding DeviceSettings.ConfigTableName, UpdateSourceTrigger=PropertyChanged}" Height="30" Padding="5"/>
+                                <TextBox Text="{Binding DeviceSettings.TiaTable, UpdateSourceTrigger=PropertyChanged}" Height="30" Padding="5"/>
+
+                                <TextBlock Text="Hoja excel:" FontWeight="SemiBold" Margin="0,5,0,2"/>
+                                <TextBox Text="{Binding DeviceSettings.ExcelSheet, UpdateSourceTrigger=PropertyChanged}" Height="30" Padding="5"/>
+
+                                <TextBlock Text="Hoja excel:" FontWeight="SemiBold" Margin="0,5,0,2"/>
+                                <TextBox Text="{Binding DeviceSettings.ConfigCells.Disp_ED, UpdateSourceTrigger=PropertyChanged}" Height="30" Padding="5"/>
 
                                 <TextBlock Text="Sufijo DB Parámetros Reales:" FontWeight="SemiBold" Margin="0,15,0,2"/>
                                 <TextBox Text="{Binding ProcessSettings.SuffixDbReal, UpdateSourceTrigger=PropertyChanged}" Height="30" Padding="5"/>

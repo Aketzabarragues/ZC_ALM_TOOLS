@@ -1,5 +1,4 @@
-﻿using System.Xml.Linq;
-using ZC_ALM_TOOLS.Core;
+﻿using ZC_ALM_TOOLS.Core;
 
 namespace ZC_ALM_TOOLS.Models.Generator
 {
@@ -29,20 +28,7 @@ namespace ZC_ALM_TOOLS.Models.Generator
             get => _estado;
             set { _estado = value; OnPropertyChanged(); }
         }
-
-        // ==================================================================================================================
-        /// <summary>
-        /// Metodo para leer alarmas desde XML
-        /// </summary>
-        public static Alarms FromXml(XElement x) => new Alarms
-        {
-            UID = DataHelper.GetXmlVal(x, "UID"),
-            Numero = DataHelper.GetXmlInt(x, "Numero"),
-            Proceso = DataHelper.GetXmlVal(x, "Proceso"),
-            DbNumber = DataHelper.GetXmlInt(x, "Num.DB"), // Fíjate en el punto, como en el XML
-            Descripcion = DataHelper.GetXmlVal(x, "Descripcion"),
-            ComentarioDB = DataHelper.GetXmlVal(x, "ComentarioDB")
-        };
+                
 
     }
 }

@@ -1,222 +1,45 @@
-<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+<Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{B8BA93B5-01B3-4765-8EC9-C16955F8815F}</ProjectGuid>
-    <OutputType>Library</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>ZC_ALM_TOOLS</RootNamespace>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <UseWPF>true</UseWPF>
     <AssemblyName>ZC_ALM_TOOLS</AssemblyName>
-    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
-    <Deterministic>true</Deterministic>
-    <NuGetPackageImportStamp>
-    </NuGetPackageImportStamp>
+    <RootNamespace>ZC_ALM_TOOLS</RootNamespace>
+    <PlatformTarget>x64</PlatformTarget> 
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+	<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    
+    <RestoreProjectStyle>PackageReference</RestoreProjectStyle>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-  </PropertyGroup>
-  <PropertyGroup>
-    <SignAssembly>false</SignAssembly>
-  </PropertyGroup>
-  <PropertyGroup>
-    <AssemblyOriginatorKeyFile>
-    </AssemblyOriginatorKeyFile>
-  </PropertyGroup>
+
   <ItemGroup>
-    <Reference Include="PresentationCore" />
-    <Reference Include="PresentationFramework" />
-    <Reference Include="Siemens.Engineering.AddIn">
-      <HintPath>C:\Program Files\Siemens\Automation\Portal V18\PublicAPI\V18.AddIn\Siemens.Engineering.AddIn.dll</HintPath>
+    <None Remove="Resources\app_config.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\app_config.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ClosedXML" Version="0.105.0" />
+    <PackageReference Include="Costura.Fody" Version="6.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Fody" Version="6.9.3">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+  </ItemGroup>
+
+<ItemGroup>
+    <Reference Include="Siemens.Engineering">
+      <HintPath>C:\Program Files\Siemens\Automation\Portal V18\PublicAPI\V18\Siemens.Engineering.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="Siemens.Engineering.AddIn.Utilities, Version=18.0.0.0, Culture=neutral, PublicKeyToken=65b871d8372d6a8f, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>C:\Program Files\Siemens\Automation\Portal V18\PublicAPI\V18.AddIn\Siemens.Engineering.AddIn.Utilities.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Siemens.Engineering.Hmi">
-      <HintPath>C:\Program Files\Siemens\Automation\Portal V18\PublicAPI\V18.AddIn\Siemens.Engineering.Hmi.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Drawing" />
-    <Reference Include="System.Numerics" />
-    <Reference Include="System.Runtime.Serialization" />
-    <Reference Include="System.Windows.Forms" />
-    <Reference Include="System.Xaml" />
-    <Reference Include="System.Xml.Linq" />
-    <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Net.Http" />
-    <Reference Include="System.Xml" />
-    <Reference Include="WindowsBase" />
   </ItemGroup>
-  <ItemGroup>
-    <Compile Include="AddIn.cs" />
-    <Compile Include="AddInProvider.cs" />
-    <Compile Include="Core\ContainsConverter.cs" />
-    <Compile Include="Core\DataHelper.cs" />
-    <Compile Include="Core\ObservableObject.cs" />
-    <Compile Include="Core\RelayCommand.cs" />
-    <Compile Include="Models\Common\ConfigNetworkSettings.cs" />
-    <Compile Include="Models\Generator\Connection.cs" />
-    <Compile Include="Models\TiaPortal\CachedPlcType.cs" />
-    <Compile Include="Models\TiaPortal\ProjectedBlock.cs" />
-    <Compile Include="Models\Vci\VciMatchResult.cs" />
-    <Compile Include="Models\Vci\VciMappingAction.cs" />
-    <Compile Include="Models\Generator\Alarms.cs" />
-    <Compile Include="Models\Common\ConfigDeviceCategory.cs" />
-    <Compile Include="Models\Common\ConfigDeviceSettings.cs" />
-    <Compile Include="Models\Common\ConfigGlobalSettings.cs" />
-    <Compile Include="Models\Generator\DevicesEnvironment.cs" />
-    <Compile Include="Models\Generator\Disp_Config.cs" />
-    <Compile Include="Models\Generator\Disp_M_VF.cs" />
-    <Compile Include="Models\Generator\Disp_SA.cs" />
-    <Compile Include="Models\Generator\Disp_EA.cs" />
-    <Compile Include="Models\Generator\Disp_ED.cs" />
-    <Compile Include="Models\Generator\Disp_M.cs" />
-    <Compile Include="Models\Generator\Disp_V.cs" />
-    <Compile Include="Models\Generator\IDevice.cs" />
-    <Compile Include="Models\Generator\Parameter.cs" />
-    <Compile Include="Models\Common\ConfigProcessSettings.cs" />
-    <Compile Include="Models\Generator\ParamsAlarmsEnvironment.cs" />
-    <Compile Include="Models\Common\SynchronizationStatus.cs" />
-    <Compile Include="Models\TiaPortal\CachedPlcTagTable.cs" />
-    <Compile Include="Models\TiaPortal\TiaTarget.cs" />
-    <Compile Include="Models\Generator\ProcessStage.cs" />
-    <Compile Include="Models\TiaPortal\CachedPlcBlock.cs" />
-    <Compile Include="Models\Vci\VciMatchState.cs" />
-    <Compile Include="Models\Vci\VciSelectableItem.cs" />
-    <Compile Include="Models\Vci\VciWorkspaceModel.cs" />
-    <Compile Include="Services\Common\AppConfigService.cs" />
-    <Compile Include="Services\Common\ComparisonService.cs" />
-    <Compile Include="Services\Common\XmlDataBlockEditorService.cs" />
-    <Compile Include="Services\Common\XmlTagTableEditorService.cs" />
-    <Compile Include="Services\Generator\DataService.cs" />
-    <Compile Include="Services\Common\LogService.cs" />
-    <Compile Include="Services\Common\StatusService.cs" />
-    <Compile Include="Services\TiaPortal\TiaDeviceScanner.cs" />
-    <Compile Include="Services\TiaPortal\TiaHmiService.cs" />
-    <Compile Include="Services\TiaPortal\TiaPlcService.cs" />
-    <Compile Include="Services\TiaPortal\TiaVciService.cs" />
-    <Compile Include="Services\Vci\VciWorkspaceService.cs" />
-    <Compile Include="ViewModels\Generator\DevicesViewModel.cs" />
-    <Compile Include="ViewModels\Vci\VciDocGeneratorViewModel.cs" />
-    <Compile Include="ViewModels\Generator\GeneratorMainViewModel.cs" />
-    <Compile Include="ViewModels\Generator\ParamsAlarmsViewModel.cs" />
-    <Compile Include="ViewModels\Generator\ProcessGeneratorViewModel.cs" />
-    <Compile Include="ViewModels\MainViewModel.cs" />
-    <Compile Include="ViewModels\Vci\VciAuditViewModel.cs" />
-    <Compile Include="ViewModels\Vci\VciMainViewModel.cs" />
-    <Compile Include="ViewModels\Vci\VciMappingViewModel.cs" />
-    <Compile Include="Views\Generator\GeneratorMainView.xaml.cs">
-      <DependentUpon>GeneratorMainView.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Models\Generator\Process.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Views\Generator\DevicesView.xaml.cs">
-      <DependentUpon>DevicesView.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Views\Generator\ParamsAlarmsView.xaml.cs">
-      <DependentUpon>ParamsAlarmsView.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Views\Generator\ProcessGeneratorView.xaml.cs">
-      <DependentUpon>ProcessGeneratorView.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Views\MainWindow.xaml.cs">
-      <DependentUpon>MainWindow.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="ViewModels\Settings\SettingsMainViewModel.cs" />
-    <Compile Include="Views\Settings\SettingsMainView.xaml.cs">
-      <DependentUpon>SettingsMainView.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Views\Vci\VciDocGeneratorView.xaml.cs">
-      <DependentUpon>VciDocGeneratorView.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Views\Vci\VciAuditView.xaml.cs">
-      <DependentUpon>VciAuditView.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Views\Vci\VciMainView.xaml.cs">
-      <DependentUpon>VciMainView.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Views\Vci\VciMappingView.xaml.cs">
-      <DependentUpon>VciMappingView.xaml</DependentUpon>
-    </Compile>
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include="Config.xml" />
-    <EmbeddedResource Include="Resources\app_config.xml" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="app.config" />
-  </ItemGroup>
-  <ItemGroup>
-    <Page Include="Resources\GlobalStyles.xaml">
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Views\Generator\GeneratorMainView.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Views\Generator\DevicesView.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Views\Generator\ParamsAlarmsView.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Views\Generator\ProcessGeneratorView.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Views\MainWindow.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Views\Settings\SettingsMainView.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Views\Vci\VciDocGeneratorView.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Views\Vci\VciAuditView.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Views\Vci\VciMainView.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Views\Vci\VciMappingView.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-  </ItemGroup>
-  <ItemGroup />
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <PropertyGroup>
-    <PostBuildEvent>"C:\Program Files\Siemens\Automation\Portal V18\PublicAPI\V18.AddIn\Siemens.Engineering.AddIn.Publisher.exe" -f "$(SolutionDir)\Config.xml" -v -c</PostBuildEvent>
-  </PropertyGroup>
+
 </Project>

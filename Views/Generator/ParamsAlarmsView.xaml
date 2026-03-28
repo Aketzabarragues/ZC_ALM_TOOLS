@@ -10,15 +10,6 @@
              d:DesignHeight="600" d:DesignWidth="1000">
 
 
-    <UserControl.Resources>
-        <ResourceDictionary>
-            <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="pack://application:,,,/ZC_ALM_TOOLS;component/Resources/GlobalStyles.xaml" />
-            </ResourceDictionary.MergedDictionaries>
-        </ResourceDictionary>
-    </UserControl.Resources>
-
-
     <Grid Background="White">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="280"/>

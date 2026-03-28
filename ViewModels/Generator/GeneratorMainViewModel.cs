@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -45,7 +46,8 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
         }
 
         // Caché de datos cargados
-        private readonly Dictionary<string, List<object>> _engineeringCache = new Dictionary<string, List<object>>();
+        //private readonly Dictionary<string, List<object>> _engineeringCache = new Dictionary<string, List<object>>();
+        public Dictionary<string, List<object>> _engineeringCache { get; } = new Dictionary<string, List<object>>();
 
         // Cache de configuracion xml
         private ConfigNetworkSettings _configNetworkSettings;
@@ -162,7 +164,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
         /// </summary>
         private async void LoadExcelAndGenerateJson()
         {
-            LogService.Write("[MAIN-VM] [LoadExcelAndGenerateJson] Botón 'Cargar' pulsado.");
+            LogService.Write("[MAIN-VM] [LoadExcelAndGenerateJson] Iniciando lectura excel.");
 
             try
             {
@@ -175,287 +177,96 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                 if (openFileDialog.ShowDialog() != true) return;
 
                 StatusService.SetBusy(true);
-
                 SelectedExcelFile = openFileDialog.FileName;
-                LogService.Write($"[MAIN-VM] [LoadExcelAndGenerateJson] Archivo seleccionado: {SelectedExcelFile}");
+                LogService.Write($"[MAIN-VM] [LoadExcelAndGenerateJson] Excel seleccionado: {SelectedExcelFile}");
 
-                // Verificar ruta del extractor
-                if (!File.Exists(_configGlobalSettings.ExtractorExePath))
-                {
-                    LogService.Write("[MAIN-VM] [LoadExcelAndGenerateJson] ERROR: Extractor no encontrado", true);
-                    StatusService.Set("Error: No se encuentra ZC_Extractor.exe", StatusType.Error);
-                    MessageBox.Show($"Extractor no encontrado en:\n{_configGlobalSettings.ExtractorExePath}", "Error de configuración");
-                    return;
-                }
+                StatusService.Set("Leyendo Excel en memoria RAM...", StatusType.Ok);
 
-
-                ClearExportFolder(AppConfigService.ExportPath);
-
-                LogService.Write("[MAIN-VM] [LoadExcelAndGenerateJson] Lanzando proceso extractor excel...");
-                StatusService.Set("Extrayendo datos de excel...", StatusType.Ok);
-
-
-
-                // 1. Ejecutar y comprobar si Python terminó con éxito
-                if (await StartExtractor())
-                {
-                    // 2. Si Python terminó bien, comprobamos que los archivos estén ahí
-                    if (await WaitForPythonFiles())
-                    {
-                        LogService.Write("[MAIN-VM] [LoadExcelAndGenerateJson] Archivos XML detectados con éxito.");
-                        StatusService.Set("Cargando datos en memoria...", StatusType.Ok);
-
-                        await Task.Run(() => LoadAllFromFolder(AppConfigService.ExportPath));
-
-                        // Actualizar ViewModels
-                        DevicesVM.LoadData(_engineeringCache, _configDeviceSettings);
-                        ParamsAlarmsVM.LoadData(_engineeringCache, _configProcessesSettings);
-                        ProcessGeneratorVM.LoadData(_engineeringCache, _configProcessesSettings, _configGlobalSettings, _configNetworkSettings);                        
-
-                        IsDataLoaded = true;
-                        StatusService.Set("Listo. Todos los módulos cargados.", StatusType.Ok);
-                    }
-                    else
-                    {
-                        StatusService.Set("Error: El extractor de excel terminó pero no se encontraron los archivos XML.", StatusType.Error);
-                    }
-                }
-                else
-                {
-                    // Si llegamos aquí, es que Python falló (ExitCode != 0)
-                    StatusService.Set("Error en el script de extracción. Revisa el LOG.", StatusType.Error);
-                    MessageBox.Show("El extractor de excel ha fallado. Consulta los detalles en la pestaña de Log.",
-                                    "Error de Extracción", MessageBoxButton.OK, MessageBoxImage.Error);
-                }
-
+                // Lanzar extracción asíncrona de datos
+                await ReadExcelDataAsync(SelectedExcelFile);
 
             }
             catch (Exception ex)
             {
-                LogService.Write($"[MAIN-VM] [LoadExcelAndGenerateJson] CRASH EN CARGA: {ex.Message}", true);
-                LogService.Write($"[MAIN-VM] [LoadExcelAndGenerateJson] CRASH EN CARGA:\n{ex.ToString()}", true);
-                StatusService.Set("Error general en el proceso.", StatusType.Error);
-                MessageBox.Show($"{ex.Message}", "Error Crítico");
+                LogService.Write($"[MAIN-VM] [LoadExcelAndGenerateJson] Error: {ex.Message}\n{ex.StackTrace}", true);
+                StatusService.Set("Error general leyendo Excel.", StatusType.Error);
+                MessageBox.Show($"{ex.Message}", "Error Crítico", MessageBoxButton.OK, MessageBoxImage.Error);
             }
-            finally 
+            finally
             {
                 StatusService.SetBusy(false);
             }
-
         }
 
-
-
-        // ==================================================================================================================
-        /// <summary>
-        /// Metodo para lanzar el programa de extraccion de python
-        /// </summary>
-        private async Task<bool> StartExtractor()
-        {
-            try
-            {
-                string arguments = $"--path \"{SelectedExcelFile}\"";
-
-                // 1. Crear la info de inicio (Asegúrate de que sea la de Siemens)
-                var startInfo = new Siemens.Engineering.AddIn.Utilities.ProcessStartInfo
-                {
-                    FileName = _configGlobalSettings.ExtractorExePath,
-                    Arguments = arguments,
-                    CreateNoWindow = true,
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    StandardOutputEncoding = System.Text.Encoding.UTF8,
-                    StandardErrorEncoding = System.Text.Encoding.UTF8,
-                    WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden
-                };
-
-                // 2. CREAR EL OBJETO PROCESO
-                var myProcess = new Siemens.Engineering.AddIn.Utilities.Process();
-                myProcess.StartInfo = startInfo;
-
-                // 3. Suscribirse a los eventos ANTES de empezar
-                myProcess.OutputDataReceived += (s, e) => {
-                    if (!string.IsNullOrEmpty(e.Data)) LogService.Write($"[MAIN-VM] [StartExtractor] {e.Data}");
-                };
-
-                myProcess.ErrorDataReceived += (s, e) => {
-                    if (!string.IsNullOrEmpty(e.Data)) LogService.Write($"[MAIN-VM] [StartExtractor] {e.Data}", true);
-                };
-
-                // 4. LANZAR E INICIAR LECTURA
-                if (myProcess.Start())
-                {
-                    myProcess.BeginOutputReadLine();
-                    myProcess.BeginErrorReadLine();
-
-                    LogService.Write("[MAIN-VM] [StartExtractor] Extractor ejecutándose en segundo plano...");
-                    
-                    await Task.Run(() =>
-                    {
-                        while (!myProcess.HasExited)
-                        {
-                            myProcess.WaitForExit();
-                        }
-                    });
-
-                    LogService.Write($"[MAIN-VM] [StartExtractor] Extractor finalizado con código: {myProcess.ExitCode}");
-                    return myProcess.ExitCode == 0;
-                }
-                return false;
-            }
-            catch (Exception ex)
-            {
-                LogService.Write($"[MAIN-VM] [StartExtractor] Error crítico lanzando extractor de excel: {ex.Message}", true);
-                return false;
-            }
-        }
-
-
-
-        // ==================================================================================================================
-        /// <summary>
-        /// Metodo para esperar a que se encuentren todos los archivos esperados
-        /// </summary>
-        private async Task<bool> WaitForPythonFiles()
-        {        
-
-            LogService.Write($"[MAIN-VM] [WaitForPythonFiles] Iniciando espera en: {AppConfigService.ExportPath}");
-
-            // Creamos la lista de archivos que esperamos basándonos en la configuración
-            List<string> expectedFiles = new List<string>();
-            expectedFiles.AddRange(_configDeviceCategories.Select(c => c.XmlFile));
-            expectedFiles.Add(_configProcessesSettings.ProcessXml);
-            expectedFiles.Add(_configProcessesSettings.PRealXml);
-            expectedFiles.Add(_configProcessesSettings.PIntXml);
-            expectedFiles.Add(_configProcessesSettings.StageXml);
-            expectedFiles.Add(_configNetworkSettings.ConnectionsXml);
-            expectedFiles.Add(_configDeviceSettings.DeviceDataConfigXml);
-
-            for (int i = 0; i < 150; i++)
-            {
-                bool allFound = true;
-                foreach (var file in expectedFiles)
-                {
-                    if (string.IsNullOrEmpty(file)) continue;
-                    if (!File.Exists(Path.Combine(AppConfigService.ExportPath, file)))
-                    {
-                        allFound = false;
-                        break;
-                    }
-                }
-
-                if (allFound) return true;
-
-                await Task.Delay(200);
-            }
-            return false;
-        }
-
-
-
-        // ==================================================================================================================
-        /// <summary>
-        /// Metodo para cargar todos los archivos desde una carpeta
-        /// </summary>
-        private void LoadAllFromFolder(string folderPath)
+        private async Task ReadExcelDataAsync(string excelPath)
         {
             _engineeringCache.Clear();
 
-            // Cargar dispositivos de cada categoría
-            foreach (var cat in _configDeviceCategories)
+            // 1. Cargamos categorías de Dispositivos (Concurrentes y Thread-safe)
+            var deviceTasks = _configDeviceCategories.Select(async cat =>
             {
-                string filePath = Path.Combine(folderPath, cat.XmlFile);
-                if (File.Exists(filePath))
-                {
-                    _engineeringCache[cat.Name] = DataService.LoadDispCategoryData(filePath, cat);
-                }
-            }
+                var data = await DataService.LoadDispCategoryDataAsync(excelPath, cat);
+                lock (_engineeringCache) { _engineeringCache[cat.Name] = data; }
+            }).ToList();
 
-            // Cargar numero maximo de dispositivos
+            await Task.WhenAll(deviceTasks);
+
+            // 2. Cargamos Config_Disp (Límites de arrays en PLC extraídos de nombres definidos)
             if (_configDeviceSettings != null)
             {
-                string path = Path.Combine(folderPath, _configDeviceSettings.DeviceDataConfigXml);
-                if (File.Exists(path))
-                {
-                    // Cargamos como lista de objetos Disp_Config
-                    var data = DataService.LoadDeviceNMax(path);
-                    _engineeringCache[_configDeviceSettings.Disp_N_Max] = data.Cast<object>().ToList();
-                }
+                var data = await DataService.LoadDeviceNMaxAsync(excelPath, _configDeviceSettings);
+                lock (_engineeringCache) { _engineeringCache["CONFIG_LIMITS"] = data.Cast<object>().ToList(); }
             }
 
-            // Cargar configuracion de procesos
+            // 3. Cargamos Procesos, Parámetros y Alarmas inyectando configuración de JSON
             if (_configProcessesSettings != null)
             {
-                // Lista de procesos
-                string pathProcess = Path.Combine(folderPath, _configProcessesSettings.ProcessXml);
-                if (File.Exists(pathProcess))
+                // Usamos los nombres definidos en el JSON (ej: _configProcessesSettings.ProcessName)
+                var processData = await DataService.LoadProcessAsync(excelPath, _configProcessesSettings.ExcelSheet, _configProcessesSettings.ExcelTable);
+                lock (_engineeringCache) { _engineeringCache[_configProcessesSettings.ProcessName] = processData.Cast<object>().ToList(); }
+
+                var pRealCfg = AppConfigService.GetPRealConfig();
+                if (pRealCfg != null)
                 {
-                    var data = DataService.LoadProcess(pathProcess);
-                    _engineeringCache[_configProcessesSettings.ProcessName] = data.Cast<object>().ToList();
+                    var prealData = await DataService.LoadParametersAsync(excelPath, pRealCfg.ExcelSheet, pRealCfg.ExcelTable);
+                    lock (_engineeringCache) { _engineeringCache[_configProcessesSettings.PRealName] = prealData.Cast<object>().ToList(); }
                 }
 
-                // Parámetros Reales
-                string pathPReal = Path.Combine(folderPath, _configProcessesSettings.PRealXml);
-                if (File.Exists(pathPReal))
+                var pIntCfg = AppConfigService.GetPIntConfig();
+                if (pIntCfg != null)
                 {
-                    var data = DataService.LoadParameters(pathPReal);
-                    _engineeringCache[_configProcessesSettings.PRealName] = data.Cast<object>().ToList();
+                    var pintData = await DataService.LoadParametersAsync(excelPath, pIntCfg.ExcelSheet, pIntCfg.ExcelTable);
+                    lock (_engineeringCache) { _engineeringCache[_configProcessesSettings.PIntName] = pintData.Cast<object>().ToList(); }
                 }
 
-                // Parámetros Enteros
-                string pathPInt = Path.Combine(folderPath, _configProcessesSettings.PIntXml);
-                if (File.Exists(pathPInt))
+                var almCfg = AppConfigService.GetAlarmConfig();
+                if (almCfg != null)
                 {
-                    var data = DataService.LoadParameters(pathPInt);
-                    _engineeringCache[_configProcessesSettings.PIntName] = data.Cast<object>().ToList();
-                }
-
-                // Alarmas
-                string pathAlm = Path.Combine(folderPath, _configProcessesSettings.AlarmXml);
-                if (File.Exists(pathAlm))
-                {
-                    var data = DataService.LoadAlarms(pathAlm);
-                    _engineeringCache[_configProcessesSettings.AlarmName] = data.Cast<object>().ToList();
-                }
-
-                string pathStages = Path.Combine(folderPath, _configProcessesSettings.StageXml);
-                if (File.Exists(pathStages))
-                {
-                    var data = DataService.LoadStages(pathStages);
-                    _engineeringCache[_configProcessesSettings.StageName] = data.Cast<object>().ToList();
+                    var alarmData = await DataService.LoadAlarmsAsync(excelPath, almCfg.ExcelSheet, almCfg.ExcelTable);
+                    lock (_engineeringCache) { _engineeringCache[_configProcessesSettings.AlarmName] = alarmData.Cast<object>().ToList(); }
                 }
             }
 
-            // Cargar configuración de red (Conexiones)
+            // 4. Conexiones (Topología de Red)
             if (_configNetworkSettings != null)
             {
-                string pathConnections = Path.Combine(folderPath, _configNetworkSettings.ConnectionsXml);
-                if (File.Exists(pathConnections))
-                {
-                    var data = DataService.LoadConections(pathConnections);
-                    _engineeringCache[_configNetworkSettings.ConnectionsName] = data.Cast<object>().ToList();
-                }
+                // Nota: Si en el futuro agregas NetworkName al JSON, reemplaza este string también
+                var connData = await DataService.LoadConectionsAsync(excelPath, _configNetworkSettings.ExcelSheet, _configNetworkSettings.ExcelTable);
+                lock (_engineeringCache) { _engineeringCache["Conexiones"] = connData.Cast<object>().ToList(); }
             }
 
-        }
-
-
-
-        // // ==================================================================================================================
-        /// <summary>
-        /// Limpiar la carpeta de exportacion de archivos
-        /// </summary>
-        private void ClearExportFolder(string path)
-        {
-            if (!Directory.Exists(path)) return;
-            foreach (string f in Directory.GetFiles(path))
+            // Volvemos al Hilo UI de WPF para enlazar los ViewModels
+            Application.Current.Dispatcher.Invoke(() =>
             {
-                try { File.Delete(f); } catch { }
-            }
+                DevicesVM.LoadData(_engineeringCache, _configDeviceSettings);
+                ParamsAlarmsVM.LoadData(_engineeringCache, _configProcessesSettings);
+                ProcessGeneratorVM.LoadData(_engineeringCache, _configProcessesSettings, _configGlobalSettings, _configNetworkSettings);
+
+                IsDataLoaded = true;
+                StatusService.Set("Datos cargados desde el Excel correctamente.", StatusType.Ok);
+                LogService.Write($"[MAIN-VM] [ReadExcelDataAsync] Datos cargados desde el Excel correctamente."); 
+            });
         }
-
-
 
     }
 }

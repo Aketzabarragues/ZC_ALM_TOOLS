@@ -218,7 +218,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                 // Obtener valor del PLC (Consultar TIA o usar Caché)
                 if (!_plcCache.TryGetValue(SelectedCategory.Name, out _currentPlcNMax))
                 {
-                    _currentPlcNMax = _tiaPlcService.ReadGlobalConstant(_deviceSettings.ConfigTableName, SelectedCategory.PlcCountConstant);
+                    _currentPlcNMax = _tiaPlcService.ReadGlobalConstant(_deviceSettings.TiaTable, SelectedCategory.PlcCountConstant);
                     _plcCache[SelectedCategory.Name] = _currentPlcNMax;
                 }
 
@@ -262,7 +262,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                 StatusService.Set($"Inicio sincronización: {SelectedCategory.Name} ---", StatusType.Ok);
                 LogService.Write($"[DEVICE-VM] [ExecuteSync] Inicio sincronización: {SelectedCategory.Name}");
 
-                okNMax = _tiaPlcService.SyncGlobalConstant(_deviceSettings.ConfigTableName, SelectedCategory.PlcCountConstant, env.ExcelNMax);
+                okNMax = _tiaPlcService.SyncGlobalConstant(_deviceSettings.TiaTable, SelectedCategory.PlcCountConstant, env.ExcelNMax);
 
                 SelectedCategory.NMaxStatus = okNMax ? SynchronizationStatus.Ok : SynchronizationStatus.Error;
 
@@ -410,7 +410,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                 LogService.Write($"[DEVICE-VM] [ExecuteCompare] N_MAX -> Excel: {env.ExcelNMax} | PLC: {_currentPlcNMax} ({(nMaxMatch ? "OK" : "ERROR")})");
 
                 // Exportar y Parsear PLC
-                string tempXmlPath = Path.Combine(AppConfigService.TempPath, "plc_export.xml");
+                string tempXmlPath = Path.Combine(AppConfigService.TempExportPathXml, $"tabla_exportada_{SelectedCategory.TiaTable}.xml");
                 StatusService.Set($"Exportando tabla '{SelectedCategory.TiaTable}' desde TIA...", StatusType.Ok);
                 LogService.Write($"[DEVICE-VM] [ExecuteCompare] Exportando tabla '{SelectedCategory.TiaTable}' a XML temporal...");
 
@@ -430,10 +430,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
                 var tagEditor = new XmlTagTableEditorService(tempXmlPath);
                 var plcDict = tagEditor.GetTags();
-                LogService.Write($"[DEVICE-VM] [ExecuteCompare] Leídas {plcDict.Count} variables del archivo plc_export.xml");
+                LogService.Write($"[DEVICE-VM] [ExecuteCompare] Leídas {plcDict.Count} variables del archivo tabla_exportada_{SelectedCategory.TiaTable}.xml");
 
 
-                // Obtenemos los dispositivos del Excel (los que ya están en la tabla)
                 // Obtenemos los dispositivos del Excel
                 var excelList = CurrentDevices.Cast<IDevice>().ToList();
 

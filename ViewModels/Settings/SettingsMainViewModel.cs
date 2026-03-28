@@ -1,11 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Input;
-using System.Xml.Linq;
+using Newtonsoft.Json;
 using ZC_ALM_TOOLS.Core;
 using ZC_ALM_TOOLS.Models.Common;
 using ZC_ALM_TOOLS.Services.Common;
@@ -41,18 +39,12 @@ namespace ZC_ALM_TOOLS.ViewModels.Settings
         {
             try
             {
-                if (!System.IO.File.Exists(AppConfigService.AppConfigFile)) return;
+                // Se apoyará en el servicio que ya lee y parsea el JSON al arrancar
+                GlobalSettings = AppConfigService.GetGlobalSettings() ?? new ConfigGlobalSettings();
+                DeviceSettings = AppConfigService.GetDeviceSettings() ?? new ConfigDeviceSettings();
+                ProcessSettings = AppConfigService.GetProcessConfig() ?? new ConfigProcessSettings();
 
-                XDocument doc = XDocument.Load(AppConfigService.AppConfigFile);
-                XElement root = doc.Root;
-
-                GlobalSettings = ConfigGlobalSettings.FromXml(root.Element("GlobalSettings"));
-                DeviceSettings = ConfigDeviceSettings.FromXml(root.Element("DeviceSettings"));
-                ProcessSettings = ConfigProcessSettings.FromXml(root.Element("ProcessSettings"));
-
-                var devicesList = root.Element("Devices")?.Elements("DeviceCategory")
-                                      .Select(ConfigDeviceCategory.FromXml) ?? Enumerable.Empty<ConfigDeviceCategory>();
-
+                var devicesList = AppConfigService.GetDeviceCategories() ?? Enumerable.Empty<ConfigDeviceCategory>();
                 Devices = new ObservableCollection<ConfigDeviceCategory>(devicesList);
             }
             catch (Exception ex)
@@ -65,68 +57,33 @@ namespace ZC_ALM_TOOLS.ViewModels.Settings
         {
             try
             {
-                // Reconstruimos el XML
-                XDocument doc = new XDocument(new XDeclaration("1.0", "utf-8", "yes"));
-                XElement root = new XElement("AppConfig");
-
-                // Global Settings
-                root.Add(new XElement("GlobalSettings",
-                    new XElement("ExtractorExePath", GlobalSettings.ExtractorExePath),
-                    new XElement("ProcessTemplatePath", GlobalSettings.ProcessTemplatePath),
-                    new XElement("DocGeneratorExePath", GlobalSettings.DocGeneratorExePath),
-                    new XElement("DocWordManualPath", GlobalSettings.DocWordManualPath),
-                    new XElement("DocExportSourcesPath", GlobalSettings.DocExportSourcesPath),
-                    new XElement("DocOutputPath", GlobalSettings.DocOutputPath)
-                ));
-
-                // Devices
-                XElement devicesElement = new XElement("Devices");
-                foreach (var d in Devices)
+                // Construimos el root completo estructurado para no machacar los nodos que 
+                // no editamos directamente en esta pantalla (Network, PReal, etc.)
+                var fullConfig = new
                 {
-                    devicesElement.Add(new XElement("DeviceCategory",
-                        new XAttribute("Name", d.Name ?? ""),
-                        new XElement("ExcelSheet", d.ExcelSheet),
-                        new XElement("TiaGroup", d.TiaGroup),
-                        new XElement("TiaTable", d.TiaTable),
-                        new XElement("ModelClass", d.ModelClass),
-                        new XElement("XmlFile", d.XmlFile),
-                        new XElement("GlobalConfigKey", d.GlobalConfigKey),
-                        new XElement("PlcCountConstant", d.PlcCountConstant),
-                        new XElement("TiaDbName", d.TiaDbName),
-                        new XElement("TiaDbArrayName", d.TiaDbArrayName)
-                    ));
-                }
-                root.Add(devicesElement);
+                    GlobalSettings = this.GlobalSettings,
+                    DeviceSettings = this.DeviceSettings,
+                    Devices = this.Devices.ToList(),
+                    ProcessSettings = this.ProcessSettings,
 
-                // Device Settings
-                root.Add(new XElement("DeviceSettings",
-                    new XElement("ConfigTableName", DeviceSettings.ConfigTableName),
-                    new XElement("DeviceDataConfigXml", new XAttribute("Name", DeviceSettings.Disp_N_Max), DeviceSettings.DeviceDataConfigXml)
-                ));
+                    // Mantenemos intactos los que no se gestionan desde esta View
+                    PRealSettings = AppConfigService.GetPRealConfig(),
+                    PIntSettings = AppConfigService.GetPIntConfig(),
+                    AlarmSettings = AppConfigService.GetAlarmConfig(),
+                    NetworkSettings = AppConfigService.GetNetworkConfig()
+                };
 
-                // Process Settings (simplificado, mapea el resto según sea necesario)
-                root.Add(new XElement("ProcessSettings",
-                    new XElement("ProcessXml", new XAttribute("Name", ProcessSettings.ProcessName), ProcessSettings.ProcessXml),
-                    new XElement("PRealXml", new XAttribute("Name", ProcessSettings.PRealName), ProcessSettings.PRealXml),
-                    new XElement("PIntXml", new XAttribute("Name", ProcessSettings.PIntName), ProcessSettings.PIntXml),
-                    new XElement("AlarmXml", new XAttribute("Name", ProcessSettings.AlarmName), ProcessSettings.AlarmXml),
-                    new XElement("StageXml", new XAttribute("Name", ProcessSettings.StageName), ProcessSettings.StageXml),
-                    new XElement("SuffixConstReal", ProcessSettings.SuffixConstReal),
-                    new XElement("SuffixConstInt", ProcessSettings.SuffixConstInt),
-                    new XElement("SuffixConstAlm", ProcessSettings.SuffixConstAlm),
-                    new XElement("SuffixConstAlmHmi", ProcessSettings.SuffixConstAlmHmi),
-                    new XElement("SuffixDbReal", ProcessSettings.SuffixDbReal),
-                    new XElement("SuffixDbInt", ProcessSettings.SuffixDbInt),
-                    new XElement("SuffixDbAlm", ProcessSettings.SuffixDbAlm)
-                ));
+                // Serializar a JSON formateado (Indented) para que sea legible
+                string jsonOutput = JsonConvert.SerializeObject(fullConfig, Formatting.Indented);
 
-                doc.Add(root);
-                doc.Save(AppConfigService.AppConfigFile);
+                // Guardar (Asegúrate de que AppConfigService.AppConfigFile apunte a .json)
+                File.WriteAllText(AppConfigService.AppConfigFile, jsonOutput);
 
                 StatusService.Set("Ajustes guardados correctamente.", StatusType.Ok);
-                LogService.Write("[SETTINGS] El archivo app_config.xml ha sido actualizado con éxito.");
+                LogService.Write("[SETTINGS] El archivo app_config.json ha sido actualizado con éxito.");
 
-                // Opcional: Aquí podrías llamar a AppConfigService.Reload() si lo tienes, para que el resto de la app se entere del cambio.
+                // OPCIONAL: Si AppConfigService tiene un método de recarga, llámalo aquí
+                AppConfigService.Reload(); 
             }
             catch (Exception ex)
             {

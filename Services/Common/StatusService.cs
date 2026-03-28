@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Text.RegularExpressions;
+using System.Windows;
 
 namespace ZC_ALM_TOOLS.Services.Common
 {
@@ -22,22 +24,45 @@ namespace ZC_ALM_TOOLS.Services.Common
 
         // ==================================================================================================================
         /// <summary>
-        /// Metodo para mostrar un mensaje en el statusbar 
+        /// Muestra un mensaje limpio en el statusbar y guarda el formato crudo (con tags) en el log
         /// </summary>
-        public static void Set(string message, StatusType type)
+        public static void Set(string message, StatusType type, bool writeToLog = true)
         {
-            OnStatusChanged?.Invoke(message, type);
+            // 1. Guardamos el mensaje COMPLETO en el log (ej: "[ViewModel] [Metodo] Error X")
+            if (writeToLog)
+            {
+                bool isError = type == StatusType.Error;
+                //LogService.Write(message, isError);
+            }
+
+            // 2. Limpiamos el mensaje para la UI (Elimina cualquier prefijo tipo "[Texto] ")
+            string cleanUiMessage = Regex.Replace(message, @"^(\[.*?\]\s*)+", "").Trim();
+
+            // 3. Disparamos el evento forzando el hilo principal (UI Thread)
+            if (Application.Current != null && !Application.Current.Dispatcher.CheckAccess())
+            {
+                Application.Current.Dispatcher.BeginInvoke(new Action(() => OnStatusChanged?.Invoke(cleanUiMessage, type)));
+            }
+            else
+            {
+                OnStatusChanged?.Invoke(cleanUiMessage, type);
+            }
         }
-
-
 
         // ==================================================================================================================
         /// <summary>
-        /// Metodo para activar o desactivar la barra de progreso 
+        /// Activa o desactiva la barra de progreso de forma segura (Thread-Safe)
         /// </summary>
         public static void SetBusy(bool busy)
         {
-            OnBusyChanged?.Invoke(busy);
+            if (Application.Current != null && !Application.Current.Dispatcher.CheckAccess())
+            {
+                Application.Current.Dispatcher.BeginInvoke(new Action(() => OnBusyChanged?.Invoke(busy)));
+            }
+            else
+            {
+                OnBusyChanged?.Invoke(busy);
+            }
         }
 
     }

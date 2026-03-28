@@ -10,6 +10,9 @@ namespace ZC_ALM_TOOLS.Services.Common
     public static class LogService
     {
 
+        // Lock para sincronizar el acceso al archivo de log y evitar colisiones en escenarios multihilo
+        private static readonly object _fileLock = new object();
+
 
 
         // ==================================================================================================================
@@ -23,12 +26,15 @@ namespace ZC_ALM_TOOLS.Services.Common
 
             try
             {
-                // Intentamos escribir en la ruta definida en el ConfigManager
-                File.AppendAllText(AppConfigService.LogFile, line + Environment.NewLine);
+                // Sincronizamos el acceso al archivo para evitar colisiones en escenarios multihilo
+                lock (_fileLock)
+                {
+                    File.AppendAllText(AppConfigService.LogFile, line + Environment.NewLine);
+                }
             }
             catch
             {
-                // Si falla la escritura no lanzamos excepción para no detener el flujo principal de la aplicación
+                // Error silencioso si el archivo está bloqueado o no se puede escribir
             }
         }
 
@@ -42,9 +48,13 @@ namespace ZC_ALM_TOOLS.Services.Common
         {
             try
             {
-                if (File.Exists(AppConfigService.LogFile))
+                // Sincronizamos el acceso al archivo para evitar colisiones en escenarios multihilo
+                lock (_fileLock)
                 {
-                    File.Delete(AppConfigService.LogFile);
+                    if (File.Exists(AppConfigService.LogFile))
+                    {
+                        File.Delete(AppConfigService.LogFile);
+                    }
                 }
             }
             catch

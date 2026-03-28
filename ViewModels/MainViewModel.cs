@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using Microsoft.Win32;
+using Newtonsoft.Json;
 using Siemens.Engineering;
 using Siemens.Engineering.SW;
 using ZC_ALM_TOOLS.Core;
@@ -15,6 +16,11 @@ using ZC_ALM_TOOLS.ViewModels.Vci;
 
 namespace ZC_ALM_TOOLS.ViewModels
 {
+    // ==================================================================================================================
+    /// <summary>
+    /// ViewModel principal de la aplicación, encargado de gestionar la conexión con Tia Portal, mantener la información global del proyecto y los dispositivos, 
+    /// y coordinar la navegación entre los módulos visuales (Generador, VCI, Configuración).
+    /// </summary>
     public class MainViewModel : ObservableObject
     {
 
@@ -42,6 +48,17 @@ namespace ZC_ALM_TOOLS.ViewModels
             }
         }
 
+        // Información del Proyecto
+        private string _projectName = "Desconectado";
+        public string ProjectName
+        {
+            get => _projectName;
+            set
+            {
+                _projectName = value;
+                OnPropertyChanged(nameof(ProjectName));
+            }
+        }
 
         // Navegación de Módulos
         private object _currentView;
@@ -110,7 +127,8 @@ namespace ZC_ALM_TOOLS.ViewModels
 
             // Vista por defecto al abrir
             CurrentView = GeneratorVM;
-
+            
+            LoadProjectInfo();
             ScanProjectDevices();
         }
 
@@ -118,7 +136,18 @@ namespace ZC_ALM_TOOLS.ViewModels
 
         // ==================================================================================================================
         /// <summary>
-        /// Actualizar el listado de equipos en el proyecto
+        /// Metodo para cargar la información del proyecto (nombre) y mostrarla en la barra de estado
+        /// </summary>
+        private void LoadProjectInfo()
+        {
+            // Como TiaManager ya separó el CurrentProject, es una sola línea segura:
+            ProjectName = TiaManager.CurrentProject?.Name ?? "Sin proyecto abierto";
+        }
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Metodo para escanear los dispositivos del proyecto y clasificarlos en PLC, HMI y SCADA. Luego se añaden a las listas enlazadas a los ComboBoxes de cada módulo.
         /// </summary>
         private void ScanProjectDevices()
         {
@@ -162,7 +191,8 @@ namespace ZC_ALM_TOOLS.ViewModels
 
         // ==================================================================================================================
         /// <summary>
-        /// Actualizar el PLC al cambio en el combobox
+        /// Metodo que se llama cada vez que el usuario cambia la selección del PLC. Se encarga de actualizar el servicio central de PLC, 
+        /// indexar los bloques del PLC en memoria RAM y avisar a los módulos visuales para que actualicen su información en base al nuevo PLC seleccionado.
         /// </summary>
         private void OnTargetChanged()
         {
@@ -197,26 +227,73 @@ namespace ZC_ALM_TOOLS.ViewModels
 
         // ==================================================================================================================
         /// <summary>
-        /// Exportar volcado de caché a TXT
+        /// Metodo para generar un volcado maestro que incluya tanto el contenido del PLC (código, datos, símbolos) como la configuración de la aplicación (AppConfig) y la caché de ingeniería (Excel).
         /// </summary>
         private void ExecuteDumpCache()
         {
-
-
             SaveFileDialog saveFileDialog = new SaveFileDialog
             {
                 Filter = "Text Files (*.txt)|*.txt",
-                Title = "Guardar volcado de la Caché",
-                FileName = $"TiaCacheDump_{SelectedTarget?.Name}.txt"
+                Title = "Guardar volcado de la Caché y Configuración",
+                FileName = $"Dump_{SelectedTarget?.Name}_{DateTime.Now:yyyyMMdd_HHmm}.txt"
             };
 
             if (saveFileDialog.ShowDialog() == true)
             {
                 StatusService.SetBusy(true);
-                StatusService.Set("Exportando volcado de caché...", StatusType.Ok);
-                _tiaPlcService.DumpCacheToTxt(saveFileDialog.FileName);
-                StatusService.Set("Caché exportada correctamente.", StatusType.Ok);
-                StatusService.SetBusy(false);
+                StatusService.Set("Exportando volcado maestro...", StatusType.Ok);
+
+                try
+                {
+                    // 1. Volcado del PLC (Sobrescribe/Crea el archivo)
+                    _tiaPlcService.DumpCacheToTxt(saveFileDialog.FileName);
+
+                    // 2. Append de AppConfig y Engineering Cache
+                    using (StreamWriter sw = File.AppendText(saveFileDialog.FileName))
+                    {
+                        sw.WriteLine("\n\n=========================================================");
+                        sw.WriteLine("             VOLCADO DE APP_CONFIG (.json / .xml)        ");
+                        sw.WriteLine("=========================================================");
+
+                        var configDump = new
+                        {
+                            Global = AppConfigService.GetGlobalSettings(),
+                            DeviceSettings = AppConfigService.GetDeviceSettings(),
+                            Devices = AppConfigService.GetDeviceCategories(),
+                            Process = AppConfigService.GetProcessConfig(),
+                            Network = AppConfigService.GetNetworkConfig(),
+                            PReal = AppConfigService.GetPRealConfig(),
+                            PInt = AppConfigService.GetPIntConfig(),
+                            Alarm = AppConfigService.GetAlarmConfig()
+                        };
+                        sw.WriteLine(JsonConvert.SerializeObject(configDump, Formatting.Indented));
+
+                        sw.WriteLine("\n\n=========================================================");
+                        sw.WriteLine("             VOLCADO DE ENGINEERING CACHÉ (EXCEL)        ");
+                        sw.WriteLine("=========================================================");
+
+                        if (GeneratorVM?._engineeringCache != null && GeneratorVM._engineeringCache.Any())
+                        {
+                            sw.WriteLine(JsonConvert.SerializeObject(GeneratorVM._engineeringCache, Formatting.Indented));
+                        }
+                        else
+                        {
+                            sw.WriteLine("Caché de ingeniería vacía (No se ha cargado Excel).");
+                        }
+                    }
+
+                    StatusService.Set("Volcado maestro exportado correctamente.", StatusType.Ok);
+                    LogService.Write($"[MAIN-VM] Volcado maestro generado en: {saveFileDialog.FileName}");
+                }
+                catch (Exception ex)
+                {
+                    LogService.Write($"[MAIN-VM] Error generando el volcado maestro: {ex.Message}", true);
+                    StatusService.Set("Error al generar el volcado.", StatusType.Error);
+                }
+                finally
+                {
+                    StatusService.SetBusy(false);
+                }
             }
         }
 
