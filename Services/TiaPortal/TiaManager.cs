@@ -18,7 +18,12 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
         public static Project CurrentProject { get; private set; }
 
 
-        // Método auxiliar para loguear antes o después de que exista la inyección
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Metodo para escribir mensajes de log relacionados con Tia Portal, se intenta obtener el servicio de log para escribir el mensaje,
+        /// pero si no se puede se escribe en la salida de debug para no perder la información
+        /// </summary>
         private static void SafeLog(string message, bool isError = false)
         {
             var logger = App.ServiceProvider?.GetService<ILogService>();
@@ -69,7 +74,7 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
 
         // ==================================================================================================================
         /// <summary>
-        /// Metod7o para desconectar y liberar la conexión con Tia Portal, se llama al cerrar la aplicación para asegurarse de que no quedan conexiones abiertas ni recursos sin liberar
+        /// Metodo para desconectar y liberar la conexión con Tia Portal, se llama al cerrar la aplicación para asegurarse de que no quedan conexiones abiertas ni recursos sin liberar
         /// </summary>
         public static void Dispose()
         {

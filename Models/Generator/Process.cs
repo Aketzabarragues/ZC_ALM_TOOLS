@@ -14,6 +14,7 @@ namespace ZC_ALM_TOOLS.Models.Generator
         // Propiedades de identificación y Excel   
         public string Id { get; set; }
         public string Nombre { get; set; }
+        public string Codigo { get; set; }
         public int NumEtapas { get; set; }
         public int MaxPReal { get; set; }
         public int MaxPInt { get; set; }

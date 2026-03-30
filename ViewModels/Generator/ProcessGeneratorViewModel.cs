@@ -190,7 +190,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
 
 
-        // ==================================================================================================================
+       // ==================================================================================================================
         /// <summary>
         /// Metodo para rellenar la tabla con los bloques a generar
         /// </summary>
@@ -207,6 +207,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
             if (!int.TryParse(SelectedProcess.Id, out int processId)) return;
 
+            // Extraemos el ID de la plantilla desde el nombre de la carpeta (ej: "0100" -> 100)
             string templateIdStr = SelectedTemplate.Split('_')[0];
             if (!int.TryParse(templateIdStr, out int templateId)) return;
 
@@ -223,6 +224,8 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
             Regex regex = new Regex(@"^(FC|FB|DB)(\d+)", RegexOptions.IgnoreCase);
             string[] archivosXml = Directory.GetFiles(bloquesPath, "*.xml", SearchOption.AllDirectories);
 
+            int basePlantillas = 50000;
+
             foreach (var archivoPath in archivosXml)
             {
                 string nombreArchivo = Path.GetFileNameWithoutExtension(archivoPath);
@@ -232,13 +235,30 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                 {
                     string tipoBloque = match.Groups[1].Value.ToUpper();
                     int numeroOriginal = int.Parse(match.Groups[2].Value);
-                    int numeroProyectado = numeroOriginal - templateId + processId;
+
+                    // Cálculo matemático con tu sistema de rangos y offsets:
+                    // Ej DB53100 -> 53100 - 50000 - 100 + 200 = 3200
+                    int numeroProyectado = numeroOriginal - basePlantillas - templateId + processId;
+
+                    // Manipulación del nombre ("DB50100_CPR_PRINCIPAL" -> "DB200_COMP_PRINCIPAL")
+                    string[] parts = nombreArchivo.Split('_');
+                    if (parts.Length >= 2)
+                    {
+                        // parts[0] = "DB50100" -> Lo actualizamos a "DB200"
+                        parts[0] = $"{tipoBloque}{numeroProyectado}";
+
+                        // parts[1] = "CPR" -> Lo reemplazamos por el código del Excel ("COMP")
+                        parts[1] = SelectedProcess.Codigo;
+                    }
+
+                    // Volvemos a unir el nombre
+                    string nombreProyectadoFinal = string.Join("_", parts);
 
                     ProjectedBlocks.Add(new ProjectedBlock
                     {
                         Tipo = tipoBloque,
                         NumeroProyectado = numeroProyectado,
-                        NombreProyectado = $"{tipoBloque}{numeroProyectado}",
+                        NombreProyectado = nombreProyectadoFinal,
                         ArchivoOrigen = nombreArchivo + ".xml",
                         Estado = SynchronizationStatus.Pending,
                         Mensaje = "Pendiente de comprobar..."
@@ -246,12 +266,12 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                 }
             }
 
-            // Tabla de variables
+            // Tabla de variables dinámica
             ProjectedBlocks.Add(new ProjectedBlock
             {
                 Tipo = "Tabla",
                 NumeroProyectado = 0,
-                NombreProyectado = $"{SelectedProcess.Id}_{SelectedProcess.Nombre}",
+                NombreProyectado = $"{SelectedProcess.Id}_{SelectedProcess.Codigo}",
                 ArchivoOrigen = "Generación Dinámica",
                 Estado = SynchronizationStatus.Pending,
                 Mensaje = "Pendiente de comprobar..."
@@ -259,6 +279,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
             _statusService.Set($"[PROCESS-VM] [UpdateProjections] Lista cargada. Pulsa 'Comparar con PLC' para validar los {ProjectedBlocks.Count} elementos.", StatusType.Ok);
         }
+
 
 
         // ==================================================================================================================
@@ -293,7 +314,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                 }
             }
 
-            // 2. BUCLE DE MATRÍCULAS
+            // BUCLE DE MATRÍCULAS
             foreach (var bloque in ProjectedBlocks)
             {
                 bloque.Estado = SynchronizationStatus.Pending;
@@ -342,6 +363,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                 CanGenerate = true;
             }
         }
+
 
 
         // ==================================================================================================================

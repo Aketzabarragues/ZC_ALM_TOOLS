@@ -160,6 +160,7 @@ namespace ZC_ALM_TOOLS.Services.Generator
             {
                 Id = GetUidFallback(GetStr(r, h, "UID", "ID", "GUID")),
                 Nombre = GetStr(r, h, "NOMBRE", "PROCESO", "PROCESS"),
+                Codigo = GetStr(r, h, "CODIGO", "CODE"),
                 NumEtapas = GetInt(r, h, 0, "NUMETAPAS", "ETAPAS"),
                 MaxPReal = GetInt(r, h, 0, "PREAL", "MAXPREAL"),
                 MaxPInt = GetInt(r, h, 0, "PINT", "MAXPINT"),
