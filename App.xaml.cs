@@ -8,16 +8,29 @@ using ZC_ALM_TOOLS.Services.Common;
 using ZC_ALM_TOOLS.Services.TiaPortal;
 using ZC_ALM_TOOLS.Views;
 using ZC_ALM_TOOLS.Views.Launcher;
+using ZC_ALM_TOOLS.Services.Generator;
+using ZC_ALM_TOOLS.ViewModels;
+using ZC_ALM_TOOLS.ViewModels.Vci;
+using ZC_ALM_TOOLS.ViewModels.Generator;
+using ZC_ALM_TOOLS.ViewModels.Settings;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ZC_ALM_TOOLS
 {
     public partial class App : Application
     {
+
+        public static IServiceProvider ServiceProvider { get; private set; }
+
+
+
         public App()
         {
             // Inyectar el resolver estricto
             AppDomain.CurrentDomain.AssemblyResolve += ResolveOpenness;
         }
+
+
 
         protected override void OnStartup(StartupEventArgs e)
         {
@@ -29,6 +42,8 @@ namespace ZC_ALM_TOOLS
             StartApplication();
         }
 
+
+
         [MethodImpl(MethodImplOptions.NoInlining)]
         private void StartApplication()
         {
@@ -36,10 +51,14 @@ namespace ZC_ALM_TOOLS
 
             if (selectionWindow.ShowDialog() == true)
             {
+                var services = new ServiceCollection();
+                ConfigureServices(services);
+                ServiceProvider = services.BuildServiceProvider();
 
                 try
                 {
-                    AppConfigService.InitializeEnvironment();
+                    var appConfig = ServiceProvider.GetRequiredService<IAppConfigService>();
+                    appConfig.InitializeEnvironment();
                 }
                 catch (Exception ex)
                 {
@@ -54,14 +73,10 @@ namespace ZC_ALM_TOOLS
                     MessageBox.Show("Advertencia: Conectado a TIA Portal, pero no hay ningún proyecto cargado.", "Aviso", MessageBoxButton.OK, MessageBoxImage.Warning);
                 }
 
-                // 2. Instanciar la ventana principal
-                MainWindow mainWindow = new MainWindow(TiaManager.Process, TiaManager.CurrentProject);
-                this.MainWindow = mainWindow; // Asignarla como principal en la App
+                var mainWindow = ServiceProvider.GetRequiredService<MainWindow>();
+                this.MainWindow = mainWindow;
 
-                // 3. Restaurar el comportamiento de cierre normal
                 this.ShutdownMode = ShutdownMode.OnMainWindowClose;
-
-
                 mainWindow.Show();
             }
             else
@@ -70,6 +85,48 @@ namespace ZC_ALM_TOOLS
                 Current.Shutdown();
             }
         }
+
+
+
+        private void ConfigureServices(IServiceCollection services)
+        {
+            // 1. Singleton de TIA Portal obtenidos del Launcher
+            services.AddSingleton(TiaManager.Process);
+            services.AddSingleton(TiaManager.CurrentProject);
+
+            // 2. Servicios Comunes (Nuevas Abstracciones)
+            services.AddSingleton<ILogService, AppLogService>();
+            services.AddSingleton<IStatusService, AppStatusService>();
+            services.AddSingleton<IAppConfigService, AppConfigService>();
+
+            // 3. Servicios de Estado Compartido
+            services.AddSingleton<TargetStateService>();
+
+            // 4. Servicios de Negocio 
+            services.AddSingleton<TiaPlcService>();
+            services.AddSingleton<TiaHmiService>();
+            services.AddSingleton<TiaVciService>();
+            services.AddSingleton<IDataService, DataService>();
+
+            // 5. ViewModels Hijos (VCI)
+            services.AddSingleton<VciMappingViewModel>();
+            services.AddSingleton<VciAuditViewModel>();
+            services.AddSingleton<VciDocGeneratorViewModel>();
+            services.AddSingleton<DevicesViewModel>();
+            services.AddSingleton<ParamsAlarmsViewModel>();
+            services.AddSingleton<ProcessGeneratorViewModel>();
+
+            // 6. ViewModels Principales
+            services.AddSingleton<GeneratorMainViewModel>();
+            services.AddSingleton<VciMainViewModel>();
+            services.AddSingleton<SettingsMainViewModel>();
+            services.AddSingleton<MainViewModel>();
+
+            // 7. Views
+            services.AddTransient<MainWindow>();
+        }
+
+
 
         private Assembly ResolveOpenness(object sender, ResolveEventArgs args)
         {
@@ -98,6 +155,7 @@ namespace ZC_ALM_TOOLS
             }
             return null;
         }
+
 
         protected override void OnExit(ExitEventArgs e)
         {

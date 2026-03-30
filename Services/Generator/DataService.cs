@@ -1,5 +1,4 @@
-﻿// Archivo: Services/Generator/DataService.cs
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -11,12 +10,34 @@ using ZC_ALM_TOOLS.Services.Common;
 
 namespace ZC_ALM_TOOLS.Services.Generator
 {
-    public static class DataService
+    // ==================================================================================================================
+    /// <summary>
+    /// Servicio encargado de la extracción de datos desde Excel. 
+    /// Utiliza ClosedXML para una lectura robusta y flexible, con mapeo dinámico de columnas basado en encabezados normalizados.
+    /// </summary>
+    public class DataService : IDataService
     {
-        // =====================================================================================================
-        // MOTOR BASE ASÍNCRONO DE EXTRACCIÓN 
-        // =====================================================================================================
-        private static async Task<List<T>> LoadTableDataAsync<T>(string excelPath, string sheetName, string tableName, Func<IXLRangeRow, Dictionary<string, int>, int, T> mapper)
+
+        private readonly ILogService _logService;
+
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Constructor del servicio de datos. Requiere un servicio de log para registrar errores y eventos durante la extracción.
+        /// </summary>
+        public DataService(ILogService logService)
+        {
+            _logService = logService;
+        }
+
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Metodo genérico para cargar datos de una tabla específica en una hoja de Excel. El método es asíncrono y devuelve una lista de objetos del tipo especificado.
+        /// </summary>
+        private async Task<List<T>> LoadTableDataAsync<T>(string excelPath, string sheetName, string tableName, Func<IXLRangeRow, Dictionary<string, int>, int, T> mapper)
         {
             return await Task.Run(() =>
             {
@@ -32,14 +53,14 @@ namespace ZC_ALM_TOOLS.Services.Generator
                         var table = ws.Tables.FirstOrDefault(t => t.Name.Equals(tableName, StringComparison.OrdinalIgnoreCase));
                         if (table == null)
                         {
-                            LogService.Write($"[DATA-SERVICE] Tabla '{tableName}' no encontrada en la hoja '{sheetName}'.", true);
+                            _logService.Write($"[DATA-SERVICE] Tabla '{tableName}' no encontrada en la hoja '{sheetName}'.", true);
                             return list;
                         }
 
                         // Mapeo seguro secuencial (Evita offsets si la tabla no empieza en la Columna A)
                         var headers = new Dictionary<string, int>();
                         int colIndex = 1;
-                        
+
                         foreach (var field in table.Fields)
                         {
                             string key = NormalizeKey(field.Name);
@@ -56,22 +77,33 @@ namespace ZC_ALM_TOOLS.Services.Generator
                 }
                 catch (Exception ex)
                 {
-                    LogService.Write($"[DATA-SERVICE] Error en Tabla '{tableName}': {ex.Message}", true);
+                    _logService.Write($"[DATA-SERVICE] Error en Tabla '{tableName}': {ex.Message}", true);
                 }
                 return list;
             });
         }
 
-        // =====================================================================================================
-        // HELPERS DE EXTRACCIÓN ROBUSTA (NORMALIZACIÓN, ALIAS Y FALLBACKS)
-        // =====================================================================================================
-        private static string NormalizeKey(string key)
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Metodo para normalizar las claves de los encabezados de columna. Elimina espacios y caracteres especiales, y 
+        /// convierte a mayúsculas para permitir un mapeo flexible e insensible a formato.
+        /// </summary>
+        private string NormalizeKey(string key)
         {
             if (string.IsNullOrWhiteSpace(key)) return "";
             return new string(key.Where(char.IsLetterOrDigit).ToArray()).ToUpperInvariant();
         }
 
-        private static string GetStr(IXLRangeRow r, Dictionary<string, int> h, params string[] cols)
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Metodo para extraer un valor de cadena de una fila de tabla, dado un conjunto de posibles nombres de columna. 
+        /// Utiliza el diccionario de encabezados para encontrar el índice correcto y devuelve el valor limpio o una cadena vacía si no se encuentra o está en blanco.
+        /// </summary>
+        private string GetStr(IXLRangeRow r, Dictionary<string, int> h, params string[] cols)
         {
             foreach (var col in cols)
             {
@@ -84,7 +116,13 @@ namespace ZC_ALM_TOOLS.Services.Generator
             return string.Empty;
         }
 
-        private static int GetInt(IXLRangeRow r, Dictionary<string, int> h, int defaultVal, params string[] cols)
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Metodo para extraer un valor entero de una fila de tabla, dado un conjunto de posibles nombres de columna.
+        /// </summary>
+        private int GetInt(IXLRangeRow r, Dictionary<string, int> h, int defaultVal, params string[] cols)
         {
             foreach (var col in cols)
             {
@@ -101,14 +139,23 @@ namespace ZC_ALM_TOOLS.Services.Generator
             return defaultVal;
         }
 
-        private static string GetUidFallback(string extractedUid) =>
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Metodo para obtener un UID válido. Si el valor extraído es nulo o vacío, genera un nuevo GUID para asegurar que cada objeto tenga un identificador único.
+        /// </summary>
+        private string GetUidFallback(string extractedUid) =>
             string.IsNullOrEmpty(extractedUid) ? Guid.NewGuid().ToString() : extractedUid;
 
-        // =====================================================================================================
-        // MÉTODOS PÚBLICOS DE EXTRACCIÓN (POCOS)
-        // =====================================================================================================
 
-        public static async Task<List<Process>> LoadProcessAsync(string path, string sheet, string table) =>
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Metodo específico para cargar los datos de Procesos desde la tabla correspondiente en Excel. 
+        /// Utiliza el método genérico LoadTableDataAsync con un mapeador específico para crear objetos de tipo Process.
+        /// </summary>
+        public async Task<List<Process>> LoadProcessAsync(string path, string sheet, string table) =>
             await LoadTableDataAsync(path, sheet, table, (r, h, i) => new Process
             {
                 Id = GetUidFallback(GetStr(r, h, "UID", "ID", "GUID")),
@@ -119,7 +166,14 @@ namespace ZC_ALM_TOOLS.Services.Generator
                 NumAlarmas = GetInt(r, h, 0, "ALARMAS", "NUMALARMAS", "ALARMS")
             });
 
-        public static async Task<List<Parameter>> LoadParametersAsync(string path, string sheet, string table) =>
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Metodo específico para cargar los datos de Parámetros desde la tabla correspondiente en Excel. 
+        /// Utiliza el método genérico LoadTableDataAsync con un mapeador específico para crear objetos de tipo Parameter.
+        /// </summary>
+        public async Task<List<Parameter>> LoadParametersAsync(string path, string sheet, string table) =>
             await LoadTableDataAsync(path, sheet, table, (r, h, i) => new Parameter
             {
                 Uid = GetUidFallback(GetStr(r, h, "UID", "ID", "GUID")),
@@ -133,7 +187,13 @@ namespace ZC_ALM_TOOLS.Services.Generator
                 Visibilidad = GetStr(r, h, "VISIBILIDAD", "VIS")
             });
 
-        public static async Task<List<Alarms>> LoadAlarmsAsync(string path, string sheet, string table) =>
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Metodo específico para cargar los datos de Alarmas desde la tabla correspondiente en Excel.
+        /// </summary>
+        public async Task<List<Alarms>> LoadAlarmsAsync(string path, string sheet, string table) =>
             await LoadTableDataAsync(path, sheet, table, (r, h, i) => new Alarms
             {
                 UID = GetUidFallback(GetStr(r, h, "UID", "ID", "GUID")),
@@ -144,7 +204,13 @@ namespace ZC_ALM_TOOLS.Services.Generator
                 ComentarioDB = GetStr(r, h, "COMENTARIODB", "COMENTARIO")
             });
 
-        public static async Task<List<ProcessStage>> LoadStagesAsync(string path, string sheet, string table) =>
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Metodo específico para cargar los datos de Etapas de Proceso desde la tabla correspondiente en Excel.
+        /// </summary>
+        public async Task<List<ProcessStage>> LoadStagesAsync(string path, string sheet, string table) =>
             await LoadTableDataAsync(path, sheet, table, (r, h, i) => new ProcessStage
             {
                 Uid = GetUidFallback(GetStr(r, h, "UID", "ID", "GUID")),
@@ -158,7 +224,13 @@ namespace ZC_ALM_TOOLS.Services.Generator
                 CpComentario = GetStr(r, h, "CPCOMENTARIO")
             });
 
-        public static async Task<List<Connection>> LoadConectionsAsync(string path, string sheet, string table) =>
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Metodo específico para cargar los datos de Conexiones desde la tabla correspondiente en Excel.
+        /// </summary>
+        public async Task<List<Connection>> LoadConectionsAsync(string path, string sheet, string table) =>
             await LoadTableDataAsync(path, sheet, table, (r, h, i) => new Connection
             {
                 Equipo_Origen = GetStr(r, h, "EQUIPOORIGEN", "ORIGEN"),
@@ -169,11 +241,16 @@ namespace ZC_ALM_TOOLS.Services.Generator
                 Puerto_Local = GetStr(r, h, "PUERTOLOCAL", "PUERTO")
             });
 
-        public static async Task<List<object>> LoadDispCategoryDataAsync(string path, ConfigDeviceCategory cat) =>
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Metodo específico para cargar los datos de una categoría de dispositivo genérica desde la tabla correspondiente en Excel.
+        /// </summary>
+        public async Task<List<object>> LoadDispCategoryDataAsync(string path, ConfigDeviceCategory cat) =>
             await LoadTableDataAsync<object>(path, cat.ExcelSheet, cat.ExcelTable, (r, h, i) => {
                 IDevice d = CreateEmptyDispData(cat);
 
-                // Mapeo estricto core de IDevice con fallbacks
                 d.UID = GetUidFallback(GetStr(r, h, "UID", "ID", "GUID"));
                 d.Numero = GetInt(r, h, i, "NUMERO", "NUM", "NO");
                 d.Tag = GetStr(r, h, "TAG");
@@ -181,7 +258,6 @@ namespace ZC_ALM_TOOLS.Services.Generator
                 d.CPTag = GetStr(r, h, "CPTAG");
                 d.CPComentario = GetStr(r, h, "CPCOMENTARIO");
 
-                // Mapeo dinámico por reflexión ignorando missing y soportando alias limpios
                 foreach (var prop in d.GetType().GetProperties().Where(p => p.CanWrite))
                 {
                     if (new[] { "UID", "Numero", "Tag", "Descripcion", "CPTag", "CPComentario", "Estado" }.Contains(prop.Name)) continue;
@@ -200,7 +276,13 @@ namespace ZC_ALM_TOOLS.Services.Generator
                 return d;
             });
 
-        public static async Task<List<Disp_Config>> LoadDeviceNMaxAsync(string path, ConfigDeviceSettings settings)
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Metodo específico para cargar los valores de configuración N_MAX de dispositivos desde rangos definidos en Excel.
+        /// </summary>
+        public async Task<List<Disp_Config>> LoadDeviceNMaxAsync(string path, ConfigDeviceSettings settings)
         {
             return await Task.Run(() => {
                 var list = new List<Disp_Config>();
@@ -217,16 +299,27 @@ namespace ZC_ALM_TOOLS.Services.Generator
                         }
                     }
                 }
-                catch (Exception ex) { LogService.Write($"[DATA-SERVICE] Error leyendo límites N_MAX: {ex.Message}", true); }
+                catch (Exception ex) { _logService.Write($"[DATA-SERVICE] Error leyendo límites N_MAX: {ex.Message}", true); }
                 return list;
             });
         }
 
-        public static IDevice CreateEmptyDispData(ConfigDeviceCategory cat)
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Metodo para crear una instancia vacía de un dispositivo genérico basado en la categoría de dispositivo. 
+        /// Utiliza reflexión para encontrar la clase de modelo correspondiente y crear una instancia de ella.
+        /// </summary>
+        public IDevice CreateEmptyDispData(ConfigDeviceCategory cat)
         {
             Type t = AppDomain.CurrentDomain.GetAssemblies().SelectMany(a => a.GetTypes()).FirstOrDefault(x => x.Name == cat.ModelClass);
             if (t == null) throw new Exception($"Clase de Modelo '{cat.ModelClass}' no encontrada en el ensamblado.");
             return (IDevice)Activator.CreateInstance(t);
         }
+
+
     }
+
+
 }

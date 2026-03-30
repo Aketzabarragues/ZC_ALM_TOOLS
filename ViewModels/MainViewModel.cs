@@ -2,6 +2,7 @@
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.Win32;
 using Newtonsoft.Json;
 using Siemens.Engineering;
@@ -29,22 +30,21 @@ namespace ZC_ALM_TOOLS.ViewModels
         private readonly TiaPortal _tiaPortal;
         private readonly Project _project;
         public TiaPlcService _tiaPlcService;
-        public TiaHmiService _tiaHmiService;
-        public TiaVciService _tiaVciService;
+        private readonly TargetStateService _targetStateService;
 
-        public ObservableCollection<TiaTarget> PlcTargets { get; } = new ObservableCollection<TiaTarget>();
-        public ObservableCollection<TiaTarget> HmiTargets { get; } = new ObservableCollection<TiaTarget>();
-        public ObservableCollection<TiaTarget> ScadaTargets { get; } = new ObservableCollection<TiaTarget>();
+        public ObservableCollection<TiaTarget> PlcTargets => _targetStateService.PlcTargets;
+        public ObservableCollection<TiaTarget> HmiTargets => _targetStateService.HmiTargets;
+        public ObservableCollection<TiaTarget> ScadaTargets => _targetStateService.ScadaTargets;
 
         // Selección Global de PLC
         private TiaTarget _selectedTarget;
         public TiaTarget SelectedTarget
         {
             get => _selectedTarget;
-            set 
-            { 
-                _selectedTarget = value; 
-                OnPropertyChanged(); OnTargetChanged(); 
+            set
+            {
+                _selectedTarget = value;
+                OnPropertyChanged(); OnTargetChanged();
             }
         }
 
@@ -70,10 +70,13 @@ namespace ZC_ALM_TOOLS.ViewModels
 
 
         // ViewModels de los Módulos
-        public GeneratorMainViewModel GeneratorVM { get; set; }
-        public VciMainViewModel VciVM { get; set; }
-        public SettingsMainViewModel SettingsVM { get; set; }
+        public GeneratorMainViewModel GeneratorVM { get; }
+        public VciMainViewModel VciVM { get; }
+        public SettingsMainViewModel SettingsVM { get; }
 
+
+        private readonly IStatusService _statusService;
+        private readonly IAppConfigService _appConfigService;
 
         // Propiedades de Status Bar (Globales)
         public string StatusMessage { get; set; }
@@ -81,11 +84,13 @@ namespace ZC_ALM_TOOLS.ViewModels
         public bool IsBusy { get; set; }
 
 
-        // Comandos de Navegación
+        // Comandos de Navegación (Se mantienen como RelayCommand porque son cambios instantáneos de memoria)
         public RelayCommand ShowGeneratorCommand { get; }
         public RelayCommand ShowVciCommand { get; }
         public RelayCommand ConfigSettingsCommand { get; set; }
-        public RelayCommand DumpCacheCommand { get; set; }
+
+        // Comandos
+        public AsyncRelayCommand DumpCacheCommand { get; set; }
 
 
 
@@ -93,41 +98,50 @@ namespace ZC_ALM_TOOLS.ViewModels
         /// <summary>
         /// Constructor
         /// </summary>
-        public MainViewModel(TiaPortal tiaPortal, Project project)
+        public MainViewModel(TiaPortal tiaPortal, Project project,
+            TiaPlcService tiaPlcService,
+            TargetStateService targetStateService,
+            GeneratorMainViewModel generatorVM,
+            VciMainViewModel vciVM,
+            SettingsMainViewModel settingsVM,
+            IStatusService statusService,
+            IAppConfigService appConfigService)
         {
+
             _tiaPortal = tiaPortal;
             _project = project;
+            _tiaPlcService = tiaPlcService;
+            _targetStateService = targetStateService;
 
-            _tiaPlcService = new TiaPlcService();
-            _tiaVciService = new TiaVciService(tiaPortal, project);
-            _tiaHmiService = new TiaHmiService();
-
-            _tiaPlcService.SetTiaPortalInstance(_tiaPortal, _project);
+            _statusService = statusService;
+            _appConfigService = appConfigService;
 
             // Inicializamos los Módulos
-            GeneratorVM = new GeneratorMainViewModel(_tiaPlcService, _tiaHmiService, PlcTargets, HmiTargets, ScadaTargets);
-            VciVM = new VciMainViewModel(_tiaPortal, _project, _tiaPlcService, _tiaVciService, PlcTargets);
-            SettingsVM = new SettingsMainViewModel();
+            GeneratorVM = generatorVM;
+            VciVM = vciVM;
+            SettingsVM = settingsVM;
 
             // Comandos de menú lateral
             ShowGeneratorCommand = new RelayCommand(() => CurrentView = GeneratorVM);
             ShowVciCommand = new RelayCommand(() => CurrentView = VciVM);
             ConfigSettingsCommand = new RelayCommand(() => CurrentView = SettingsVM);
 
-            DumpCacheCommand = new RelayCommand(ExecuteDumpCache);
+            // Comando Asíncrono
+            DumpCacheCommand = new AsyncRelayCommand(ExecuteDumpCache);
 
 
             // Suscripción al StatusService Global
-            StatusService.OnStatusChanged += (msg, type) => {
+            _statusService.OnStatusChanged += (msg, type) => {
                 StatusMessage = msg;
                 StatusColor = type == StatusType.Error ? "Red" : (type == StatusType.Warning ? "Orange" : "Green");
-                OnPropertyChanged("StatusMessage"); OnPropertyChanged("StatusColor");
+                OnPropertyChanged(nameof(StatusMessage));
+                OnPropertyChanged(nameof(StatusColor));
             };
-            StatusService.OnBusyChanged += (busy) => { IsBusy = busy; OnPropertyChanged("IsBusy"); };
+            _statusService.OnBusyChanged += (busy) => { IsBusy = busy; OnPropertyChanged(nameof(IsBusy)); };
 
             // Vista por defecto al abrir
             CurrentView = GeneratorVM;
-            
+
             LoadProjectInfo();
             ScanProjectDevices();
         }
@@ -140,31 +154,30 @@ namespace ZC_ALM_TOOLS.ViewModels
         /// </summary>
         private void LoadProjectInfo()
         {
-            // Como TiaManager ya separó el CurrentProject, es una sola línea segura:
-            ProjectName = TiaManager.CurrentProject?.Name ?? "Sin proyecto abierto";
+            ProjectName = _project?.Name ?? "Sin proyecto abierto";
         }
 
 
         // ==================================================================================================================
         /// <summary>
-        /// Metodo para escanear los dispositivos del proyecto y clasificarlos en PLC, HMI y SCADA. Luego se añaden a las listas enlazadas a los ComboBoxes de cada módulo.
+        /// Metodo para escanear los dispositivos del proyecto y clasificarlos en PLC, HMI y SCADA. 
+        /// Luego se añaden a las listas enlazadas a los ComboBoxes de cada módulo.
         /// </summary>
         private void ScanProjectDevices()
         {
-            StatusService.SetBusy(true);
-            StatusService.Set("Buscando dispositivos en el proyecto...", StatusType.Warning);
-            LogService.Write($"[MAIN-VM] [ScanProjectDevices] Buscando dispositivos en el proyecto...");
+            // Nota: Este método se llama en el constructor, no desde un comando. 
+            // Lo dejamos de momento con el control manual de IsBusy para no complicar la inicialización.
+            _statusService.SetBusy(true);
+            _statusService.Set("[MAIN-VM] [ScanProjectDevices] Buscando dispositivos en el proyecto...", StatusType.Warning);
 
             try
             {
                 var scannedDevices = TiaDeviceScanner.ScanProject(_project);
 
-                // Vaciamos nuestras propias listas
                 PlcTargets.Clear();
                 HmiTargets.Clear();
                 ScadaTargets.Clear();
 
-                // Rellenamos nuestras propias listas (¡y los hijos se enteran automáticamente!)
                 foreach (var target in scannedDevices)
                 {
                     if (target.Type == TargetType.PLC) PlcTargets.Add(target);
@@ -173,17 +186,15 @@ namespace ZC_ALM_TOOLS.ViewModels
                 }
 
                 SelectedTarget = PlcTargets.FirstOrDefault();
-                StatusService.Set("Dispositivos escaneados.", StatusType.Ok);
-                LogService.Write($"[MAIN-VM] [ScanProjectDevices] Dispositivos escaneados.");
+                _statusService.Set("[MAIN-VM] [ScanProjectDevices] Dispositivos escaneados correctamente.", StatusType.Ok);
             }
             catch (Exception ex)
             {
-                LogService.Write($"[MAIN-VM] [ScanProjectDevices] Error escaneando dispositivos: {ex.Message}", true);
-                StatusService.Set("Error al escanear dispositivos.", StatusType.Error);
+                _statusService.Set($"[MAIN-VM] [ScanProjectDevices] Error al escanear dispositivos: {ex.Message}", StatusType.Error);
             }
             finally
             {
-                StatusService.SetBusy(false);
+                _statusService.SetBusy(false);
             }
         }
 
@@ -191,25 +202,21 @@ namespace ZC_ALM_TOOLS.ViewModels
 
         // ==================================================================================================================
         /// <summary>
-        /// Metodo que se llama cada vez que el usuario cambia la selección del PLC. Se encarga de actualizar el servicio central de PLC, 
-        /// indexar los bloques del PLC en memoria RAM y avisar a los módulos visuales para que actualicen su información en base al nuevo PLC seleccionado.
+        /// Metodo que se llama cada vez que el usuario cambia la selección del PLC. 
         /// </summary>
         private void OnTargetChanged()
         {
             if (SelectedTarget != null && SelectedTarget.SoftwareObject is PlcSoftware plc)
             {
-                
-                StatusService.Set($"Cambiando PLC a '{plc.Name}'. Indexando bloques del PLC en memoria RAM...", StatusType.Warning);
+                _statusService.Set($"[MAIN-VM] [OnTargetChanged] Cambiando PLC a '{plc.Name}'. Indexando bloques del PLC en memoria RAM...", StatusType.Warning);
 
-
-                // Forzamos a la interfaz gráfica a procesar todos los cambios visuales pendientes 
                 try
                 {
                     System.Windows.Threading.Dispatcher.CurrentDispatcher.Invoke(
                         System.Windows.Threading.DispatcherPriority.Background,
                         new Action(delegate { }));
                 }
-                catch { /* Si da error por ser demasiado temprano en el constructor, lo ignoramos */ }
+                catch { }
 
                 // Avisamos al servicio central de que el usuario ha cambiado de PLC
                 _tiaPlcService.UpdatePlc(plc);
@@ -219,7 +226,7 @@ namespace ZC_ALM_TOOLS.ViewModels
                 if (GeneratorVM != null) GeneratorVM.SelectedTarget = this.SelectedTarget;
                 if (VciVM != null) VciVM.SelectedTarget = this.SelectedTarget;
 
-                StatusService.Set($"PLC '{plc.Name}' enlazado e indexado correctamente.", StatusType.Ok);
+                _statusService.Set($"[MAIN-VM] [OnTargetChanged] PLC '{plc.Name}' enlazado e indexado correctamente.", StatusType.Ok);
             }
         }
 
@@ -227,9 +234,9 @@ namespace ZC_ALM_TOOLS.ViewModels
 
         // ==================================================================================================================
         /// <summary>
-        /// Metodo para generar un volcado maestro que incluya tanto el contenido del PLC (código, datos, símbolos) como la configuración de la aplicación (AppConfig) y la caché de ingeniería (Excel).
+        /// Metodo para generar un volcado maestro que incluya el contenido del PLC, la configuración y la caché de ingeniería.
         /// </summary>
-        private void ExecuteDumpCache()
+        private async Task ExecuteDumpCache()
         {
             SaveFileDialog saveFileDialog = new SaveFileDialog
             {
@@ -240,64 +247,64 @@ namespace ZC_ALM_TOOLS.ViewModels
 
             if (saveFileDialog.ShowDialog() == true)
             {
-                StatusService.SetBusy(true);
-                StatusService.Set("Exportando volcado maestro...", StatusType.Ok);
+                _statusService.Set("[MAIN-VM] Exportando volcado maestro...", StatusType.Ok);
+                await Task.Delay(50); // Pausa visual
 
                 try
                 {
-                    // 1. Volcado del PLC (Sobrescribe/Crea el archivo)
-                    _tiaPlcService.DumpCacheToTxt(saveFileDialog.FileName);
+                    // Capturamos el nombre de archivo y la caché de UI antes de irnos a segundo plano
+                    string fileName = saveFileDialog.FileName;
+                    var engineeringCache = GeneratorVM?._engineeringCache;
 
-                    // 2. Append de AppConfig y Engineering Cache
-                    using (StreamWriter sw = File.AppendText(saveFileDialog.FileName))
+                    // Nos vamos a un hilo secundario para no congelar la app al serializar y escribir
+                    await Task.Run(() =>
                     {
-                        sw.WriteLine("\n\n=========================================================");
-                        sw.WriteLine("             VOLCADO DE APP_CONFIG (.json / .xml)        ");
-                        sw.WriteLine("=========================================================");
+                        // 1. Volcado del PLC (Sobrescribe/Crea el archivo)
+                        _tiaPlcService.DumpCacheToTxt(fileName);
 
-                        var configDump = new
+                        // 2. Append de AppConfig y Engineering Cache
+                        using (StreamWriter sw = File.AppendText(fileName))
                         {
-                            Global = AppConfigService.GetGlobalSettings(),
-                            DeviceSettings = AppConfigService.GetDeviceSettings(),
-                            Devices = AppConfigService.GetDeviceCategories(),
-                            Process = AppConfigService.GetProcessConfig(),
-                            Network = AppConfigService.GetNetworkConfig(),
-                            PReal = AppConfigService.GetPRealConfig(),
-                            PInt = AppConfigService.GetPIntConfig(),
-                            Alarm = AppConfigService.GetAlarmConfig()
-                        };
-                        sw.WriteLine(JsonConvert.SerializeObject(configDump, Formatting.Indented));
+                            sw.WriteLine("\n\n=========================================================");
+                            sw.WriteLine("             VOLCADO DE APP_CONFIG (.json / .xml)        ");
+                            sw.WriteLine("=========================================================");
 
-                        sw.WriteLine("\n\n=========================================================");
-                        sw.WriteLine("             VOLCADO DE ENGINEERING CACHÉ (EXCEL)        ");
-                        sw.WriteLine("=========================================================");
+                            var configDump = new
+                            {
+                                Global = _appConfigService.GetGlobalSettings(),
+                                DeviceSettings = _appConfigService.GetDeviceSettings(),
+                                Devices = _appConfigService.GetDeviceCategories(),
+                                Process = _appConfigService.GetProcessConfig(),
+                                Network = _appConfigService.GetNetworkConfig(),
+                                PReal = _appConfigService.GetPRealConfig(),
+                                PInt = _appConfigService.GetPIntConfig(),
+                                Alarm = _appConfigService.GetAlarmConfig()
+                            };
+                            sw.WriteLine(JsonConvert.SerializeObject(configDump, Formatting.Indented));
 
-                        if (GeneratorVM?._engineeringCache != null && GeneratorVM._engineeringCache.Any())
-                        {
-                            sw.WriteLine(JsonConvert.SerializeObject(GeneratorVM._engineeringCache, Formatting.Indented));
+                            sw.WriteLine("\n\n=========================================================");
+                            sw.WriteLine("             VOLCADO DE ENGINEERING CACHÉ (EXCEL)        ");
+                            sw.WriteLine("=========================================================");
+
+                            if (engineeringCache != null && engineeringCache.Any())
+                            {
+                                sw.WriteLine(JsonConvert.SerializeObject(engineeringCache, Formatting.Indented));
+                            }
+                            else
+                            {
+                                sw.WriteLine("Caché de ingeniería vacía (No se ha cargado Excel).");
+                            }
                         }
-                        else
-                        {
-                            sw.WriteLine("Caché de ingeniería vacía (No se ha cargado Excel).");
-                        }
-                    }
+                    });
 
-                    StatusService.Set("Volcado maestro exportado correctamente.", StatusType.Ok);
-                    LogService.Write($"[MAIN-VM] Volcado maestro generado en: {saveFileDialog.FileName}");
+                    _statusService.Set($"[MAIN-VM] Volcado maestro exportado correctamente en: {fileName}", StatusType.Ok);
                 }
                 catch (Exception ex)
                 {
-                    LogService.Write($"[MAIN-VM] Error generando el volcado maestro: {ex.Message}", true);
-                    StatusService.Set("Error al generar el volcado.", StatusType.Error);
-                }
-                finally
-                {
-                    StatusService.SetBusy(false);
+                    _statusService.Set($"[MAIN-VM] Error al generar el volcado: {ex.Message}", StatusType.Error);
                 }
             }
         }
-
-
 
 
     }

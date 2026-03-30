@@ -19,49 +19,58 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
     public class VciDocGeneratorViewModel : ObservableObject
     {
 
-
         private readonly TiaPlcService _tiaPlcService;
 
         public ObservableCollection<VciSelectableItem> PlcItems { get; set; }
 
-        public RelayCommand LoadItemsCommand { get; }
+        private readonly ILogService _logService;
+        private readonly IStatusService _statusService;
+        private readonly IAppConfigService _appConfigService;
+
+        // Comandos
+        public AsyncRelayCommand LoadItemsCommand { get; }
         public RelayCommand SelectAllCommand { get; }
         public RelayCommand DeselectAllCommand { get; }
-        public RelayCommand GenerateDocCommand { get; }
-
+        public AsyncRelayCommand GenerateDocCommand { get; }
 
 
         // ==================================================================================================================
         /// <summary>
         /// Constructor
         /// </summary>
-        public VciDocGeneratorViewModel(TiaPlcService tiaPlcService)
+        public VciDocGeneratorViewModel(TiaPlcService tiaPlcService, ILogService logService, IStatusService statusService, IAppConfigService appConfigService)
         {
             _tiaPlcService = tiaPlcService;
+            _logService = logService;
+            _statusService = statusService;
+            _appConfigService = appConfigService;
+
             PlcItems = new ObservableCollection<VciSelectableItem>();
 
-            LoadItemsCommand = new RelayCommand(LoadItems);
+            // Asignación de los comandos asíncronos
+            LoadItemsCommand = new AsyncRelayCommand(ExecuteLoadItems);
             SelectAllCommand = new RelayCommand(() => SetAllSelection(true));
             DeselectAllCommand = new RelayCommand(() => SetAllSelection(false));
-            GenerateDocCommand = new RelayCommand(ExecuteGenerateDocCommand, CanExecuteGenerateDoc);
+            GenerateDocCommand = new AsyncRelayCommand(GenerateDocAsync, CanExecuteGenerateDoc);
         }
-
 
 
         // ==================================================================================================================
         /// <summary>
         /// Obtiene y consolida todos los bloques y tipos de datos (UDTs) desde la caché del PLC activo.
         /// </summary>
-        public void LoadItems()
+        private async Task ExecuteLoadItems()
         {
             try
             {
-                LogService.Write("[VCI-DOC-GENERATOR] [LoadItems] Iniciando escaneo y refresco de elementos...");
+                _statusService.Set("[VCI-DOC-GENERATOR] [ExecuteLoadItems] Iniciando escaneo y refresco de elementos...", StatusType.Warning);
+                await Task.Delay(50); // Pausa visual para que WPF pinte el mensaje
+
                 PlcItems.Clear();
 
                 // 1. Extracción de Bloques (FC, FB, OB, DB)
                 var blocks = _tiaPlcService.GetAllBlocks();
-                LogService.Write($"[VCI-DOC-GENERATOR] [LoadItems] Bloques recuperados de la caché: {blocks?.Count ?? 0}");
+                _logService.Write($"[VCI-DOC-GENERATOR] [ExecuteLoadItems] Bloques recuperados de la caché: {blocks?.Count ?? 0}");
 
                 // Extracción de bloques exportables (SCL, DB, STL)
                 if (blocks != null)
@@ -88,14 +97,14 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                         }
                         catch (Exception blockEx)
                         {
-                            LogService.Write($"[VCI-DOC-GENERATOR] [LoadItems] Error leyendo propiedades del bloque {b.Name}: {blockEx.Message}", true);
+                            _logService.Write($"[VCI-DOC-GENERATOR] [ExecuteLoadItems] Error leyendo propiedades del bloque {b.Name}: {blockEx.Message}", true);
                         }
                     }
                 }
 
                 // Extracción de Tipos de Datos (UDT)
                 var types = _tiaPlcService.GetAllTypes();
-                LogService.Write($"[VCI-DOC-GENERATOR] [LoadItems] UDTs recuperados de la caché: {types?.Count ?? 0}");
+                _logService.Write($"[VCI-DOC-GENERATOR] [ExecuteLoadItems] UDTs recuperados de la caché: {types?.Count ?? 0}");
 
                 if (types != null)
                 {
@@ -119,14 +128,11 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                 // Comprobación de seguridad
                 if (PlcItems.Count == 0)
                 {
-                    LogService.Write("[VCI-DOC-GENERATOR] [LoadItems] ATENCIÓN: La lista resultante está vacía. ¿Se ha seleccionado un PLC en el desplegable principal?");
-                    StatusService.Set("No se han encontrado bloques ni UDTs. Verifica que has seleccionado un PLC arriba.", StatusType.Warning);
+                    _statusService.Set("[VCI-DOC-GENERATOR] [ExecuteLoadItems] ATENCIÓN: La lista resultante está vacía. Verifica que has seleccionado un PLC arriba.", StatusType.Warning);
                     return;
                 }
 
-                LogService.Write("[VCI-DOC-GENERATOR] [LoadItems] Ordenando elementos para la vista...");
-
-                LogService.Write("[VCI-DOC-GENERATOR] [LoadItems] Ordenando elementos para la vista...");
+                _logService.Write("[VCI-DOC-GENERATOR] [ExecuteLoadItems] Ordenando elementos para la vista...");
 
                 // Ordenación visual: 
                 // 1º Por Tipo de elemento (DB, FB, FC, UDT...)
@@ -144,16 +150,13 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                     PlcItems.Add(item);
                 }
 
-                LogService.Write($"[VCI-DOC-GENERATOR] [LoadItems] Refresco completado exitosamente. Total cargados: {PlcItems.Count}");
-                StatusService.Set($"Se han cargado {PlcItems.Count} elementos en el generador de ayuda.", StatusType.Ok);
+                _statusService.Set($"[VCI-DOC-GENERATOR] [ExecuteLoadItems] Refresco completado exitosamente. Se han cargado {PlcItems.Count} elementos en el generador.", StatusType.Ok);
             }
             catch (System.Exception ex)
             {
-                LogService.Write($"[VCI-DOC-GENERATOR] [LoadItems] Error crítico al cargar los elementos: {ex.Message}", true);
-                StatusService.Set("Error al cargar los elementos del PLC. Revisa los logs.", StatusType.Error);
+                _statusService.Set($"[VCI-DOC-GENERATOR] [ExecuteLoadItems] Error al cargar los elementos del PLC: {ex.Message}", StatusType.Error);
             }
         }
-
 
 
         // ==================================================================================================================
@@ -169,21 +172,14 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
         }
 
 
-
         // ==================================================================================================================
         private bool CanExecuteGenerateDoc()
         {
             // Devuelve 'true' solo si la lista no es nula y al menos 1 elemento está seleccionado
             return PlcItems != null && PlcItems.Any(i => i.IsSelected);
         }
-        // ==================================================================================================================
-        /// <summary>
-        /// Método envoltorio asíncrono para el botón de generar documentacion de la UI
-        /// </summary>
-        private async void ExecuteGenerateDocCommand()
-        {
-            await GenerateDocAsync();
-        }
+
+
         // ==================================================================================================================
         /// <summary>
         /// Orquesta la exportación a texto plano y dispara el compilador estático de Python.
@@ -193,28 +189,26 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
             var selectedItems = PlcItems.Where(i => i.IsSelected).ToList();
             if (selectedItems.Count == 0)
             {
-                StatusService.Set("No hay elementos seleccionados para generar documentación.", StatusType.Warning);
+                _statusService.Set("[VCI-DOC-GENERATOR] [GenerateDocAsync] No hay elementos seleccionados para generar documentación.", StatusType.Warning);
                 return;
             }
 
             try
             {
-                LogService.Write($"[VCI-DOC-GENERATOR] [GenerateDocAsync] Iniciando exportación de {selectedItems.Count} fuentes a disco...");
+                _statusService.Set($"[VCI-DOC-GENERATOR] [GenerateDocAsync] Iniciando exportación de {selectedItems.Count} fuentes a disco...", StatusType.Warning);
+                await Task.Delay(50);
 
-                // Leer la configuración global desde el XML
-                var globalSettings = AppConfigService.GetGlobalSettings();
+                // Leer la configuración global desde el XML/JSON
+                var globalSettings = _appConfigService.GetGlobalSettings();
                 string exportDir = globalSettings.DocExportSourcesPath;
 
                 // Fallback de seguridad: si la ruta del XML está vacía, usamos la temporal por defecto
                 if (string.IsNullOrWhiteSpace(exportDir))
                 {
-                    LogService.Write("[VCI-DOC-GENERATOR] [GenerateDocAsync] AVISO: 'DocExportSourcesPath' está vacío en app_config.xml. Usando directorio por defecto.");
                     exportDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "ZC_Exportaciones_SCL");
-                    StatusService.Set("Aviso: Ruta de exportación no definida en el JSON. Guardando en el Escritorio.", StatusType.Warning);
+                    _statusService.Set("[VCI-DOC-GENERATOR] [GenerateDocAsync] Aviso: Ruta de exportación no definida en ajustes. Guardando en el Escritorio.", StatusType.Warning);
+                    await Task.Delay(1500); // Pausa para que el usuario lea la advertencia
                 }
-
-                LogService.Write($"[VCI-DOC-GENERATOR] [GenerateDocAsync] Iniciando exportación de {selectedItems.Count} fuentes a disco...");
-
 
                 // 1. Limpiar directorio de exportación (Por si hay archivos viejos)               
                 if (!Directory.Exists(exportDir))
@@ -231,8 +225,8 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                 {
                     var item = selectedItems[i];
 
-                    StatusService.Set($"Generando fuente: {item.Name} ({i + 1}/{selectedItems.Count})...", StatusType.Warning);
-                    await Task.Delay(10);
+                    _statusService.Set($"[VCI-DOC-GENERATOR] [GenerateDocAsync] Generando fuente: {item.Name} ({i + 1}/{selectedItems.Count})...", StatusType.Warning);
+                    await Task.Delay(10); // Pausa visual por iteración
 
                     // Determinar la extensión correcta según el tipo de bloque
                     string extension = ".scl";
@@ -263,7 +257,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                     }
 
                     // Llamamos a nuestra nueva función en TiaPlcService
-                    bool isSuccess = _tiaPlcService.ExportAsSource(item.OriginalItem, filePath);
+                    bool isSuccess = await _tiaPlcService.ExportAsSourceAsync(item.OriginalItem, filePath);
 
                     if (isSuccess)
                     {
@@ -275,13 +269,12 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                     }
                 }
 
-                LogService.Write($"[VCI-DOC-GENERATOR] [GenerateDocAsync] Exportación de fuentes finalizada. Correctos: {successCount} | Errores: {errorCount}");
-                StatusService.Set($"{successCount} archivos fuente exportados.", StatusType.Ok);
+                _statusService.Set($"[VCI-DOC-GENERATOR] [GenerateDocAsync] Exportación de fuentes finalizada. Correctos: {successCount} | Errores: {errorCount}", StatusType.Ok);
 
                 await Task.Delay(500);
 
                 // 3. FASE 3 PARTE 2: Llamada a Python
-                LogService.Write("[VCI-DOC-GENERATOR] [GenerateDocAsync] Preparando llamada al entorno de Python...");
+                _logService.Write("[VCI-DOC-GENERATOR] [GenerateDocAsync] Preparando llamada al entorno de Python...");
 
                 // Asegúrate de tener estas propiedades en tu ConfigGlobalSettings
                 string wordPath = globalSettings.DocWordManualPath;
@@ -290,15 +283,15 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                 // Verificaciones de seguridad antes de lanzar
                 /*if (!File.Exists(exePath))
                 {
-                    LogService.Write($"[VCI-DOC-GENERATOR] ERROR: No se encuentra el ejecutable en: {exePath}", true);
-                    StatusService.Set("Falta el ejecutable del generador. Revisa configuración.", StatusType.Error);
+                    _logService.Write($"[VCI-DOC-GENERATOR] ERROR: No se encuentra el ejecutable en: {exePath}", true);
+                    _statusService.Set("Falta el ejecutable del generador. Revisa configuración.", StatusType.Error);
                     return;
                 }
 
                 if (!File.Exists(wordPath))
                 {
-                    LogService.Write($"[VCI-DOC-GENERATOR] ERROR: No se encuentra el documento Word base en: {wordPath}", true);
-                    StatusService.Set("Falta el documento Word base.", StatusType.Error);
+                    _logService.Write($"[VCI-DOC-GENERATOR] ERROR: No se encuentra el documento Word base en: {wordPath}", true);
+                    _statusService.Set("Falta el documento Word base.", StatusType.Error);
                     return;
                 }
 
@@ -310,21 +303,19 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
 
                 if (docSuccess)
                 {
-                    StatusService.Set("¡Documentación generada con éxito!", StatusType.Ok);
+                    _statusService.Set("¡Documentación generada con éxito!", StatusType.Ok);
                 }
                 else
                 {
-                    StatusService.Set("Error compilando la documentación. Revisa el Log.", StatusType.Error);
+                    _statusService.Set("Error compilando la documentación. Revisa el Log.", StatusType.Error);
                 }
                 */
             }
             catch (Exception ex)
             {
-                LogService.Write($"[VCI-DOC-GENERATOR] [GenerateDocAsync] Error general durante el flujo de exportación: {ex.Message}", true);
-                StatusService.Set("Error en el proceso de exportación. Revisa los logs.", StatusType.Error);
+                _statusService.Set($"[VCI-DOC-GENERATOR] [GenerateDocAsync] Error general durante el flujo de exportación: {ex.Message}", StatusType.Error);
             }
         }
-
 
 
         // ==================================================================================================================
@@ -338,7 +329,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                 // Montamos los argumentos respetando el argparse de Python
                 string arguments = $"--word \"{wordPath}\" --fuentes \"{fuentesPath}\" --destino \"{destinoPath}\"";
 
-                LogService.Write($"[VCI-DOC-GENERATOR] [StartDocGenerator] Lanzando: {exePath} {arguments}");
+                _logService.Write($"[VCI-DOC-GENERATOR] [StartDocGenerator] Lanzando: {exePath} {arguments}");
                 /*
                 // 1. Crear la info de inicio usando la librería del Add-In de Siemens
                 var startInfo = new Siemens.Engineering.AddIn.Utilities.ProcessStartInfo
@@ -363,12 +354,12 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                 // 3. Suscribirse a los eventos para capturar los "log.info" y "log.error" de Python
                 myProcess.OutputDataReceived += (s, e) => {
                     if (!string.IsNullOrEmpty(e.Data))
-                        LogService.Write($"[VCI-DOC-GENERATOR] [StartDocGenerator] {e.Data}");
+                        _logService.Write($"[VCI-DOC-GENERATOR] [StartDocGenerator] {e.Data}");
                 };
 
                 myProcess.ErrorDataReceived += (s, e) => {
                     if (!string.IsNullOrEmpty(e.Data))
-                        LogService.Write($"[VCI-DOC-GENERATOR] [StartDocGenerator] {e.Data}", true);
+                        _logService.Write($"[VCI-DOC-GENERATOR] [StartDocGenerator] {e.Data}", true);
                 };
 
                 // 4. Lanzar proceso
@@ -377,7 +368,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                     myProcess.BeginOutputReadLine();
                     myProcess.BeginErrorReadLine();
 
-                    LogService.Write("[VCI-DOC-GENERATOR] [StartDocGenerator] Compilador documentacion ejecutándose en segundo plano...");
+                    _logService.Write("[VCI-DOC-GENERATOR] [StartDocGenerator] Compilador documentacion ejecutándose en segundo plano...");
 
                     // Esperar de forma asíncrona a que termine para no bloquear la UI de TIA Portal
                     await Task.Run(() =>
@@ -388,7 +379,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                         }
                     });
 
-                    LogService.Write($"[VCI-DOC-GENERATOR] [StartDocGenerator] Compilador finalizado con código: {myProcess.ExitCode}");
+                    _logService.Write($"[VCI-DOC-GENERATOR] [StartDocGenerator] Compilador finalizado con código: {myProcess.ExitCode}");
                     return myProcess.ExitCode == 0;
                 }
                 */
@@ -396,12 +387,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
             }
             catch (Exception ex)
             {
-                LogService.Write($"[VCI-DOC-GENERATOR] [StartDocGenerator] Error crítico lanzando Python: {ex.Message}", true);
+                _logService.Write($"[VCI-DOC-GENERATOR] [StartDocGenerator] Error crítico lanzando Python: {ex.Message}", true);
                 return false;
             }
         }
-
-
-
     }
 }

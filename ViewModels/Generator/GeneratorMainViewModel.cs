@@ -28,10 +28,11 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
         // Tia portal
         private readonly TiaPlcService _tiaPlcService;
         private readonly TiaHmiService _tiaHmiService;
+        private readonly TargetStateService _targetStateService;
 
-        public ObservableCollection<TiaTarget> PlcTargets { get; }
-        public ObservableCollection<TiaTarget> HmiTargets { get; }
-        public ObservableCollection<TiaTarget> ScadaTargets { get; }
+        public ObservableCollection<TiaTarget> PlcTargets => _targetStateService.PlcTargets;
+        public ObservableCollection<TiaTarget> HmiTargets => _targetStateService.HmiTargets;
+        public ObservableCollection<TiaTarget> ScadaTargets => _targetStateService.ScadaTargets;
 
         private TiaTarget _selectedTarget;
         public TiaTarget SelectedTarget
@@ -45,8 +46,8 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
             }
         }
 
+
         // Caché de datos cargados
-        //private readonly Dictionary<string, List<object>> _engineeringCache = new Dictionary<string, List<object>>();
         public Dictionary<string, List<object>> _engineeringCache { get; } = new Dictionary<string, List<object>>();
 
         // Cache de configuracion xml
@@ -78,9 +79,13 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
             set { _selectedExcelFile = value; OnPropertyChanged(); }
         }
 
-        public RelayCommand LoadDataCommand { get; }
+        private readonly ILogService _logService;
+        private readonly IStatusService _statusService;
+        private readonly IAppConfigService _appConfigService;
+        private readonly IDataService _dataService;
 
-
+        // Comandos
+        public AsyncRelayCommand LoadDataCommand { get; }
 
 
         // ==================================================================================================================
@@ -88,51 +93,49 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
         /// Constructor
         /// </summary>
         public GeneratorMainViewModel(TiaPlcService tiaPlcService,
-                                      TiaHmiService tiaHmiService,
-                                      ObservableCollection<TiaTarget> plcTargets,
-                                      ObservableCollection<TiaTarget> hmiTargets,
-                                      ObservableCollection<TiaTarget> scadaTargets)
+                                       TiaHmiService tiaHmiService,
+                                       TargetStateService targetStateService,
+                                       DevicesViewModel devicesVM,
+                                       ParamsAlarmsViewModel paramsAlarmsVM,
+                                       ProcessGeneratorViewModel processGeneratorVM, 
+                                       ILogService logService, IStatusService statusService,
+                                       IAppConfigService appConfigService,
+                                       IDataService dataService)
         {
+
             
-            LogService.Clear();
-            LogService.Write("[MAIN-VM] [MainViewModel] Inicializando MainViewModel...");
-
-
-            // Buscamos todos los dispositivos del proyecto         
-            PlcTargets = plcTargets;
-            HmiTargets = hmiTargets;
-            ScadaTargets = scadaTargets;
 
             // Inicializamos servicios de Tia portal
             _tiaPlcService = tiaPlcService;
             _tiaHmiService = tiaHmiService;
+            _targetStateService = targetStateService;
 
+            _logService = logService;
+            _statusService = statusService;
+            _appConfigService = appConfigService;
+            _dataService = dataService;
+
+
+            _logService.Clear();
+            _logService.Write("[GENERATOR-MAIN-VM] [GeneratorMainViewModel] Inicializando GeneratorMainViewModel...");
 
             // Seleccionamos el primer PLC por defecto para la comparación
             SelectedTarget = PlcTargets.FirstOrDefault(t => t.Type == TargetType.PLC);
 
             // Inicializamos configuración y cargamos categorías
-            AppConfigService.InitializeEnvironment();
-            _configNetworkSettings = AppConfigService.GetNetworkConfig();
-            _configProcessesSettings = AppConfigService.GetProcessConfig();
-            _configDeviceSettings = AppConfigService.GetDeviceSettings();
-            _configGlobalSettings = AppConfigService.GetGlobalSettings();
-            _configDeviceCategories = AppConfigService.GetDeviceCategories();
+            _configNetworkSettings = _appConfigService.GetNetworkConfig();
+            _configProcessesSettings = _appConfigService.GetProcessConfig();
+            _configDeviceSettings = _appConfigService.GetDeviceSettings();
+            _configGlobalSettings = _appConfigService.GetGlobalSettings();
+            _configDeviceCategories = _appConfigService.GetDeviceCategories();
 
             // Inicializamos viewmodels
-            DevicesVM = new DevicesViewModel(_tiaPlcService, _tiaHmiService, _configDeviceCategories, HmiTargets);
-            ParamsAlarmsVM = new ParamsAlarmsViewModel(_tiaPlcService);
+            DevicesVM = devicesVM;
+            ParamsAlarmsVM = paramsAlarmsVM;
+            ProcessGeneratorVM = processGeneratorVM;
 
-            ProcessGeneratorVM = new ProcessGeneratorViewModel(_tiaPlcService, _tiaHmiService, HmiTargets);
-            ProcessGeneratorVM.LoadTemplates(_configGlobalSettings);
-
-
-            // Seleccionamos una categoria en el viewmodel
-            if (_configDeviceCategories.Count > 0)
-                DevicesVM.SelectedCategory = _configDeviceCategories[0];
-
-            // Mapeo de comandos
-            LoadDataCommand = new RelayCommand(LoadExcelAndGenerateJson);
+            // Mapeo de comando asíncrono
+            LoadDataCommand = new AsyncRelayCommand(LoadExcelAndGenerateJson);
 
             // Inicializar estado
             IsDataLoaded = false;
@@ -152,7 +155,8 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                 ParamsAlarmsVM?.NotifyPlcChanged(SelectedTarget.Name);
                 ProcessGeneratorVM?.NotifyPlcChanged(SelectedTarget.Name);
 
-                StatusService.Set($"Objetivo cambiado a: {SelectedTarget.Name}", StatusType.Ok);
+                // Como StatusService ahora también loguea, esto es suficiente
+                _statusService.Set($"[GENERATOR-MAIN-VM] [NotifyPlcChanged] Objetivo cambiado a: {SelectedTarget.Name}", StatusType.Ok);
             }
         }
 
@@ -162,9 +166,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
         /// <summary>
         /// Metodo para leer y generar JSON con los datos de Excel
         /// </summary>
-        private async void LoadExcelAndGenerateJson()
+        private async Task LoadExcelAndGenerateJson()
         {
-            LogService.Write("[MAIN-VM] [LoadExcelAndGenerateJson] Iniciando lectura excel.");
+            _logService.Write("[GENERATOR-MAIN-VM] [LoadExcelAndGenerateJson] Iniciando lectura excel.");
 
             try
             {
@@ -176,11 +180,10 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
                 if (openFileDialog.ShowDialog() != true) return;
 
-                StatusService.SetBusy(true);
                 SelectedExcelFile = openFileDialog.FileName;
-                LogService.Write($"[MAIN-VM] [LoadExcelAndGenerateJson] Excel seleccionado: {SelectedExcelFile}");
+                _logService.Write($"[GENERATOR-MAIN-VM] [LoadExcelAndGenerateJson] Excel seleccionado: {SelectedExcelFile}");
 
-                StatusService.Set("Leyendo Excel en memoria RAM...", StatusType.Ok);
+                _statusService.Set("[GENERATOR-MAIN-VM] [LoadExcelAndGenerateJson] Leyendo Excel en memoria RAM...", StatusType.Ok);
 
                 // Lanzar extracción asíncrona de datos
                 await ReadExcelDataAsync(SelectedExcelFile);
@@ -188,71 +191,72 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
             }
             catch (Exception ex)
             {
-                LogService.Write($"[MAIN-VM] [LoadExcelAndGenerateJson] Error: {ex.Message}\n{ex.StackTrace}", true);
-                StatusService.Set("Error general leyendo Excel.", StatusType.Error);
+                _statusService.Set($"[GENERATOR-MAIN-VM] [LoadExcelAndGenerateJson] Error leyendo Excel: {ex.Message}\n{ex.StackTrace}", StatusType.Error);
                 MessageBox.Show($"{ex.Message}", "Error Crítico", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-            finally
-            {
-                StatusService.SetBusy(false);
             }
         }
 
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Metodo asíncrono para leer los datos del Excel y almacenarlos en el caché de ingeniería, inyectando la configuración desde JSON.
+        /// </summary>
         private async Task ReadExcelDataAsync(string excelPath)
         {
             _engineeringCache.Clear();
 
-            // 1. Cargamos categorías de Dispositivos (Concurrentes y Thread-safe)
+            // Cargamos categorías de Dispositivos (Concurrentes y Thread-safe)
             var deviceTasks = _configDeviceCategories.Select(async cat =>
             {
-                var data = await DataService.LoadDispCategoryDataAsync(excelPath, cat);
+                var data = await _dataService.LoadDispCategoryDataAsync(excelPath, cat);
                 lock (_engineeringCache) { _engineeringCache[cat.Name] = data; }
             }).ToList();
 
             await Task.WhenAll(deviceTasks);
 
-            // 2. Cargamos Config_Disp (Límites de arrays en PLC extraídos de nombres definidos)
+            // Cargamos Config_Disp (Límites de arrays en PLC extraídos de nombres definidos)
             if (_configDeviceSettings != null)
             {
-                var data = await DataService.LoadDeviceNMaxAsync(excelPath, _configDeviceSettings);
-                lock (_engineeringCache) { _engineeringCache["CONFIG_LIMITS"] = data.Cast<object>().ToList(); }
+                var data = await _dataService.LoadDeviceNMaxAsync(excelPath, _configDeviceSettings);
+                lock (_engineeringCache) { _engineeringCache[_configDeviceSettings.Name] = data.Cast<object>().ToList(); }
             }
 
-            // 3. Cargamos Procesos, Parámetros y Alarmas inyectando configuración de JSON
+            // Cargamos Procesos, Parámetros y Alarmas inyectando configuración de JSON
             if (_configProcessesSettings != null)
             {
                 // Usamos los nombres definidos en el JSON (ej: _configProcessesSettings.ProcessName)
-                var processData = await DataService.LoadProcessAsync(excelPath, _configProcessesSettings.ExcelSheet, _configProcessesSettings.ExcelTable);
-                lock (_engineeringCache) { _engineeringCache[_configProcessesSettings.ProcessName] = processData.Cast<object>().ToList(); }
+                var processData = await _dataService.LoadProcessAsync(excelPath, _configProcessesSettings.ExcelSheet, _configProcessesSettings.ExcelTable);
+                lock (_engineeringCache) { _engineeringCache[_configProcessesSettings.Name] = processData.Cast<object>().ToList(); }
 
-                var pRealCfg = AppConfigService.GetPRealConfig();
+                var pRealCfg = _appConfigService.GetPRealConfig();
                 if (pRealCfg != null)
                 {
-                    var prealData = await DataService.LoadParametersAsync(excelPath, pRealCfg.ExcelSheet, pRealCfg.ExcelTable);
-                    lock (_engineeringCache) { _engineeringCache[_configProcessesSettings.PRealName] = prealData.Cast<object>().ToList(); }
+                    var prealData = await _dataService.LoadParametersAsync(excelPath, pRealCfg.ExcelSheet, pRealCfg.ExcelTable);
+                    lock (_engineeringCache) { _engineeringCache[pRealCfg.Name] = prealData.Cast<object>().ToList(); }
                 }
 
-                var pIntCfg = AppConfigService.GetPIntConfig();
+                var pIntCfg = _appConfigService.GetPIntConfig();
                 if (pIntCfg != null)
                 {
-                    var pintData = await DataService.LoadParametersAsync(excelPath, pIntCfg.ExcelSheet, pIntCfg.ExcelTable);
-                    lock (_engineeringCache) { _engineeringCache[_configProcessesSettings.PIntName] = pintData.Cast<object>().ToList(); }
+                    var pintData = await _dataService.LoadParametersAsync(excelPath, pIntCfg.ExcelSheet, pIntCfg.ExcelTable);
+                    lock (_engineeringCache) { _engineeringCache[pIntCfg.Name] = pintData.Cast<object>().ToList(); }
                 }
 
-                var almCfg = AppConfigService.GetAlarmConfig();
+                var almCfg = _appConfigService.GetAlarmConfig();
                 if (almCfg != null)
                 {
-                    var alarmData = await DataService.LoadAlarmsAsync(excelPath, almCfg.ExcelSheet, almCfg.ExcelTable);
-                    lock (_engineeringCache) { _engineeringCache[_configProcessesSettings.AlarmName] = alarmData.Cast<object>().ToList(); }
+                    var alarmData = await _dataService.LoadAlarmsAsync(excelPath, almCfg.ExcelSheet, almCfg.ExcelTable);
+                    lock (_engineeringCache) { _engineeringCache[almCfg.Name] = alarmData.Cast<object>().ToList(); }
                 }
             }
 
-            // 4. Conexiones (Topología de Red)
+            // Conexiones (Topología de Red)
             if (_configNetworkSettings != null)
             {
-                // Nota: Si en el futuro agregas NetworkName al JSON, reemplaza este string también
-                var connData = await DataService.LoadConectionsAsync(excelPath, _configNetworkSettings.ExcelSheet, _configNetworkSettings.ExcelTable);
-                lock (_engineeringCache) { _engineeringCache["Conexiones"] = connData.Cast<object>().ToList(); }
+
+                var connData = await _dataService.LoadConectionsAsync(excelPath, _configNetworkSettings.ExcelSheet, _configNetworkSettings.ExcelTable);
+                lock (_engineeringCache) { _engineeringCache[_configNetworkSettings.Name] = connData.Cast<object>().ToList(); }
             }
 
             // Volvemos al Hilo UI de WPF para enlazar los ViewModels
@@ -263,8 +267,8 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                 ProcessGeneratorVM.LoadData(_engineeringCache, _configProcessesSettings, _configGlobalSettings, _configNetworkSettings);
 
                 IsDataLoaded = true;
-                StatusService.Set("Datos cargados desde el Excel correctamente.", StatusType.Ok);
-                LogService.Write($"[MAIN-VM] [ReadExcelDataAsync] Datos cargados desde el Excel correctamente."); 
+
+                _statusService.Set("[GENERATOR-MAIN-VM] [ReadExcelDataAsync] Datos cargados desde el Excel correctamente.", StatusType.Ok);
             });
         }
 

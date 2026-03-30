@@ -20,7 +20,27 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
 {
     public class TiaHmiService
     {
-        public TiaHmiService() { }
+        private HmiTarget _currentHmi;
+        private Project _currentProject;
+        private Siemens.Engineering.TiaPortal _tiaApp;
+
+        private readonly ILogService _logService;
+        private readonly IStatusService _statusService;
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Constructor del servicio de HMI. Recibe las instancias de TIA Portal y el proyecto actual, así como los servicios de logging y status para reportar información durante la ejecución.
+        /// </summary>
+        public TiaHmiService(Siemens.Engineering.TiaPortal tiaApp, Project project,
+                             ILogService logService, IStatusService statusService)
+        {
+            _tiaApp = tiaApp;
+            _currentProject = project;
+
+            _logService = logService;
+            _statusService = statusService;
+        }
 
 
 
@@ -30,16 +50,16 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
 
         public void RunXmlHmiPoC(HmiTarget hmiTarget, GlobalLibrary library, string newBaseName, string connectionName)
         {
-            LogService.Write("[TIA-HMI-SERVICE] [RunXmlHmiPoC] Iniciando RunXmlHmiPoC...");
+            _logService.Write("[TIA-HMI-SERVICE] [RunXmlHmiPoC] Iniciando RunXmlHmiPoC...");
             if (hmiTarget == null || library == null)
             {
-                LogService.Write("[TIA-HMI-SERVICE] hmiTarget o library son nulos.", true);
+                _logService.Write("[TIA-HMI-SERVICE] hmiTarget o library son nulos.", true);
                 return;
             }
 
             try
             {
-                LogService.Write("[TIA-HMI-SERVICE] Navegando por MasterCopyFolder...");
+                _logService.Write("[TIA-HMI-SERVICE] Navegando por MasterCopyFolder...");
                 var rootFolder = library.MasterCopyFolder;
                 if (rootFolder == null) throw new Exception("MasterCopyFolder de la librería es nulo.");
 
@@ -52,7 +72,7 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                 if (varsFolder == null) throw new Exception("Carpeta 'Variables' no encontrada en 'UF'.");
                 if (imgsFolder == null) throw new Exception("Carpeta 'Imagenes' no encontrada en 'UF'.");
 
-                LogService.Write("[TIA-HMI-SERVICE] Buscando plantillas UF_Alm y UF_Sinoptico...");
+                _logService.Write("[TIA-HMI-SERVICE] Buscando plantillas UF_Alm y UF_Sinoptico...");
                 var tagTableTemplate = varsFolder.MasterCopies.Find("UF_Alm");
                 var screenTemplate = imgsFolder.MasterCopies.Find("UF_Sinoptico");
 
@@ -65,8 +85,8 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                 // =========================================================================
                 // FASE 1: TABLA DE VARIABLES
                 // =========================================================================
-                LogService.Write("[TIA-HMI-SERVICE] Creando Tabla de variables temporal...");
-                StatusService.Set("Instanciando y exportando Tabla de Variables...", StatusType.Warning);
+                _logService.Write("[TIA-HMI-SERVICE] Creando Tabla de variables temporal...");
+                _statusService.Set("Instanciando y exportando Tabla de Variables...", StatusType.Warning);
                 var tempTable = hmiTarget.TagFolder.TagTables.CreateFrom(tagTableTemplate);
 
                 if (tempTable == null) throw new Exception("CreateFrom devolvió nulo para la tabla de variables.");
@@ -74,14 +94,14 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                 string tableXmlPath = Path.Combine(tempDir, $"{tempTable.Name}.xml");
                 if (File.Exists(tableXmlPath)) File.Delete(tableXmlPath);
 
-                LogService.Write($"[TIA-HMI-SERVICE] Exportando tabla a XML: {tableXmlPath}");
+                _logService.Write($"[TIA-HMI-SERVICE] Exportando tabla a XML: {tableXmlPath}");
                 tempTable.Export(new FileInfo(tableXmlPath), ExportOptions.WithDefaults);
 
                 // --- Borrar INMEDIATAMENTE tras exportar ---
-                LogService.Write("[TIA-HMI-SERVICE] Borrando tabla temporal original (pre-import)...");
+                _logService.Write("[TIA-HMI-SERVICE] Borrando tabla temporal original (pre-import)...");
                 tempTable.Delete();
 
-                LogService.Write("[TIA-HMI-SERVICE] Modificando XML de la tabla...");
+                _logService.Write("[TIA-HMI-SERVICE] Modificando XML de la tabla...");
                 XDocument tableDoc = XDocument.Load(tableXmlPath);
 
                 var tableNameNode = tableDoc.Descendants("Hmi.Tag.TagTable").Elements("AttributeList").Elements("Name").FirstOrDefault();
@@ -97,15 +117,15 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                 }
                 tableDoc.Save(tableXmlPath);
 
-                LogService.Write("[TIA-HMI-SERVICE] Importando XML de la tabla modificado...");
+                _logService.Write("[TIA-HMI-SERVICE] Importando XML de la tabla modificado...");
                 hmiTarget.TagFolder.TagTables.Import(new FileInfo(tableXmlPath), ImportOptions.None);
 
 
                 // =========================================================================
                 // FASE 2: PANTALLA
                 // =========================================================================
-                LogService.Write("[TIA-HMI-SERVICE] Creando Pantalla temporal...");
-                StatusService.Set("Instanciando y exportando Pantalla...", StatusType.Warning);
+                _logService.Write("[TIA-HMI-SERVICE] Creando Pantalla temporal...");
+                _statusService.Set("Instanciando y exportando Pantalla...", StatusType.Warning);
                 var tempScreen = hmiTarget.ScreenFolder.Screens.CreateFrom(screenTemplate);
 
                 if (tempScreen == null) throw new Exception("CreateFrom devolvió nulo para la pantalla.");
@@ -113,14 +133,14 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                 string screenXmlPath = Path.Combine(tempDir, $"{tempScreen.Name}.xml");
                 if (File.Exists(screenXmlPath)) File.Delete(screenXmlPath);
 
-                LogService.Write($"[TIA-HMI-SERVICE] Exportando pantalla a XML: {screenXmlPath}");
+                _logService.Write($"[TIA-HMI-SERVICE] Exportando pantalla a XML: {screenXmlPath}");
                 tempScreen.Export(new FileInfo(screenXmlPath), ExportOptions.WithDefaults);
 
                 // --- Borrar INMEDIATAMENTE tras exportar ---
-                LogService.Write("[TIA-HMI-SERVICE] Borrando pantalla temporal original (pre-import)...");
+                _logService.Write("[TIA-HMI-SERVICE] Borrando pantalla temporal original (pre-import)...");
                 tempScreen.Delete();
 
-                LogService.Write("[TIA-HMI-SERVICE] Modificando XML de la pantalla y relinkando variables...");
+                _logService.Write("[TIA-HMI-SERVICE] Modificando XML de la pantalla y relinkando variables...");
                 XDocument screenDoc = XDocument.Load(screenXmlPath);
 
                 // 2.1 Renombrar Pantalla
@@ -138,18 +158,18 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                     nameNode.Value = $"{nameNode.Value}_{newBaseName}";
                     relinkCount++;
                 }
-                LogService.Write($"[TIA-HMI-SERVICE] Se relinkaron {relinkCount} referencias a variables en la pantalla.");
+                _logService.Write($"[TIA-HMI-SERVICE] Se relinkaron {relinkCount} referencias a variables en la pantalla.");
 
                 screenDoc.Save(screenXmlPath);
 
-                LogService.Write("[TIA-HMI-SERVICE] Importando XML de la pantalla modificada...");
+                _logService.Write("[TIA-HMI-SERVICE] Importando XML de la pantalla modificada...");
                 hmiTarget.ScreenFolder.Screens.Import(new FileInfo(screenXmlPath), ImportOptions.None);
 
-                LogService.Write($"[TIA-HMI-SERVICE] PoC XML Finalizado con éxito para '{newBaseName}'.");
+                _logService.Write($"[TIA-HMI-SERVICE] PoC XML Finalizado con éxito para '{newBaseName}'.");
             }
             catch (Exception ex)
             {
-                LogService.Write($"[TIA-HMI-SERVICE] Error en XML PoC: {ex.Message}\nStack: {ex.StackTrace}", true);
+                _logService.Write($"[TIA-HMI-SERVICE] Error en XML PoC: {ex.Message}\nStack: {ex.StackTrace}", true);
             }
         }
 
@@ -203,15 +223,15 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                 HmiTarget hmiTarget = hmiSoftwareObj as HmiTarget;
                 if (hmiTarget == null)
                 {
-                    LogService.Write("[TIA-HMI-SERVICE] [SyncHmiVariables] Error: El objeto destino no es un HmiTarget válido.", true);
+                    _logService.Write("[TIA-HMI-SERVICE] [SyncHmiVariables] Error: El objeto destino no es un HmiTarget válido.", true);
                     return false;
                 }
 
                 string tableNameToFind = $"002_{plcName}_{category.TiaTable}";
 
-                LogService.Write($"[TIA-HMI-SERVICE] [SyncHmiVariables] INICIANDO EXPLORACIÓN: {hmiTarget.Name} ");
-                LogService.Write($"[TIA-HMI-SERVICE] [SyncHmiVariables] Buscando vinculación con PLC: {plcName}");
-                LogService.Write($"[TIA-HMI-SERVICE] [SyncHmiVariables] Tabla objetivo: {tableNameToFind}");
+                _logService.Write($"[TIA-HMI-SERVICE] [SyncHmiVariables] INICIANDO EXPLORACIÓN: {hmiTarget.Name} ");
+                _logService.Write($"[TIA-HMI-SERVICE] [SyncHmiVariables] Buscando vinculación con PLC: {plcName}");
+                _logService.Write($"[TIA-HMI-SERVICE] [SyncHmiVariables] Tabla objetivo: {tableNameToFind}");
 
 
 
@@ -222,31 +242,31 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                 // FASE A: EXPLORAR CONEXIONES
                 // =========================================================================
                 string connectionName = "";
-                LogService.Write($"[TIA-HMI-SERVICE] Analizando Conexiones (Total reportadas: {hmiTarget.Connections.Count})");
+                _logService.Write($"[TIA-HMI-SERVICE] Analizando Conexiones (Total reportadas: {hmiTarget.Connections.Count})");
 
                 foreach (Siemens.Engineering.Hmi.Communication.Connection connection in hmiTarget.Connections)
                 {
-                    LogService.Write($"[TIA-HMI-SERVICE] -> Conexión encontrada: '{connection.Name}'");
+                    _logService.Write($"[TIA-HMI-SERVICE] -> Conexión encontrada: '{connection.Name}'");
                     if (connection.Name.IndexOf(plcName, StringComparison.OrdinalIgnoreCase) >= 0)
                     {
                         connectionName = connection.Name;
                     }
 
-                    LogService.Write($"[TIA-HMI-SERVICE] Analizando Conexiones (Total reportadas: {connection.Name})");
-                    LogService.Write($"[TIA-HMI-SERVICE] Analizando Conexiones (Total reportadas: {connection.Parent})");
+                    _logService.Write($"[TIA-HMI-SERVICE] Analizando Conexiones (Total reportadas: {connection.Name})");
+                    _logService.Write($"[TIA-HMI-SERVICE] Analizando Conexiones (Total reportadas: {connection.Parent})");
                 }
 
                 if (!string.IsNullOrEmpty(connectionName))
-                    LogService.Write($"[TIA-HMI-SERVICE] [OK] Se usará la conexión escaneada: {connectionName}");
+                    _logService.Write($"[TIA-HMI-SERVICE] [OK] Se usará la conexión escaneada: {connectionName}");
                 else if (hmiTarget.Connections.Count > 0)
                 {
                     connectionName = hmiTarget.Connections[0].Name;
-                    LogService.Write($"[TIA-HMI-SERVICE] [AVISO] No hay coincidencia exacta. Usando primera detectada: {connectionName}");
+                    _logService.Write($"[TIA-HMI-SERVICE] [AVISO] No hay coincidencia exacta. Usando primera detectada: {connectionName}");
                 }
                 else
                 {
                     connectionName = "HMI_PST_PLC_PST";
-                    LogService.Write($"[TIA-HMI-SERVICE] [AVISO] 0 conexiones. Forzando nombre por defecto: {connectionName}");
+                    _logService.Write($"[TIA-HMI-SERVICE] [AVISO] 0 conexiones. Forzando nombre por defecto: {connectionName}");
                 }
 
 
@@ -259,32 +279,32 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                 string nombreTablaLimpio = category.TiaTable.Replace("002_", "");
                 tableNameToFind = prefijoHmi + nombreTablaLimpio;
 
-                LogService.Write($"[TIA-HMI-SERVICE] Buscando Tabla de Variables: {tableNameToFind}");
+                _logService.Write($"[TIA-HMI-SERVICE] Buscando Tabla de Variables: {tableNameToFind}");
 
 
 
-                LogService.Write("[TIA-HMI-SERVICE] [SyncHmiVariables] Buscando Tabla de Variables");
+                _logService.Write("[TIA-HMI-SERVICE] [SyncHmiVariables] Buscando Tabla de Variables");
 
                 // Empezamos la búsqueda desde la raíz de grupos de variables del HMI
                 TagTable foundTable = FindTagTableRecursively(hmiTarget.TagFolder, tableNameToFind, "/Raíz/");
 
                 if (foundTable != null)
                 {
-                    LogService.Write($"[TIA-HMI-SERVICE] [SyncHmiVariables] La tabla '{tableNameToFind}' YA EXISTE en este HMI.");
-                    LogService.Write($"[TIA-HMI-SERVICE] [SyncHmiVariables] Aquí exportaríamos a XML y haríamos la cirugía de variables.");
+                    _logService.Write($"[TIA-HMI-SERVICE] [SyncHmiVariables] La tabla '{tableNameToFind}' YA EXISTE en este HMI.");
+                    _logService.Write($"[TIA-HMI-SERVICE] [SyncHmiVariables] Aquí exportaríamos a XML y haríamos la cirugía de variables.");
                 }
                 else
                 {
-                    LogService.Write($"[TIA-HMI-SERVICE] [SyncHmiVariables] La tabla '{tableNameToFind}' NO EXISTE.");
-                    LogService.Write($"[TIA-HMI-SERVICE] [SyncHmiVariables] Aquí crearíamos una tabla vacía y la exportaríamos a XML.");
+                    _logService.Write($"[TIA-HMI-SERVICE] [SyncHmiVariables] La tabla '{tableNameToFind}' NO EXISTE.");
+                    _logService.Write($"[TIA-HMI-SERVICE] [SyncHmiVariables] Aquí crearíamos una tabla vacía y la exportaríamos a XML.");
                 }
 
-                LogService.Write($"[TIA-HMI-SERVICE] [SyncHmiVariables] EXPLORACIÓN FINALIZADA");
+                _logService.Write($"[TIA-HMI-SERVICE] [SyncHmiVariables] EXPLORACIÓN FINALIZADA");
                 return true;
             }
             catch (Exception ex)
             {
-                LogService.Write($"[TIA-HMI-SERVICE] [SyncHmiVariables] Excepción crítica: {ex.Message}", true);
+                _logService.Write($"[TIA-HMI-SERVICE] [SyncHmiVariables] Excepción crítica: {ex.Message}", true);
                 return false;
             }
         }
@@ -299,7 +319,7 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
             {
                 if (table.Name.Equals(tableNameToFind, StringComparison.OrdinalIgnoreCase))
                 {
-                    LogService.Write($"[TIA-HMI-SERVICE] Tabla localizada en la ruta: {currentPath}{table.Name}");
+                    _logService.Write($"[TIA-HMI-SERVICE] Tabla localizada en la ruta: {currentPath}{table.Name}");
                     return table;
                 }
             }
@@ -319,14 +339,20 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
         }
 
         // Dejamos los otros métodos preparados pero sin tocar aún
+        // ==================================================================================================================
         public bool SyncHmiTextLists(object hmiTarget, ConfigDeviceCategory category, List<IDevice> devices)
         {
-            return true;
+            _logService.Write("[TIA-HMI-SERVICE] SyncHmiTextLists: NO IMPLEMENTADO.", true);
+            _statusService.Set("Sincronización HMI de listas de texto: pendiente de implementar.", StatusType.Warning);
+            return false;
         }
 
+        // ==================================================================================================================
         public bool SyncHmiAlarms(object hmiTarget, ConfigDeviceCategory category, List<IDevice> devices)
         {
-            return true;
+            _logService.Write("[TIA-HMI-SERVICE] SyncHmiAlarms: NO IMPLEMENTADO.", true);
+            _statusService.Set("Sincronización HMI de alarmas: pendiente de implementar.", StatusType.Warning);
+            return false;
         }
     }
 }

@@ -1,6 +1,8 @@
-﻿using System.Collections.ObjectModel;
+﻿using System;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.Win32;
 using Siemens.Engineering;
 using ZC_ALM_TOOLS.Core;
@@ -18,7 +20,6 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
     /// </summary>
     public class VciMainViewModel : ObservableObject
     {
-
         // =================================================================================================================
         // Tia portal
         private readonly Project _tiaproject;
@@ -26,16 +27,15 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
         private TiaPlcService _tiaPlcService;
         private TiaVciService _tiaVciService;
 
-        public ObservableCollection<TiaTarget> PlcTargets { get; set; }
-
+        private readonly TargetStateService _targetStateService;
+        public ObservableCollection<TiaTarget> PlcTargets => _targetStateService.PlcTargets;
 
         public ObservableCollection<VciWorkspaceModel> ConfiguredWorkspaces { get; set; }
 
         // ViewModels Hijos
-        public VciMappingViewModel MappingVM { get; set; }
-        public VciAuditViewModel AuditVM { get; set; }
-        public VciDocGeneratorViewModel DocGeneratorVM { get; set; }
-
+        public VciMappingViewModel MappingVM { get; }
+        public VciAuditViewModel AuditVM { get; }
+        public VciDocGeneratorViewModel DocGeneratorVM { get; }
 
         private TiaTarget _selectedTarget;
         public TiaTarget SelectedTarget
@@ -48,7 +48,6 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                 NotifyPlcChanged();
             }
         }
-
 
         private VciWorkspaceModel _selectedWorkspace;
         public VciWorkspaceModel SelectedWorkspace
@@ -81,11 +80,14 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
             set { _newWorkspaceName = value; OnPropertyChanged(); }
         }
 
+        private readonly ILogService _logService;
+        private readonly IStatusService _statusService;
+
         // Comandos
-        public RelayCommand ToggleCreateModeCommand { get; }
-        public RelayCommand CreateNewWorkspaceCommand { get; }
-        public RelayCommand DeleteWorkspaceCommand { get; }
-        public RelayCommand ChangeWorkspaceFolderCommand { get; }
+        public AsyncRelayCommand ToggleCreateModeCommand { get; }
+        public AsyncRelayCommand CreateNewWorkspaceCommand { get; }
+        public AsyncRelayCommand DeleteWorkspaceCommand { get; }
+        public AsyncRelayCommand ChangeWorkspaceFolderCommand { get; }
 
 
 
@@ -93,35 +95,42 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
         /// <summary>
         /// Constructor
         /// </summary>
-        public VciMainViewModel(TiaPortal tiaPortal, Project project, TiaPlcService tiaPlcService, TiaVciService tiaVciService,
-                                      ObservableCollection<TiaTarget> plcTargets)
+        public VciMainViewModel(TiaPortal tiaPortal, 
+            Project project, 
+            TiaPlcService tiaPlcService, 
+            TiaVciService tiaVciService, 
+            TargetStateService targetStateService,
+            VciMappingViewModel mappingVM, 
+            VciAuditViewModel auditVM, 
+            VciDocGeneratorViewModel docGeneratorVM,
+            ILogService logService, 
+            IStatusService statusService)
         {
-            LogService.Write("[VCI-MAIN-VM] [VciMainViewModel] Inicializando VciMainViewModel...");
-
             _tiaPortal = tiaPortal;
             _tiaproject = project;
-
-            // Inicializamos servicios
             _tiaPlcService = tiaPlcService;
             _tiaVciService = tiaVciService;
+            _targetStateService = targetStateService;
+            _logService = logService;
+            _statusService = statusService;
 
-            PlcTargets = plcTargets;
+            _logService.Write("[VCI-MAIN-VM] [VciMainViewModel] Inicializando VciMainViewModel...");
 
             // Inicializamos viewmodels hijos
-            MappingVM = new VciMappingViewModel(_tiaPlcService, _tiaVciService);
-            AuditVM = new VciAuditViewModel(_tiaPlcService);
-            DocGeneratorVM = new VciDocGeneratorViewModel(_tiaPlcService);
+            MappingVM = mappingVM;
+            AuditVM = auditVM;
+            DocGeneratorVM = docGeneratorVM;
 
             ConfiguredWorkspaces = new ObservableCollection<VciWorkspaceModel>();
 
-            ToggleCreateModeCommand = new RelayCommand(ExecuteToggleCreateMode);
-            CreateNewWorkspaceCommand = new RelayCommand(ExecuteCreateNewWorkspace, CanExecuteCreateNewWorkspace);
-            DeleteWorkspaceCommand = new RelayCommand(ExecuteDeleteWorkspace, CanExecuteDeleteWorkspace);
-            ChangeWorkspaceFolderCommand = new RelayCommand(ExecuteChangeWorkspaceFolder, CanExecuteChangeWorkspaceFoldere);
+            // Enlazamos a la tarea asíncrona
+            ToggleCreateModeCommand = new AsyncRelayCommand(ExecuteToggleCreateMode);
+            CreateNewWorkspaceCommand = new AsyncRelayCommand(ExecuteCreateNewWorkspace, CanExecuteCreateNewWorkspace);
+            DeleteWorkspaceCommand = new AsyncRelayCommand(ExecuteDeleteWorkspace, CanExecuteDeleteWorkspace);
+            ChangeWorkspaceFolderCommand = new AsyncRelayCommand(ExecuteChangeWorkspaceFolder, CanExecuteChangeWorkspaceFolder);
 
             // Cargamos los datos de TIA Portal al iniciar
             LoadWorkspaces();
-
         }
 
 
@@ -136,7 +145,6 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
             {
                 // Avisamos a las pestañas hijas
                 MappingVM?.NotifyPlcChanged(SelectedTarget.Name);
-                //AuditVM?.NotifyPlcChanged(SelectedTarget.Name);
             }
         }
 
@@ -166,23 +174,23 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
 
         // ==================================================================================================================
         /// <summary>
-        /// Metodo
+        /// Metodo para conmutar la visibilidad del panel de creación
         /// </summary>
-        private void ExecuteToggleCreateMode()
+        private Task ExecuteToggleCreateMode()
         {
             IsCreatingWorkspace = !IsCreatingWorkspace;
             if (IsCreatingWorkspace) NewWorkspaceName = ""; // Limpiar al entrar
+            return Task.CompletedTask;
         }
 
 
 
         // ==================================================================================================================
         private bool CanExecuteCreateNewWorkspace() => !string.IsNullOrWhiteSpace(NewWorkspaceName);
-        // ==================================================================================================================
         /// <summary>
-        /// Metodo para crear un Workspace nuevo
+        /// Metodo para crear un Workspace nuevo de forma asíncrona
         /// </summary>
-        private void ExecuteCreateNewWorkspace()
+        private async Task ExecuteCreateNewWorkspace()
         {
             OpenFileDialog folderDialog = new OpenFileDialog
             {
@@ -197,20 +205,29 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
             if (folderDialog.ShowDialog() == true)
             {
                 string chosenPath = Path.GetDirectoryName(folderDialog.FileName);
-                StatusService.Set($"Creando Workspace '{NewWorkspaceName}' en TIA Portal...", StatusType.Warning);
+                _statusService.Set($"[VCI-MAIN] Creando Workspace '{NewWorkspaceName}' en TIA Portal...", StatusType.Warning);
 
-                var newWs = _tiaVciService.CreateWorkspace(NewWorkspaceName, chosenPath);
+                await Task.Delay(50); // Pausa visual
 
-                if (newWs != null)
+                try
                 {
-                    ConfiguredWorkspaces.Add(newWs);
-                    SelectedWorkspace = newWs;
-                    StatusService.Set($"Workspace creado y seleccionado correctamente.", StatusType.Ok);
-                    IsCreatingWorkspace = false; // Volver al modo normal
+                    var newWs = _tiaVciService.CreateWorkspace(NewWorkspaceName, chosenPath);
+
+                    if (newWs != null)
+                    {
+                        ConfiguredWorkspaces.Add(newWs);
+                        SelectedWorkspace = newWs;
+                        _statusService.Set($"[VCI-MAIN] Workspace creado y seleccionado correctamente.", StatusType.Ok);
+                        IsCreatingWorkspace = false; // Volver al modo normal
+                    }
+                    else
+                    {
+                        _statusService.Set("[VCI-MAIN] Error al crear el Workspace. Revisa los logs.", StatusType.Error);
+                    }
                 }
-                else
+                catch (Exception ex)
                 {
-                    StatusService.Set("Error al crear el Workspace. Revisa los logs.", StatusType.Error);
+                    _statusService.Set($"[VCI-MAIN] Excepción al crear el Workspace: {ex.Message}", StatusType.Error);
                 }
             }
         }
@@ -219,11 +236,10 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
 
         // ==================================================================================================================
         private bool CanExecuteDeleteWorkspace() => SelectedWorkspace != null;
-        // ==================================================================================================================
         /// <summary>
-        /// Borra el Workspace seleccionado tras pedir confirmación al usuario
+        /// Borra el Workspace seleccionado tras pedir confirmación al usuario de forma asíncrona
         /// </summary>
-        private void ExecuteDeleteWorkspace()
+        private async Task ExecuteDeleteWorkspace()
         {
             var result = System.Windows.MessageBox.Show(
                 $"¿Estás seguro de que deseas desvincular el Workspace '{SelectedWorkspace.Name}' de TIA Portal?\n\n(Tranquilo, no se borrarán los archivos de tu disco duro)",
@@ -233,35 +249,43 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
 
             if (result == System.Windows.MessageBoxResult.Yes)
             {
-                StatusService.Set($"Borrando Workspace '{SelectedWorkspace.Name}'...", StatusType.Warning);
+                _statusService.Set($"[VCI-MAIN] Borrando Workspace '{SelectedWorkspace.Name}'...", StatusType.Warning);
+                await Task.Delay(50); // Pausa visual
 
-                bool success = _tiaVciService.DeleteWorkspace(SelectedWorkspace.Name);
-
-                if (success)
+                try
                 {
-                    StatusService.Set($"Workspace borrado correctamente.", StatusType.Ok);
+                    bool success = _tiaVciService.DeleteWorkspace(SelectedWorkspace.Name);
 
-                    // Lo quitamos de la lista visual
-                    ConfiguredWorkspaces.Remove(SelectedWorkspace);
+                    if (success)
+                    {
+                        _statusService.Set($"[VCI-MAIN] Workspace borrado correctamente.", StatusType.Ok);
 
-                    // Seleccionamos el primero que quede, o null si la lista se queda vacía
-                    SelectedWorkspace = ConfiguredWorkspaces.FirstOrDefault();
+                        // Lo quitamos de la lista visual
+                        ConfiguredWorkspaces.Remove(SelectedWorkspace);
+
+                        // Seleccionamos el primero que quede, o null si la lista se queda vacía
+                        SelectedWorkspace = ConfiguredWorkspaces.FirstOrDefault();
+                    }
+                    else
+                    {
+                        _statusService.Set("[VCI-MAIN] Error al borrar el Workspace. Revisa los logs.", StatusType.Error);
+                    }
                 }
-                else
+                catch (Exception ex)
                 {
-                    StatusService.Set("Error al borrar el Workspace. Revisa los logs.", StatusType.Error);
+                    _statusService.Set($"[VCI-MAIN] Excepción al borrar el Workspace: {ex.Message}", StatusType.Error);
                 }
             }
         }
 
 
+
         // ==================================================================================================================
-        private bool CanExecuteChangeWorkspaceFoldere() => SelectedWorkspace != null;
-        // ==================================================================================================================
+        private bool CanExecuteChangeWorkspaceFolder() => SelectedWorkspace != null;
         /// <summary>
-        /// Cambia la ruta de la carpeta fisica del Workspace seleccionado
+        /// Cambia la ruta de la carpeta física del Workspace seleccionado de forma asíncrona
         /// </summary>
-        private void ExecuteChangeWorkspaceFolder()
+        private async Task ExecuteChangeWorkspaceFolder()
         {
             OpenFileDialog folderDialog = new OpenFileDialog
             {
@@ -278,20 +302,35 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                 string chosenPath = Path.GetDirectoryName(folderDialog.FileName);
                 if (chosenPath != SelectedWorkspace.Path)
                 {
-                    StatusService.Set($"Cambiando ruta del Workspace a '{chosenPath}'...", StatusType.Warning);
-                    if (_tiaVciService.UpdateWorkspacePath(SelectedWorkspace.Name, chosenPath))
+                    _statusService.Set($"[VCI-MAIN] Cambiando ruta del Workspace a '{chosenPath}'...", StatusType.Warning);
+                    await Task.Delay(50); // Pausa visual
+
+                    try
                     {
-                        SelectedWorkspace.Path = chosenPath;
-                        OnPropertyChanged(nameof(SelectedWorkspace));
+                        if (_tiaVciService.UpdateWorkspacePath(SelectedWorkspace.Name, chosenPath))
+                        {
+                            SelectedWorkspace.Path = chosenPath;
+                            OnPropertyChanged(nameof(SelectedWorkspace));
 
-                        // Actualizamos la ruta a la vista hija para que reinicie la tabla
-                        if (MappingVM != null) MappingVM.WorkspacePath = chosenPath;
+                            // Actualizamos la ruta a la vista hija para que reinicie la tabla
+                            if (MappingVM != null) MappingVM.WorkspacePath = chosenPath;
 
-                        StatusService.Set("Ruta del Workspace actualizada correctamente.", StatusType.Ok);
+                            _statusService.Set("[VCI-MAIN] Ruta del Workspace actualizada correctamente.", StatusType.Ok);
+                        }
+                        else
+                        {
+                            _statusService.Set("[VCI-MAIN] Error al cambiar la ruta. Revisa los logs.", StatusType.Error);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _statusService.Set($"[VCI-MAIN] Excepción al cambiar la ruta: {ex.Message}", StatusType.Error);
                     }
                 }
             }
         }
+
+
 
     }
 }

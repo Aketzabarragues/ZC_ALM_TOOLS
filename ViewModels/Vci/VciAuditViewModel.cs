@@ -12,14 +12,12 @@ using ZC_ALM_TOOLS.Services.TiaPortal;
 
 namespace ZC_ALM_TOOLS.ViewModels.Vci
 {
-
     // ==================================================================================================================
     /// <summary>
     /// ViewModel que gestiona la pestaña de auditoria de VCI
     /// </summary>
     public class VciAuditViewModel : ObservableObject
     {
-
         private readonly TiaPlcService _tiaPlcService;
 
         private ObservableCollection<VciSelectableItem> _blocks;
@@ -29,38 +27,48 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
             set { _blocks = value; OnPropertyChanged(); }
         }
 
-        public RelayCommand LoadBlocksCommand { get; }
+        private readonly ILogService _logService;
+        private readonly IStatusService _statusService;
+
+        // Comandos
+        public AsyncRelayCommand LoadBlocksCommand { get; }
         public RelayCommand SelectAllCommand { get; }
         public RelayCommand DeselectAllCommand { get; }
-        public RelayCommand UpdateDependenciesCommand { get; }
-
-
+        public AsyncRelayCommand UpdateDependenciesCommand { get; }
 
         // ==================================================================================================================
         /// <summary>
         /// Constructor
         /// </summary>
-        public VciAuditViewModel(TiaPlcService tiaPlcService)
+        public VciAuditViewModel(
+            TiaPlcService tiaPlcService, 
+            ILogService logService, 
+            IStatusService statusService)
         {
             _tiaPlcService = tiaPlcService;
+            _logService = logService;
+            _statusService = statusService;
+
             Blocks = new ObservableCollection<VciSelectableItem>();
 
-            LoadBlocksCommand = new RelayCommand(ExecuteLoadBlocks);
+            // Asignación de los comandos
+            LoadBlocksCommand = new AsyncRelayCommand(ExecuteLoadBlocks);
             SelectAllCommand = new RelayCommand(() => SetAllSelection(true));
             DeselectAllCommand = new RelayCommand(() => SetAllSelection(false));
-            UpdateDependenciesCommand = new RelayCommand(ExecuteUpdateDependencies, CanExecuteUpdateDependencies);
+            UpdateDependenciesCommand = new AsyncRelayCommand(ExecuteUpdateDependencies, CanExecuteUpdateDependencies);
         }
-
-
 
         // ==================================================================================================================
         /// <summary>
         /// Cargar lista de bloques desde el servicio, filtrando solo aquellos que permiten actualización de dependencias.
         /// </summary>
-        private void ExecuteLoadBlocks()
+        private async Task ExecuteLoadBlocks()
         {
             try
             {
+                _statusService.Set("[VCI-AUDIT-VM] [ExecuteLoadBlocks] Cargando bloques para auditoría...", StatusType.Ok);
+                await Task.Delay(50); // Pausa visual para que WPF pinte el mensaje
+
                 var allBlocks = _tiaPlcService.GetAllBlocks();
 
                 // Filtramos para mostrar SOLO los bloques cuyas dependencias se pueden actualizar.
@@ -83,17 +91,13 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
 
                 Blocks = new ObservableCollection<VciSelectableItem>(selectableBlocks);
 
-                StatusService.Set($"Se han cargado {Blocks.Count} bloques en auditoría.", StatusType.Ok);
-                LogService.Write($"[VCI-AUDIT] [ExecuteLoadBlocks] Se han cargado {Blocks.Count} bloques en auditoría.");
+                _statusService.Set($"[VCI-AUDIT] [ExecuteLoadBlocks] Se han cargado {Blocks.Count} bloques en auditoría.", StatusType.Ok);
             }
             catch (Exception ex)
             {
-                LogService.Write($"[VCI-AUDIT] [ExecuteLoadBlocks] Error cargando bloques: {ex.Message}", true);
-                StatusService.Set("Error cargando bloques. Revisa el log.", StatusType.Error);
+                _statusService.Set($"[VCI-AUDIT] [ExecuteLoadBlocks] Error cargando bloques: {ex.Message}", StatusType.Error);
             }
         }
-
-
 
         // ==================================================================================================================
         /// <summary>
@@ -107,7 +111,6 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
             }
         }
 
-
         // ==================================================================================================================
         private bool CanExecuteUpdateDependencies()
         {
@@ -116,11 +119,12 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                 b.IsSelected &&
                 (b.OriginalItem as CachedPlcBlock)?.CanUpdateDependencies == true);
         }
+
         // ==================================================================================================================
         /// <summary>
         /// Actualiza las dependencias de los bloques seleccionados, ejecutando el proceso en segundo plano para evitar que la UI se congele.
         /// </summary>
-        private async void ExecuteUpdateDependencies()
+        private async Task ExecuteUpdateDependencies()
         {
             // Filtramos los elementos seleccionados y extraemos el CachedPlcBlock original
             List<CachedPlcBlock> selectedBlocks = Blocks
@@ -130,32 +134,29 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
 
             if (!selectedBlocks.Any()) return;
 
-            StatusService.Set($"Iniciando actualización de dependencias de {selectedBlocks.Count} bloques...", StatusType.Warning);
-            LogService.Write($"[VCI-AUDIT] [ExecuteUpdateDependencies] Iniciando actualización de dependencias de {selectedBlocks.Count} bloques...");
+            _statusService.Set($"[VCI-AUDIT] [ExecuteUpdateDependencies] Iniciando actualización de dependencias de {selectedBlocks.Count} bloques...", StatusType.Warning);
 
-            await Task.Delay(50);
+            await Task.Delay(50); // Pausa visual antes del trabajo pesado
 
             // Ejecutamos en segundo plano para que la UI no se quede "No responde"
             bool success = await _tiaPlcService.UpdateMassiveSclDependencies(selectedBlocks);
 
             if (success)
             {
-                StatusService.Set("Dependencias actualizadas y bloques re-importados con éxito.", StatusType.Ok);
-                LogService.Write($"[VCI-AUDIT] [ExecuteUpdateDependencies] Dependencias actualizadas y bloques re-importados con éxito.");
+                _statusService.Set("[VCI-AUDIT] [ExecuteUpdateDependencies] Dependencias actualizadas y bloques re-importados con éxito.", StatusType.Ok);
 
                 _tiaPlcService.BuildBlockCache();
-                ExecuteLoadBlocks();
+
+                // Recargamos los datos actualizados
+                await ExecuteLoadBlocks();
 
                 // Opcional: Recargar la vista o desmarcar checks tras el éxito
                 foreach (var b in Blocks) b.IsSelected = false;
             }
             else
             {
-                StatusService.Set("Error durante la actualización de dependencias. Revisa el log.", StatusType.Error);
-                LogService.Write($"[VCI-AUDIT] [ExecuteUpdateDependencies] Error durante la actualización de dependencias", true);
+                _statusService.Set("[VCI-AUDIT] [ExecuteUpdateDependencies] Error durante la actualización de dependencias. Revisa el log.", StatusType.Error);
             }
         }
-
-
     }
 }

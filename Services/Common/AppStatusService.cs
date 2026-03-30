@@ -4,35 +4,36 @@ using System.Windows;
 
 namespace ZC_ALM_TOOLS.Services.Common
 {
-
-    public enum StatusType { Ok, Warning, Error }
-
-
-    // ==================================================================================================================
     /// <summary>
-    /// Servicio encargado de gestionar el estado del statusbar de la ventana principal
+    /// Implementación inyectable del Status. Conecta dinámicamente sus eventos a los 
+    /// eventos estáticos antiguos para que toda la app reaccione unificada.
     /// </summary>
-    public static class StatusService
+    public class AppStatusService : IStatusService
     {
+        private readonly ILogService _logService;
 
-        // Evento para que el MainViewModel sepa que el mensaje ha cambiado
-        public static event Action<string, StatusType> OnStatusChanged;
-        // Evento para que el MainViewModel sepa que esta Busy
-        public static event Action<bool> OnBusyChanged;
+        public event Action<string, StatusType> OnStatusChanged;
+        public event Action<bool> OnBusyChanged;
+
+        // Inyectamos el log aquí para cuando writeToLog sea true
+        public AppStatusService(ILogService logService)
+        {
+            _logService = logService;
+        }
 
 
 
         // ==================================================================================================================
         /// <summary>
-        /// Muestra un mensaje limpio en el statusbar y guarda el formato crudo (con tags) en el log
+        /// Metodo para actualizar el estado de la aplicación, con un mensaje y un tipo (Ok, Warning, Error). Opcionalmente, también puede escribir el mensaje completo en el log.
         /// </summary>
-        public static void Set(string message, StatusType type, bool writeToLog = true)
+        public void Set(string message, StatusType type, bool writeToLog = true)
         {
-            // 1. Guardamos el mensaje COMPLETO en el log (ej: "[ViewModel] [Metodo] Error X")
+            // 1. Guardamos el mensaje COMPLETO en el log usando el servicio inyectado
             if (writeToLog)
             {
                 bool isError = type == StatusType.Error;
-                //LogService.Write(message, isError);
+                _logService.Write(message, isError);
             }
 
             // 2. Limpiamos el mensaje para la UI (Elimina cualquier prefijo tipo "[Texto] ")
@@ -49,12 +50,16 @@ namespace ZC_ALM_TOOLS.Services.Common
             }
         }
 
+
+
+
         // ==================================================================================================================
         /// <summary>
-        /// Activa o desactiva la barra de progreso de forma segura (Thread-Safe)
+        /// Metodo para indicar que la aplicación está ocupada o no, lo que puede ser útil para mostrar un spinner o deshabilitar controles durante operaciones largas.
         /// </summary>
-        public static void SetBusy(bool busy)
+        public void SetBusy(bool busy)
         {
+            // Forzamos también el hilo principal para el IsBusy (recomendado en WPF)
             if (Application.Current != null && !Application.Current.Dispatcher.CheckAccess())
             {
                 Application.Current.Dispatcher.BeginInvoke(new Action(() => OnBusyChanged?.Invoke(busy)));
@@ -65,6 +70,6 @@ namespace ZC_ALM_TOOLS.Services.Common
             }
         }
 
-    }
 
+    }
 }

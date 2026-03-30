@@ -22,12 +22,11 @@ namespace ZC_ALM_TOOLS.Views
     /// </summary>
     public partial class MainWindow : Window
     {
-        public MainWindow(TiaPortal tiaPortal, Project project)
+        // El contenedor IoC inyecta automáticamente el MainViewModel aquí
+        public MainWindow(MainViewModel viewModel)
         {
             InitializeComponent();
-
-            // Instanciamos el cerebro global y se lo pasamos a la vista
-            this.DataContext = new MainViewModel(tiaPortal, project);
+            this.DataContext = viewModel;
         }
     }
 }

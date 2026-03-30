@@ -8,6 +8,7 @@
   "DeviceSettings": {
     "TiaTable": "000_Config_Dispositivos",
     "ExcelSheet": "CONFIGURACION",
+    "Name": "N_MAX",
     "ConfigCells": {
       "Disp_ED": "Num_Disp_ED",
       "Disp_EA": "Num_Disp_EA",
@@ -86,30 +87,38 @@
     }
   ],
   "ProcessSettings": {
+    "Name": "Proceso",
     "ExcelSheet": "CONFIGURACION",
     "ExcelTable": "Tabla_Procesos",
-	"SuffixConstReal": "_N_MAX_PREAL",
-	"SuffixConstInt": "_N_MAX_PINT",
-	"SuffixConstAlm": "_N_MAX_ALM",
-	"SuffixConstAlmHmi": "_N_MAX_ALM_HMI",
-	"SuffixDbReal": "_PREAL",
-	"SuffixDbInt": "_PINT",
-	"SuffixDbAlm": "_ALM"
+    "ArrayNameReal": "PReal",
+    "ArrayNameInt": "Pint",
+    "ArrayNameAlm": "Alm",
+    "SuffixConstReal": "_N_MAX_PREAL",
+    "SuffixConstInt": "_N_MAX_PINT",
+    "SuffixConstAlm": "_N_MAX_ALM",
+    "SuffixConstAlmHmi": "_N_MAX_ALM_HMI",
+    "SuffixDbReal": "_PREAL",
+    "SuffixDbInt": "_PINT",
+    "SuffixDbAlm": "_ALM"
   },
-   "PRealSettings": {
+  "PRealSettings": {
+    "Name": "P_REAL",
     "ExcelSheet": "P_REAL",
     "ExcelTable": "Tabla_PReal"
   },
-   "PIntSettings": {
+  "PIntSettings": {
+    "Name": "P_INT",
     "ExcelSheet": "P_INT",
     "ExcelTable": "Tabla_PInt"
   },
-   "AlarmSettings": {
+  "AlarmSettings": {
+    "Name": "ALM",
     "ExcelSheet": "ALARMAS",
     "ExcelTable": "Tabla_Alarmas"
   },
-  "NetworkSettings":{
-	 "ExcelSheet": "TOPOLOGIA",
-	 "ExcelTable": "Tabla_Conexiones"
+  "NetworkSettings": {
+    "Name": "Conexiones",
+    "ExcelSheet": "TOPOLOGIA",
+    "ExcelTable": "Tabla_Conexiones"
   }
 }

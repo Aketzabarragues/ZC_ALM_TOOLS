@@ -1,4 +1,5 @@
-﻿using ZC_ALM_TOOLS.Core;
+﻿using System.Collections.Generic;
+using ZC_ALM_TOOLS.Core;
 
 namespace ZC_ALM_TOOLS.Models.Vci
 {
@@ -37,6 +38,7 @@ namespace ZC_ALM_TOOLS.Models.Vci
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(StateText));
                 OnPropertyChanged(nameof(StateColor));
+                OnPropertyChanged(nameof(IsSelectable));
             }
         }
 
@@ -44,40 +46,17 @@ namespace ZC_ALM_TOOLS.Models.Vci
         /// <summary>
         /// Devuelve el texto descriptivo indicando dónde existe el bloque actualmente.
         /// </summary>
-        public string StateText
+        private static readonly Dictionary<VciMatchState, (string Text, string Color)> _stateMap = new Dictionary<VciMatchState, (string, string)>
         {
-            get
-            {
-                switch (State)
-                {
-                    case VciMatchState.YaEnlazado: return "En ambos (Mapeado)";
-                    case VciMatchState.ListoParaEnlazar: return "En ambos (Falta mapear)";
-                    case VciMatchState.FaltaExportar: return "Solo en PLC";
-                    case VciMatchState.Conflicto: return "Solo en VCI";
-                    case VciMatchState.ErrorAlEnlazar: return "Error al mapear (Requiere compilar)";
-                    default: return "Desconocido";
-                }
-            }
-        }
+            { VciMatchState.YaEnlazado,       ("En ambos (Mapeado)", "#007ACC") },
+            { VciMatchState.ListoParaEnlazar, ("En ambos (Falta mapear)", "#28A745") },
+            { VciMatchState.FaltaExportar,    ("Solo en PLC", "#FFC107") },
+            { VciMatchState.Conflicto,        ("Solo en VCI", "#DC3545") },
+            { VciMatchState.ErrorAlEnlazar,   ("Error al mapear (Requiere compilar)", "#FD7E14") }
+        };
 
-        /// <summary>
-        /// Devuelve el color hexadecimal asociado al estado (Rojo, Amarillo, Verde, Azul).
-        /// </summary>
-        public string StateColor
-        {
-            get
-            {
-                switch (State)
-                {
-                    case VciMatchState.YaEnlazado: return "#007ACC";        // Azul
-                    case VciMatchState.ListoParaEnlazar: return "#28A745";  // Verde
-                    case VciMatchState.FaltaExportar: return "#FFC107";     // Amarillo
-                    case VciMatchState.Conflicto: return "#DC3545";         // Rojo
-                    case VciMatchState.ErrorAlEnlazar: return "#FD7E14";    // Naranja
-                    default: return "#6C757D";                              // Gris
-                }
-            }
-        }
+        public string StateText => _stateMap.ContainsKey(State) ? _stateMap[State].Text : "Desconocido";
+        public string StateColor => _stateMap.ContainsKey(State) ? _stateMap[State].Color : "#6C757D";
 
         public bool IsSelectable => State == VciMatchState.ListoParaEnlazar || State == VciMatchState.YaEnlazado || State == VciMatchState.ErrorAlEnlazar;
     }

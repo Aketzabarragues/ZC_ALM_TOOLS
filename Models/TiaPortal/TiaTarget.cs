@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using ZC_ALM_TOOLS.Core;
 
 namespace ZC_ALM_TOOLS.Models.TiaPortal
 {
@@ -11,7 +12,7 @@ namespace ZC_ALM_TOOLS.Models.TiaPortal
     /// Encapsula la referencia nativa de Siemens (SoftwareObject) y permite su enlace dinámico (Binding) 
     /// con los controles de selección de la interfaz gráfica.
     /// </summary>
-    public class TiaTarget : INotifyPropertyChanged
+    public class TiaTarget : ObservableObject
     {
         private bool _isChecked;
         public string Name { get; set; }
@@ -30,13 +31,6 @@ namespace ZC_ALM_TOOLS.Models.TiaPortal
                 OnPropertyChanged();
             }
         }
-
-        public event PropertyChangedEventHandler PropertyChanged;
-        protected void OnPropertyChanged([CallerMemberName] string name = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
-        }
-
         
     }
 }

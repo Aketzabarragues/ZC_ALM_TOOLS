@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using Microsoft.Extensions.DependencyInjection;
 using ZC_ALM_TOOLS.Services.Common;
 
 namespace ZC_ALM_TOOLS.Services.Vci
@@ -53,7 +54,7 @@ namespace ZC_ALM_TOOLS.Services.Vci
             catch (Exception ex)
             {
                 // En el futuro aquí podemos usar tu LogService para registrar el error
-                LogService.Write($"[VciWorkspaceService] [GetVciFilesFromWorkspace] Error al leer el Workspace VCI en '{workspacePath}': {ex.Message}", true);
+                App.ServiceProvider?.GetService<ZC_ALM_TOOLS.Services.Common.ILogService>()?.Write($"[VciWorkspaceService] [GetVciFilesFromWorkspace] Error al leer el Workspace VCI en '{workspacePath}': {ex.Message}", true);
             }
 
             return vciFilesDict;

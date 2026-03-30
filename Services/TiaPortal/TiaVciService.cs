@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Siemens.Engineering;
 using Siemens.Engineering.VersionControl;
 using ZC_ALM_TOOLS.Models.Vci;
@@ -18,17 +19,25 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
     /// </summary>
     public class TiaVciService
     {
-        private readonly Project _project;
+        private readonly Project _currentProject;
         private readonly Siemens.Engineering.TiaPortal _tiaApp;
+
+        private readonly ILogService _logService;
+        private readonly IStatusService _statusService;
+
 
         // ==================================================================================================================
         /// <summary>
-        /// Constructor
+        /// Constructor: Recibe las instancias de TIA Portal y el proyecto actual, junto con los servicios de logging y status para reportar durante las operaciones.
         /// </summary>
-        public TiaVciService(Siemens.Engineering.TiaPortal tiaApp, Project project)
+        public TiaVciService(Siemens.Engineering.TiaPortal tiaApp, Project project,
+                              ILogService logService, IStatusService statusService)
         {
             _tiaApp = tiaApp;
-            _project = project;
+            _currentProject = project;
+
+            _logService = logService;
+            _statusService = statusService;
         }
 
 
@@ -41,12 +50,12 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
         {
             var workspaces = new List<VciWorkspaceModel>();
 
-            if (_project == null) return workspaces;
+            if (_currentProject == null) return workspaces;
 
             try
             {
                 // CORRECTO: Se obtiene como servicio del proyecto
-                var vciService = _project.GetService<VersionControlInterface>();
+                var vciService = _currentProject.GetService<VersionControlInterface>();
                 if (vciService == null) return workspaces;
 
                 foreach (Workspace ws in vciService.WorkspaceGroup.Workspaces)
@@ -58,11 +67,11 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                         SoftwareWorkspace = ws
                     });
                 }
-                LogService.Write($"[TIA-VCI-SERVICE] [GetConfiguredWorkspaces] Se han encontrado {workspaces.Count} Workspaces en el proyecto.");
+                _logService.Write($"[TIA-VCI-SERVICE] [GetConfiguredWorkspaces] Se han encontrado {workspaces.Count} Workspaces en el proyecto.");
             }
             catch (Exception ex)
             {
-                LogService.Write($"[TIA-VCI-SERVICE] [GetConfiguredWorkspaces] Error al leer Workspaces: {ex.Message}", true);
+                _logService.Write($"[TIA-VCI-SERVICE] [GetConfiguredWorkspaces] Error al leer Workspaces: {ex.Message}", true);
             }
 
             return workspaces;
@@ -76,25 +85,27 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
         /// </summary>
         public VciWorkspaceModel CreateWorkspace(string name, string diskPath)
         {
-            if (_project == null) return null;
+            if (_currentProject == null) return null;
 
             try
             {
-                LogService.Write($"[TIA-VCI-SERVICE] [CreateWorkspace] Creando Workspace '{name}' en '{diskPath}'...");
+                _logService.Write($"[TIA-VCI-SERVICE] [CreateWorkspace] Creando Workspace '{name}' en '{diskPath}'...");
 
                 DirectoryInfo dirInfo = new DirectoryInfo(diskPath);
                 if (!dirInfo.Exists) dirInfo.Create(); // Aseguramos que la carpeta exista
 
-                var vciService = _project.GetService<VersionControlInterface>();
+                var vciService = _currentProject.GetService<VersionControlInterface>();
                 if (vciService == null) throw new Exception("El servicio VCI no está disponible en este proyecto.");
 
                 using (ExclusiveAccess exclusiveAccess = _tiaApp.ExclusiveAccess("Creando Workspace VCI..."))
                 {
-                    using (Transaction transaction = exclusiveAccess.Transaction(_project, $"Crear Workspace {name}"))
+                    using (Transaction transaction = exclusiveAccess.Transaction(_currentProject, $"Crear Workspace {name}"))
                     {
                         // Se crea el workspace y se le asigna el directorio raíz en disco
                         Workspace newWs = vciService.WorkspaceGroup.Workspaces.Create(name);
                         newWs.RootPath = dirInfo;
+
+                        transaction.CommitOnDispose();
 
                         return new VciWorkspaceModel
                         {
@@ -107,7 +118,7 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
             }
             catch (Exception ex)
             {
-                LogService.Write($"[TIA-VCI-SERVICE] [CreateWorkspace] Error creando Workspace: {ex.Message}", true);
+                _logService.Write($"[TIA-VCI-SERVICE] [CreateWorkspace] Error creando Workspace: {ex.Message}", true);
                 return null;
             }
         }
@@ -121,11 +132,11 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
         /// </summary>
         public bool DeleteWorkspace(string workspaceName)
         {
-            if (_project == null) return false;
+            if (_currentProject == null) return false;
 
             try
             {
-                var vciService = _project.GetService<VersionControlInterface>();
+                var vciService = _currentProject.GetService<VersionControlInterface>();
                 if (vciService == null) return false;
 
                 Workspace ws = vciService.WorkspaceGroup.Workspaces.Find(workspaceName);
@@ -133,21 +144,24 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                 {
                     using (ExclusiveAccess exclusiveAccess = _tiaApp.ExclusiveAccess("Borrando Workspace VCI..."))
                     {
-                        using (Transaction transaction = exclusiveAccess.Transaction(_project, $"Borrar Workspace {workspaceName}"))
+                        using (Transaction transaction = exclusiveAccess.Transaction(_currentProject, $"Borrar Workspace {workspaceName}"))
                         {
                             ws.Delete();
-                            LogService.Write($"[TIA-VCI-SERVICE] [DeleteWorkspace] Workspace '{workspaceName}' eliminado de TIA Portal.");
+
+                            transaction.CommitOnDispose();
+
+                            _logService.Write($"[TIA-VCI-SERVICE] [DeleteWorkspace] Workspace '{workspaceName}' eliminado de TIA Portal.");
                             return true;
                         }
                     }
                 }
 
-                LogService.Write($"[TIA-VCI-SERVICE] [DeleteWorkspace] No se encontró el Workspace '{workspaceName}'.");
+                _logService.Write($"[TIA-VCI-SERVICE] [DeleteWorkspace] No se encontró el Workspace '{workspaceName}'.");
                 return false;
             }
             catch (Exception ex)
             {
-                LogService.Write($"[TIA-VCI-SERVICE] [DeleteWorkspace] Error al borrar Workspace '{workspaceName}': {ex.Message}", true);
+                _logService.Write($"[TIA-VCI-SERVICE] [DeleteWorkspace] Error al borrar Workspace '{workspaceName}': {ex.Message}", true);
                 return false;
             }
         }
@@ -160,16 +174,16 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
         /// </summary>
         public bool UpdateWorkspacePath(string workspaceName, string newPath)
         {
-            if (_project == null) return false;
+            if (_currentProject == null) return false;
             try
             {
-                var vciService = _project.GetService<VersionControlInterface>();
+                var vciService = _currentProject.GetService<VersionControlInterface>();
                 Workspace ws = vciService?.WorkspaceGroup.Workspaces.Find(workspaceName);
                 if (ws != null)
                 {
                     using (ExclusiveAccess exclusiveAccess = _tiaApp.ExclusiveAccess("Actualizando ruta Workspace..."))
                     {
-                        using (Transaction transaction = exclusiveAccess.Transaction(_project, $"Cambiar ruta Workspace {workspaceName}"))
+                        using (Transaction transaction = exclusiveAccess.Transaction(_currentProject, $"Cambiar ruta Workspace {workspaceName}"))
                         {
                             ws.RootPath = new DirectoryInfo(newPath);
                             transaction.CommitOnDispose();
@@ -181,22 +195,10 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
             }
             catch (Exception ex)
             {
-                LogService.Write($"[TIA-VCI-SERVICE] Error al cambiar ruta del Workspace: {ex.Message}", true);
+                _logService.Write($"[TIA-VCI-SERVICE] [UpdateWorkspacePath] Error al cambiar ruta del Workspace: {ex.Message}", true);
                 return false;
             }
         }
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -205,14 +207,14 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
         /// Crea o actualiza un vínculo (Mapping) VCI entre un objeto del TIA Portal y una ruta relativa en el Workspace.
         /// Adicionalmente, fuerza a TIA Portal a comprobar el estado de sincronización.
         /// </summary>
-        public Dictionary<string, VciMapResult> MapObjectsToWorkspace(string workspaceName, List<(string BlockName, IEngineeringObject PlcObject, string RelativePath)> itemsToMap)
+        public async Task<Dictionary<string, VciMapResult>> MapObjectsToWorkspaceAsync(string workspaceName, List<(string BlockName, IEngineeringObject PlcObject, string RelativePath)> itemsToMap)
         {
             var results = new Dictionary<string, VciMapResult>();
-            if (_project == null || _tiaApp == null) return results;
+            if (_currentProject == null || _tiaApp == null) return results;
 
             try
             {
-                var vciService = _project.GetService<VersionControlInterface>();
+                var vciService = _currentProject.GetService<VersionControlInterface>();
                 Workspace ws = vciService?.WorkspaceGroup.Workspaces.Find(workspaceName);
                 if (ws == null) return results;
 
@@ -227,6 +229,8 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                     var currentBatch = itemsToMap.Skip(i).Take(batchSize).ToList();
                     int batchNumber = (i / batchSize) + 1;
                     int totalBatches = (int)Math.Ceiling((double)itemsToMap.Count / batchSize);
+
+                    await Task.Delay(25); // Cedemos hilo a WPF antes del acceso exclusivo
 
                     // Abrimos el acceso exclusivo SOLO para este lote pequeño
                     using (ExclusiveAccess exclusiveAccess = _tiaApp.ExclusiveAccess($"Mapeando VCI (Lote {batchNumber}/{totalBatches})..."))
@@ -244,7 +248,9 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                         foreach (var item in currentBatch)
                         {
                             totalProcessed++;
-                            StatusService.Set($"Vinculando [{totalProcessed}/{itemsToMap.Count}]: {item.BlockName}...", StatusType.Warning);
+                            _statusService.Set($"[TIA-VCI-SERVICE] [MapObjectsToWorkspace] Vinculando [{totalProcessed}/{itemsToMap.Count}]: {item.BlockName}...", StatusType.Warning);
+
+                            await Task.Delay(10); // Respiro visual por cada bloque
 
                             try
                             {
@@ -274,16 +280,18 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                             }
                             catch (EngineeringException engEx)
                             {
-                                LogService.Write($"[TIA-VCI-SERVICE] El bloque '{item.BlockName}' falló (¿inconsistente?). Detalle: {engEx.Message}");
+                                _logService.Write($"[TIA-VCI-SERVICE] [MapObjectsToWorkspace] El bloque '{item.BlockName}' falló (¿inconsistente?). Detalle: {engEx.Message}");
+                                _statusService.Set($"[TIA-VCI-SERVICE] [MapObjectsToWorkspace] El bloque '{item.BlockName}' falló (¿inconsistente?).", StatusType.Error);
                                 results.Add(item.BlockName, VciMapResult.Error);
                             }
                             catch (Exception ex)
                             {
-                                LogService.Write($"[TIA-VCI-SERVICE] Error en '{item.BlockName}': {ex.Message}", true);
+                                _logService.Write($"[TIA-VCI-SERVICE] [MapObjectsToWorkspace] Error en '{item.BlockName}': {ex.Message}", true);
+                                _statusService.Set($"[TIA-VCI-SERVICE] [MapObjectsToWorkspace] Error en '{item.BlockName}'.", StatusType.Error);
                                 results.Add(item.BlockName, VciMapResult.Error);
                             }
                         }
-                    } 
+                    }
 
                     GC.Collect();
                     GC.WaitForPendingFinalizers();
@@ -291,7 +299,8 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
             }
             catch (Exception ex)
             {
-                LogService.Write($"[TIA-VCI-SERVICE] Error masivo: {ex.Message}", true);
+                _logService.Write($"[TIA-VCI-SERVICE] [MapObjectsToWorkspace] Error masivo: {ex.Message}", true);
+                _statusService.Set($"[TIA-VCI-SERVICE] [MapObjectsToWorkspace] Error general.", StatusType.Error);
             }
 
             return results;
@@ -303,20 +312,22 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
         /// <summary>
         /// Elimina el vínculo (Mapping) VCI de un objeto en TIA Portal. No borra el archivo físico.
         /// </summary>
-        public int UnmapObjectsFromWorkspace(string workspaceName, List<(string BlockName, IEngineeringObject PlcObject)> itemsToUnmap)
+        public async Task<int> UnmapObjectsFromWorkspaceAsync(string workspaceName, List<(string BlockName, IEngineeringObject PlcObject)> itemsToUnmap)
         {
             int successCount = 0;
-            if (_project == null || _tiaApp == null) return 0;
+            if (_currentProject == null || _tiaApp == null) return 0;
 
             try
             {
-                var vciService = _project.GetService<VersionControlInterface>();
+                var vciService = _currentProject.GetService<VersionControlInterface>();
                 Workspace ws = vciService?.WorkspaceGroup.Workspaces.Find(workspaceName);
                 if (ws == null) return 0;
 
+                await Task.Delay(25); // Cedemos hilo a WPF antes de bloquear
+
                 using (ExclusiveAccess exclusiveAccess = _tiaApp.ExclusiveAccess("Desvinculando bloques en VCI..."))
                 {
-                    using (Transaction transaction = exclusiveAccess.Transaction(_project, $"Desvincular {itemsToUnmap.Count} bloques VCI"))
+                    using (Transaction transaction = exclusiveAccess.Transaction(_currentProject, $"Desvincular {itemsToUnmap.Count} bloques VCI"))
                     {
                         var existingMappings = new Dictionary<IEngineeringObject, WorkspaceMapping>();
                         foreach (WorkspaceMapping map in ws.Mappings)
@@ -331,7 +342,9 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                         foreach (var item in itemsToUnmap)
                         {
                             current++;
-                            StatusService.Set($"Desvinculando [{current}/{itemsToUnmap.Count}]: {item.BlockName}...", StatusType.Warning);
+                            _statusService.Set($"[TIA-VCI-SERVICE] [UnmapObjectsFromWorkspace] Desvinculando [{current}/{itemsToUnmap.Count}]: {item.BlockName}...", StatusType.Warning);
+
+                            await Task.Delay(10);
 
                             if (existingMappings.TryGetValue(item.PlcObject, out WorkspaceMapping mapping))
                             {
@@ -339,11 +352,16 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                                 successCount++;
                             }
                         }
+
+                        await Task.Delay(25);
                         transaction.CommitOnDispose();
                     }
                 }
             }
-            catch (Exception ex) { LogService.Write($"[TIA-VCI-SERVICE] Error Unmap masivo: {ex.Message}", true); }
+            catch (Exception ex) 
+            { 
+                _logService.Write($"[TIA-VCI-SERVICE] [UnmapObjectsFromWorkspace] Error Unmap masivo: {ex.Message}", true); 
+            }
 
             return successCount;
         }
@@ -358,10 +376,10 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
         {
             // ... (Tu código actual se mantiene igual) ...
             var mappedObjects = new List<IEngineeringObject>();
-            if (_project == null) return mappedObjects;
+            if (_currentProject == null) return mappedObjects;
             try
             {
-                var vciService = _project.GetService<VersionControlInterface>();
+                var vciService = _currentProject.GetService<VersionControlInterface>();
                 Workspace ws = vciService?.WorkspaceGroup.Workspaces.Find(workspaceName);
                 if (ws != null)
                 {

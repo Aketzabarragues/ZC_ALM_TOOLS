@@ -5,8 +5,6 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using System.Windows.Input;
-using Siemens.Engineering;
 using Siemens.Engineering.Hmi;
 using ZC_ALM_TOOLS.Core;
 using ZC_ALM_TOOLS.Models.Common;
@@ -17,7 +15,6 @@ using ZC_ALM_TOOLS.Services.TiaPortal;
 
 namespace ZC_ALM_TOOLS.ViewModels.Generator
 {
-
     // ==================================================================================================================
     /// <summary>
     /// ViewModel que gestiona la pestaña de procesos
@@ -29,9 +26,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
         private TiaPlcService _tiaPlcService;
         private TiaHmiService _tiaHmiService;
 
-
-        public ObservableCollection<TiaTarget> HmiTargets { get; set; }
-
+        private ObservableCollection<TiaTarget> _hmiTargets { get; set; }
 
         private ConfigProcessSettings _processSettings;
         private Dictionary<string, List<object>> _engineeringCache;
@@ -68,95 +63,47 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
             }
         }
 
-
-
         private bool _canGenerate = false;
         public bool CanGenerate { get => _canGenerate; set { _canGenerate = value; OnPropertyChanged(); } }
 
+        private readonly ILogService _logService;
+        private readonly IStatusService _statusService;
+        private readonly IAppConfigService _appConfigService;
 
         // Comandos
-        public RelayCommand CompareCommand { get; set; }
-        public RelayCommand GenerateCommand { get; set; }
-        public RelayCommand RefreshTemplatesCommand { get; set; }
+        public AsyncRelayCommand CompareCommand { get; set; }
+        public AsyncRelayCommand GenerateCommand { get; set; }
+        public AsyncRelayCommand RefreshTemplatesCommand { get; set; }
 
-        //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        //BORRAR!!!!!!!
-        public RelayCommand RunHmiHardcodedPoCCommand { get; }
 
 
         // ==================================================================================================================
         /// <summary>
         /// Constructor
         /// </summary>
-        public ProcessGeneratorViewModel(TiaPlcService tiaPlcService, 
-                                         TiaHmiService tiaHmiService,
-                                         ObservableCollection<TiaTarget> hmiTargets)
+        public ProcessGeneratorViewModel(TiaPlcService tiaPlcService,
+                                          TiaHmiService tiaHmiService,
+                                          TargetStateService targetStateService,
+                                          ILogService logService,
+                                          IStatusService statusService,
+                                          IAppConfigService appConfigService)
         {
-
             _tiaPlcService = tiaPlcService;
             _tiaHmiService = tiaHmiService;
 
+            _logService = logService;
+            _statusService = statusService;
+            _appConfigService = appConfigService;
 
-            HmiTargets = hmiTargets;
+            _hmiTargets = targetStateService.HmiTargets;
 
-            // El botón Comparar solo se habilita si hay bloques en la lista
-            CompareCommand = new RelayCommand(ExecuteCompare, () => ProjectedBlocks.Count > 0);
-            GenerateCommand = new RelayCommand(ExecuteGenerate, () => CanGenerate);
-            RefreshTemplatesCommand = new RelayCommand(() => LoadTemplates(_globalSettings));
+            // Enlazamos directamente a las tareas asíncronas
+            CompareCommand = new AsyncRelayCommand(ExecuteCompare, () => ProjectedBlocks.Count > 0);
+            GenerateCommand = new AsyncRelayCommand(ExecuteGenerate, () => CanGenerate);
+            RefreshTemplatesCommand = new AsyncRelayCommand(ExecuteRefreshTemplates);
 
-
-            //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            //BORRAR!!!!!!!
-            RunHmiHardcodedPoCCommand = new RelayCommand(ExecuteRunHmiHardcodedPoC, () => true);
+            LoadTemplates(_appConfigService.GetGlobalSettings());
         }
-
-
-
-
-        //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        //BORRAR!!!!!!!
-        private async void ExecuteRunHmiHardcodedPoC()
-        {
-            StatusService.Set("Iniciando PoC HMI (vía XML)...", StatusType.Ok);
-
-            
-        }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -170,7 +117,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
             _processSettings = settings;
             _globalSettings = globalSettings;
             _configNetworkSettings = NetworkSettings;
-            if (_engineeringCache.TryGetValue(_processSettings.ProcessName, out var procList))
+            if (_engineeringCache.TryGetValue(_processSettings.Name, out var procList))
             {
                 Processes.Clear();
                 foreach (var proc in procList.Cast<Process>())
@@ -225,8 +172,20 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
             }
             else
             {
-                StatusService.Set($"Ruta de plantillas no encontrada: {templatePath}", StatusType.Warning);
+                _statusService.Set($"[PROCESS-VM] [LoadTemplates] Ruta de plantillas no encontrada: {templatePath}", StatusType.Warning);
             }
+        }
+
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Método envoltorio para refrescar plantillas dentro de la infraestructura asíncrona
+        /// </summary>
+        private Task ExecuteRefreshTemplates()
+        {
+            LoadTemplates(_globalSettings);
+            return Task.CompletedTask;
         }
 
 
@@ -242,7 +201,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
             if (SelectedProcess == null || string.IsNullOrEmpty(SelectedTemplate) || _globalSettings == null)
             {
-                StatusService.Set("Esperando selección de proceso y plantilla...", StatusType.Warning);
+                _statusService.Set("[PROCESS-VM] [UpdateProjections] Esperando selección de proceso y plantilla...", StatusType.Warning);
                 return;
             }
 
@@ -256,7 +215,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
             if (!Directory.Exists(bloquesPath))
             {
-                StatusService.Set($"Falta la carpeta 'Bloques' en la plantilla.", StatusType.Error);
+                _statusService.Set($"[PROCESS-VM] [UpdateProjections] Falta la carpeta 'Bloques' en la plantilla.", StatusType.Error);
                 return;
             }
 
@@ -298,21 +257,19 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                 Mensaje = "Pendiente de comprobar..."
             });
 
-            StatusService.Set($"Lista cargada. Pulsa 'Comparar con PLC' para validar los {ProjectedBlocks.Count} elementos.", StatusType.Ok);
+            _statusService.Set($"[PROCESS-VM] [UpdateProjections] Lista cargada. Pulsa 'Comparar con PLC' para validar los {ProjectedBlocks.Count} elementos.", StatusType.Ok);
         }
-
 
 
         // ==================================================================================================================
         /// <summary>
         /// Metodo para comparar con el PLC de los bloques a añadir
         /// </summary>
-        private async void ExecuteCompare()
+        private async Task ExecuteCompare()
         {
             if (_tiaPlcService == null || ProjectedBlocks.Count == 0) return;
 
-            StatusService.SetBusy(true);
-            StatusService.Set("Validando contra TIA Portal...", StatusType.Ok);
+            _statusService.Set("[PROCESS-VM] [ExecuteCompare] Validando contra TIA Portal...", StatusType.Ok);
             bool hayColisiones = false;
 
             // 1. CHECK DEL MANIFIESTO (Bloques estándar)
@@ -329,8 +286,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
                     if (_tiaPlcService.FindBlockByName(depLimpia) == null)
                     {
-                        StatusService.Set($"Error: Falta el bloque '{depLimpia}' en el PLC (Dependencia de la plantilla).", StatusType.Error);
-                        StatusService.SetBusy(false);
+                        _statusService.Set($"[PROCESS-VM] [ExecuteCompare] Error: Falta el bloque '{depLimpia}' en el PLC (Dependencia de la plantilla).", StatusType.Error);
                         CanGenerate = false;
                         return;
                     }
@@ -377,29 +333,24 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
             if (hayColisiones)
             {
-                StatusService.Set("Colisiones detectadas. Revisa la lista en pantalla.", StatusType.Error);
+                _statusService.Set("[[PROCESS-VM] [ExecuteCompare] Colisiones detectadas. Revisa la lista en pantalla.", StatusType.Error);
                 CanGenerate = false;
             }
             else
             {
-                StatusService.Set($"Vía libre. {ProjectedBlocks.Count} elementos listos para proyectar.", StatusType.Ok);
+                _statusService.Set($"[PROCESS-VM] [ExecuteCompare] Vía libre. {ProjectedBlocks.Count} elementos listos para proyectar.", StatusType.Ok);
                 CanGenerate = true;
             }
-
-            StatusService.SetBusy(false);
         }
-
 
 
         // ==================================================================================================================
         /// <summary>
         /// Metodo para generar el proceso desde la plantilla
         /// </summary>
-        private async void ExecuteGenerate()
+        private async Task ExecuteGenerate()
         {
-            StatusService.SetBusy(true);
-            StatusService.Set($"Generando proceso {SelectedProcess.Nombre}...", StatusType.Warning);
-            LogService.Write($"[GENERATOR-VM] === INICIANDO GENERACIÓN DEL PROCESO {SelectedProcess.Nombre} ===");
+            _statusService.Set($"[PROCESS-VM] [ExecuteGenerate] Iniciando generacion del proceso {SelectedProcess.Nombre}", StatusType.Warning);
 
             try
             {
@@ -407,16 +358,11 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
                 // TODO: FASE 2 -> Modificar XMLs de la plantilla e inyectar tabla de variables.
 
-                StatusService.Set("¡Generación completada con éxito!", StatusType.Ok);
+                _statusService.Set("[PROCESS-VM] [ExecuteGenerate] ¡Generación completada con éxito!", StatusType.Ok);
             }
-            catch (System.Exception ex)
+            catch (Exception ex)
             {
-                StatusService.Set($"Error al generar: {ex.Message}", StatusType.Error);
-                LogService.Write($"[GENERATOR-VM] Error Crítico: {ex.Message}", true);
-            }
-            finally
-            {
-                StatusService.SetBusy(false);
+                _statusService.Set($"[PROCESS-VM] [ExecuteGenerate] Error crítico al generar: {ex.Message}", StatusType.Error);
             }
         }
 

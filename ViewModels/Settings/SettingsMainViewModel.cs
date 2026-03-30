@@ -2,6 +2,7 @@
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Input;
 using Newtonsoft.Json;
 using ZC_ALM_TOOLS.Core;
@@ -10,9 +11,13 @@ using ZC_ALM_TOOLS.Services.Common;
 
 namespace ZC_ALM_TOOLS.ViewModels.Settings
 {
+    // ==================================================================================================================
+    /// <summary>
+    /// ViewModel que gestiona la pestaña principal de configuración, donde se editan los ajustes globales, de dispositivos y procesos.
+    /// </summary>
     public class SettingsMainViewModel : ObservableObject
     {
-        // --- PROPIEDADES DE CONFIGURACIÓN ---
+        // Configuración estructurada en secciones para facilitar la edición y el binding en la UI
         private ConfigGlobalSettings _globalSettings;
         public ConfigGlobalSettings GlobalSettings { get => _globalSettings; set { _globalSettings = value; OnPropertyChanged(); } }
 
@@ -22,38 +27,65 @@ namespace ZC_ALM_TOOLS.ViewModels.Settings
         private ConfigProcessSettings _processSettings;
         public ConfigProcessSettings ProcessSettings { get => _processSettings; set { _processSettings = value; OnPropertyChanged(); } }
 
-        // --- COLECCIÓN DE DISPOSITIVOS PARA EL DATAGRID ---
+        // Propiedad para la lista de categorías de dispositivos, que se muestra en un DataGrid editable
         private ObservableCollection<ConfigDeviceCategory> _devices;
         public ObservableCollection<ConfigDeviceCategory> Devices { get => _devices; set { _devices = value; OnPropertyChanged(); } }
 
-        // --- COMANDOS ---
-        public ICommand SaveCommand { get; }
+        private readonly ILogService _logService;
+        private readonly IStatusService _statusService;
+        private readonly IAppConfigService _appConfigService;
 
-        public SettingsMainViewModel()
+        // Comandos
+        public AsyncRelayCommand SaveCommand { get; }
+
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Constructor: Carga la configuración inicial desde el servicio y asigna el comando de guardado asíncrono.
+        /// </summary>
+        public SettingsMainViewModel(ILogService logService, IStatusService statusService, IAppConfigService appConfigService)
         {
-            SaveCommand = new RelayCommand(ExecuteSave);
+            _logService = logService;
+            _statusService = statusService;
+            _appConfigService = appConfigService;
+            SaveCommand = new AsyncRelayCommand(ExecuteSave);
             LoadSettings();
         }
 
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Metodo que carga la configuración desde el AppConfigService al iniciar la ViewModel. Se apoya en el servicio que ya parsea el JSON al arrancar, 
+        /// por lo que aquí solo asignamos las propiedades para el binding.
+        /// </summary>
         private void LoadSettings()
         {
             try
             {
                 // Se apoyará en el servicio que ya lee y parsea el JSON al arrancar
-                GlobalSettings = AppConfigService.GetGlobalSettings() ?? new ConfigGlobalSettings();
-                DeviceSettings = AppConfigService.GetDeviceSettings() ?? new ConfigDeviceSettings();
-                ProcessSettings = AppConfigService.GetProcessConfig() ?? new ConfigProcessSettings();
+                GlobalSettings = _appConfigService.GetGlobalSettings() ?? new ConfigGlobalSettings();
+                DeviceSettings = _appConfigService.GetDeviceSettings() ?? new ConfigDeviceSettings();
+                ProcessSettings = _appConfigService.GetProcessConfig() ?? new ConfigProcessSettings();
 
-                var devicesList = AppConfigService.GetDeviceCategories() ?? Enumerable.Empty<ConfigDeviceCategory>();
+                var devicesList = _appConfigService.GetDeviceCategories() ?? Enumerable.Empty<ConfigDeviceCategory>();
                 Devices = new ObservableCollection<ConfigDeviceCategory>(devicesList);
             }
             catch (Exception ex)
             {
-                LogService.Write($"[SETTINGS] Error cargando configuración: {ex.Message}", true);
+                _logService.Write($"[SETTINGS-VM] [LoadSettings] Error cargando configuración: {ex.Message}", true);
             }
         }
 
-        private void ExecuteSave()
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Metodo que se ejecuta al guardar los ajustes. Construye un objeto completo con toda la configuración (incluyendo las partes que no se editan en esta View), 
+        /// lo serializa a JSON formateado y lo guarda en el archivo app_config.json de forma asíncrona para no bloquear la UI.
+        /// </summary>
+        private async Task ExecuteSave()
         {
             try
             {
@@ -67,28 +99,31 @@ namespace ZC_ALM_TOOLS.ViewModels.Settings
                     ProcessSettings = this.ProcessSettings,
 
                     // Mantenemos intactos los que no se gestionan desde esta View
-                    PRealSettings = AppConfigService.GetPRealConfig(),
-                    PIntSettings = AppConfigService.GetPIntConfig(),
-                    AlarmSettings = AppConfigService.GetAlarmConfig(),
-                    NetworkSettings = AppConfigService.GetNetworkConfig()
+                    PRealSettings = _appConfigService.GetPRealConfig(),
+                    PIntSettings = _appConfigService.GetPIntConfig(),
+                    AlarmSettings = _appConfigService.GetAlarmConfig(),
+                    NetworkSettings = _appConfigService.GetNetworkConfig()
                 };
 
-                // Serializar a JSON formateado (Indented) para que sea legible
-                string jsonOutput = JsonConvert.SerializeObject(fullConfig, Formatting.Indented);
+                // Enviamos la serialización pesada y la escritura física a un hilo en segundo plano
+                await Task.Run(() =>
+                {
+                    // Serializar a JSON formateado (Indented) para que sea legible
+                    string jsonOutput = JsonConvert.SerializeObject(fullConfig, Formatting.Indented);
 
-                // Guardar (Asegúrate de que AppConfigService.AppConfigFile apunte a .json)
-                File.WriteAllText(AppConfigService.AppConfigFile, jsonOutput);
+                    // Guardar 
+                    File.WriteAllText(AppConfigService.AppConfigFile, jsonOutput);
+                });
 
-                StatusService.Set("Ajustes guardados correctamente.", StatusType.Ok);
-                LogService.Write("[SETTINGS] El archivo app_config.json ha sido actualizado con éxito.");
+                // Unificamos el log y el mensaje visual
+                _statusService.Set("[SETTINGS-VM] [ExecuteSave] Ajustes guardados correctamente y archivo app_config.json actualizado con éxito.", StatusType.Ok);
 
                 // OPCIONAL: Si AppConfigService tiene un método de recarga, llámalo aquí
-                AppConfigService.Reload(); 
+                _appConfigService.Reload();
             }
             catch (Exception ex)
             {
-                LogService.Write($"[SETTINGS] Error guardando configuración: {ex.Message}", true);
-                StatusService.Set("Error al guardar los ajustes.", StatusType.Error);
+                _statusService.Set($"[SETTINGS-VM] [ExecuteSave] Error al guardar los ajustes: {ex.Message}", StatusType.Error);
             }
         }
     }

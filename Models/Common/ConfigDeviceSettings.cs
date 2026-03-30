@@ -11,6 +11,7 @@ namespace ZC_ALM_TOOLS.Models.Common
     /// </summary>
     public class ConfigDeviceSettings
     {
+        public string Name { get; set; }
         public string TiaTable { get; set; }
         public string ExcelSheet { get; set; }
         public Dictionary<string, string> ConfigCells { get; set; }

@@ -8,17 +8,12 @@ namespace ZC_ALM_TOOLS.Models.Common
     /// </summary>
     public class ConfigProcessSettings
     {
-
-        // Claves para la caché de ingeniería
-        public string ProcessName { get; set; } = "Procesos";
-        public string PRealName { get; set; } = "P_Real";
-        public string PIntName { get; set; } = "P_Int";
-        public string AlarmName { get; set; } = "Alarmas";
-        public string StageName { get; set; } = "Etapas";
-
-        // Nombres de recursos (Excel + TIA Portal)
+        public string Name { get; set; }
         public string ExcelSheet { get; set; }
         public string ExcelTable { get; set; }
+        public string ArrayNameReal { get; set; }
+        public string ArrayNameInt { get; set; }
+        public string ArrayNameAlm { get; set; }
         public string SuffixConstReal { get; set; }
         public string SuffixConstInt { get; set; }
         public string SuffixConstAlm { get; set; }

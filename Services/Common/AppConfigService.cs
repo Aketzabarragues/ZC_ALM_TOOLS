@@ -14,10 +14,12 @@ namespace ZC_ALM_TOOLS.Services.Common
     /// <summary>
     /// Servicio encargado de la configuracion de la aplicacion
     /// </summary>
-    public static class AppConfigService
+    public class AppConfigService : IAppConfigService
     {
 
-        private static AppSettings _appConfigCache;
+
+
+        private AppSettings _appConfigCache;
 
         // ==================================================================================================================
         // Rutas base centralizadas
@@ -29,13 +31,20 @@ namespace ZC_ALM_TOOLS.Services.Common
         public static string TempExportPathVci => Path.Combine(TempPath, "Vci");
         public static string AppConfigFile => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "app_config.json");
 
+        private readonly ILogService _logService;
+
+
+        public AppConfigService(ILogService logService)
+        {
+            _logService = logService;
+        }
 
 
         // ==================================================================================================================
         /// <summary>
         /// Prepara el entorno de carpetas base y garantiza la existencia/carga del app_config.json
         /// </summary>
-        public static void InitializeEnvironment()
+        public void InitializeEnvironment()
         {
             try
             {
@@ -62,7 +71,7 @@ namespace ZC_ALM_TOOLS.Services.Common
                 // Comprobar si existe el archivo JSON en la ruta de ejecución
                 if (!File.Exists(AppConfigFile))
                 {
-                    LogService.Write("[APP-CONFIG] [InitializeEnvironment] app_config.json no encontrado. Procediendo a extraerlo de los recursos...");
+                    _logService.Write("[APP-CONFIG] [InitializeEnvironment] app_config.json no encontrado. Procediendo a extraerlo de los recursos...");
                     CreateAppConfigFile(AppConfigFile);
                 }
 
@@ -71,7 +80,7 @@ namespace ZC_ALM_TOOLS.Services.Common
             }
             catch (Exception ex)
             {
-                LogService.Write($"[APP-CONFIG] [InitializeEnvironment] Error inicializando entorno: {ex.Message}", true);
+                _logService.Write($"[APP-CONFIG] [InitializeEnvironment] Error inicializando entorno: {ex.Message}", true);
                 throw;
             }
         }
@@ -82,7 +91,7 @@ namespace ZC_ALM_TOOLS.Services.Common
         /// <summary>
         /// Crea el archivo de configuración extrayéndolo de los recursos embebidos (.dll / .exe)
         /// </summary>
-        private static void CreateAppConfigFile(string targetPath)
+        private void CreateAppConfigFile(string targetPath)
         {
             var assembly = Assembly.GetExecutingAssembly();
             string resourceName = "ZC_ALM_TOOLS.Resources.app_config.json";
@@ -102,11 +111,11 @@ namespace ZC_ALM_TOOLS.Services.Common
                         stream.CopyTo(fileStream);
                     }
                 }
-                LogService.Write("[APP-CONFIG] [CreateAppConfigFile] Configuración JSON maestra extraída y creada correctamente.");
+                _logService.Write("[APP-CONFIG] [CreateAppConfigFile] Configuración JSON maestra extraída y creada correctamente.");
             }
             catch (UnauthorizedAccessException)
             {
-                LogService.Write($"[APP-CONFIG] [CreateAppConfigFile] Error. No se puede escribir en {targetPath}.", true);
+                _logService.Write($"[APP-CONFIG] [CreateAppConfigFile] Error. No se puede escribir en {targetPath}.", true);
                 throw;
             }
         }
@@ -117,13 +126,13 @@ namespace ZC_ALM_TOOLS.Services.Common
         /// <summary>
         /// Método privado centralizado para leer el archivo físico y volcarlo a la caché de RAM
         /// </summary>
-        private static void LoadConfigToMemory()
+        private void LoadConfigToMemory()
         {
             if (!File.Exists(AppConfigFile)) return;
 
             string json = File.ReadAllText(AppConfigFile);
             _appConfigCache = JsonConvert.DeserializeObject<AppSettings>(json);
-            LogService.Write("[APP-CONFIG] [LoadConfigToMemory] Configuración JSON cargada en memoria correctamente.");
+            _logService.Write("[APP-CONFIG] [LoadConfigToMemory] Configuración JSON cargada en memoria correctamente.");
         }
 
 
@@ -132,7 +141,7 @@ namespace ZC_ALM_TOOLS.Services.Common
         /// <summary>
         /// Recarga la configuración desde el archivo JSON a la memoria RAM (Caché).
         /// </summary>
-        public static void Reload()
+        public void Reload()
         {
             try
             {
@@ -140,12 +149,12 @@ namespace ZC_ALM_TOOLS.Services.Common
                 {
                     string json = File.ReadAllText(AppConfigFile);
                     _appConfigCache = JsonConvert.DeserializeObject<AppSettings>(json);
-                    LogService.Write("[APP-CONFIG] [Reload] Configuración JSON recargada en memoria correctamente.");
+                    _logService.Write("[APP-CONFIG] [Reload] Configuración JSON recargada en memoria correctamente.");
                 }
             }
             catch (Exception ex)
             {
-                LogService.Write($"[APP-CONFIG] [Reload] ERROR recargando JSON: {ex.Message}", true);
+                _logService.Write($"[APP-CONFIG] [Reload] ERROR recargando JSON: {ex.Message}", true);
             }
         }
 
@@ -155,7 +164,7 @@ namespace ZC_ALM_TOOLS.Services.Common
         /// <summary>
         /// Lectura de la configuracion global de la aplicación desde la caché en memoria. Si no está cargada, devuelve una instancia vacía para evitar nulls.
         /// </summary>
-        public static ConfigGlobalSettings GetGlobalSettings() => _appConfigCache?.GlobalSettings ?? new ConfigGlobalSettings();
+        public ConfigGlobalSettings GetGlobalSettings() => _appConfigCache?.GlobalSettings ?? new ConfigGlobalSettings();
 
 
 
@@ -163,7 +172,7 @@ namespace ZC_ALM_TOOLS.Services.Common
         /// <summary>
         /// Lectura de la configuracion de dispositivos desde la caché en memoria. Si no está cargada, devuelve una instancia vacía para evitar nulls.
         /// </summary>
-        public static ConfigDeviceSettings GetDeviceSettings() => _appConfigCache?.DeviceSettings ?? new ConfigDeviceSettings();
+        public ConfigDeviceSettings GetDeviceSettings() => _appConfigCache?.DeviceSettings ?? new ConfigDeviceSettings();
 
 
 
@@ -171,7 +180,7 @@ namespace ZC_ALM_TOOLS.Services.Common
         /// <summary>
         /// Lectura de la lista de categorías de dispositivos desde la caché en memoria. Si no está cargada, devuelve una lista vacía para evitar nulls.
         /// </summary>
-        public static List<ConfigDeviceCategory> GetDeviceCategories() => _appConfigCache?.Devices ?? new List<ConfigDeviceCategory>();
+        public List<ConfigDeviceCategory> GetDeviceCategories() => _appConfigCache?.Devices ?? new List<ConfigDeviceCategory>();
 
 
 
@@ -179,7 +188,7 @@ namespace ZC_ALM_TOOLS.Services.Common
         /// <summary>
         /// Lectura de la configuracion de procesos desde la caché en memoria. Si no está cargada, devuelve una instancia vacía para evitar nulls.
         /// </summary>
-        public static ConfigProcessSettings GetProcessConfig() => _appConfigCache?.ProcessSettings ?? new ConfigProcessSettings();
+        public ConfigProcessSettings GetProcessConfig() => _appConfigCache?.ProcessSettings ?? new ConfigProcessSettings();
 
 
 
@@ -187,7 +196,7 @@ namespace ZC_ALM_TOOLS.Services.Common
         /// <summary>
         /// Lectura de la configuracion de red desde la caché en memoria. Si no está cargada, devuelve una instancia vacía para evitar nulls.
         /// </summary>
-        public static ConfigNetworkSettings GetNetworkConfig() => _appConfigCache?.NetworkSettings ?? new ConfigNetworkSettings();
+        public ConfigNetworkSettings GetNetworkConfig() => _appConfigCache?.NetworkSettings ?? new ConfigNetworkSettings();
 
 
 
@@ -195,7 +204,7 @@ namespace ZC_ALM_TOOLS.Services.Common
         /// <summary>
         /// Lectura de la configuracion de PReal desde la caché en memoria. Si no está cargada, devuelve una instancia vacía para evitar nulls.
         /// </summary>
-        public static ConfigPRealSettings GetPRealConfig() => _appConfigCache?.PRealSettings;
+        public ConfigPRealSettings GetPRealConfig() => _appConfigCache?.PRealSettings ?? new ConfigPRealSettings();
 
 
 
@@ -203,7 +212,7 @@ namespace ZC_ALM_TOOLS.Services.Common
         /// <summary>
         /// Lectura de la configuracion de PInt desde la caché en memoria. Si no está cargada, devuelve una instancia vacía para evitar nulls.
         /// </summary>
-        public static ConfigPIntSettings GetPIntConfig() => _appConfigCache?.PIntSettings;
+        public ConfigPIntSettings GetPIntConfig() => _appConfigCache?.PIntSettings ?? new ConfigPIntSettings();
 
 
 
@@ -211,7 +220,7 @@ namespace ZC_ALM_TOOLS.Services.Common
         /// <summary>
         /// Lectura de la configuracion de alarmas desde la caché en memoria. Si no está cargada, devuelve una instancia vacía para evitar nulls.
         /// </summary>
-        public static ConfigAlarmSettings GetAlarmConfig() => _appConfigCache?.AlarmSettings;
+        public ConfigAlarmSettings GetAlarmConfig() => _appConfigCache?.AlarmSettings ?? new ConfigAlarmSettings();
 
 
 

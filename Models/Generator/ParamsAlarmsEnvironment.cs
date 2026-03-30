@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Extensions.DependencyInjection;
 using ZC_ALM_TOOLS.Models.Common;
 using ZC_ALM_TOOLS.Services.Common;
 using ZC_ALM_TOOLS.Services.TiaPortal;
@@ -58,12 +59,12 @@ namespace ZC_ALM_TOOLS.Models.Generator
             DbNameAlm = DbNumAlm != -1 ? $"DB{DbNumAlm}{settings.SuffixDbAlm}" : null;
 
             // 2. Validación de existencia en el proyecto de TIA Portal
-            LogService.Write($"[PARAMS-ENVIRONMENT] Validando entorno para proceso: {process.Nombre}");
+            App.ServiceProvider?.GetService<ZC_ALM_TOOLS.Services.Common.ILogService>()?.Write($"[PARAMS-ENVIRONMENT] Validando entorno para proceso: {process.Nombre}");
 
             // La tabla de variables es obligatoria
             if (tiaPlcService.FindTagTableByName(TableName) == null)
             {
-                StatusService.Set($"Error: Tabla de variables '{TableName}' no encontrada.", StatusType.Error);
+                App.ServiceProvider?.GetService<ZC_ALM_TOOLS.Services.Common.IStatusService>()?.Set($"Error: Tabla de variables '{TableName}' no encontrada.", StatusType.Error);
                 return;
             }
 
@@ -72,7 +73,7 @@ namespace ZC_ALM_TOOLS.Models.Generator
             {
                 if (tiaPlcService.FindBlockByName(DbNameReal) == null)
                 {
-                    StatusService.Set($"Error: Bloque '{DbNameReal}' no encontrado.", StatusType.Error);
+                    App.ServiceProvider?.GetService<ZC_ALM_TOOLS.Services.Common.IStatusService>()?.Set($"Error: Bloque '{DbNameReal}' no encontrado.", StatusType.Error);
                     return;
                 }
             }
@@ -81,7 +82,7 @@ namespace ZC_ALM_TOOLS.Models.Generator
             {
                 if (tiaPlcService.FindBlockByName(DbNameInt) == null)
                 {
-                    StatusService.Set($"Error: Bloque '{DbNameInt}' no encontrado.", StatusType.Error);
+                    App.ServiceProvider?.GetService<ZC_ALM_TOOLS.Services.Common.IStatusService>()?.Set($"Error: Bloque '{DbNameInt}' no encontrado.", StatusType.Error);
                     return;
                 }
             }
@@ -90,7 +91,7 @@ namespace ZC_ALM_TOOLS.Models.Generator
             {
                 if (tiaPlcService.FindBlockByName(DbNameAlm) == null)
                 {
-                    StatusService.Set($"Error: Bloque '{DbNameAlm}' no encontrado.", StatusType.Error);
+                    App.ServiceProvider?.GetService<ZC_ALM_TOOLS.Services.Common.IStatusService>()?.Set($"Error: Bloque '{DbNameAlm}' no encontrado.", StatusType.Error);
                     return;
                 }
             }

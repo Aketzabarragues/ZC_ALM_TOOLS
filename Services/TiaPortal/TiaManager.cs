@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Extensions.DependencyInjection;
 using Siemens.Engineering;
 using ZC_ALM_TOOLS.Services.Common;
 
@@ -17,6 +18,14 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
         public static Project CurrentProject { get; private set; }
 
 
+        // Método auxiliar para loguear antes o después de que exista la inyección
+        private static void SafeLog(string message, bool isError = false)
+        {
+            var logger = App.ServiceProvider?.GetService<ILogService>();
+            if (logger != null) logger.Write(message, isError);
+            else System.Diagnostics.Debug.WriteLine((isError ? "[ERROR] " : "[INFO] ") + message);
+        }
+
 
         // ==================================================================================================================
         /// <summary>
@@ -30,7 +39,7 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
             }
             catch (Exception ex)
             {
-                LogService.Write($"[TiaManager] [GetAvailableProcesses] Error buscando procesos de TIA Portal: {ex.Message}", true);
+                SafeLog($"[TiaManager] [GetAvailableProcesses] Error buscando procesos de TIA Portal: {ex.Message}", true);
                 return new List<TiaPortalProcess>();
             }
         }
@@ -51,7 +60,7 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
             }
             catch (Exception ex)
             {
-                LogService.Write($"[TiaManager] [Attach] Error al conectar (Attach) al proceso {process?.Id}: {ex.Message}", true);
+                SafeLog($"[TiaManager] [Attach] Error al conectar (Attach) al proceso {process?.Id}: {ex.Message}", true);
                 return false;
             }
         }
@@ -68,9 +77,10 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
             {
                 Process.Dispose();
                 Process = null;
-                LogService.Write("[TiaManager] [Dispose] Conexión con TIA Portal cerrada y liberada.");
+                SafeLog("[TiaManager] [Dispose] Conexión con TIA Portal cerrada y liberada.");
             }
         }
+
     }
 
 
