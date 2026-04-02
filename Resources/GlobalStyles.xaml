@@ -292,13 +292,13 @@
     <Setter Property="FontWeight" Value="SemiBold"/>
     <Setter Property="Foreground" Value="#333333"/>
     <Style.Triggers>
-      <DataTrigger Binding="{Binding Estado}" Value="Ok">
+            <DataTrigger Binding="{Binding Status}" Value="Ok">
         <Setter Property="Foreground" Value="Green"/>
       </DataTrigger>
-      <DataTrigger Binding="{Binding Estado}" Value="Error">
+            <DataTrigger Binding="{Binding Status}" Value="Error">
         <Setter Property="Foreground" Value="Red"/>
       </DataTrigger>
-      <DataTrigger Binding="{Binding Estado}" Value="Pending">
+            <DataTrigger Binding="{Binding Status}" Value="Pending">
         <Setter Property="Foreground" Value="#999999"/>
       </DataTrigger>
     </Style.Triggers>

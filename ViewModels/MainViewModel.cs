@@ -84,14 +84,14 @@ namespace ZC_ALM_TOOLS.ViewModels
         public bool IsBusy { get; set; }
 
 
-        // Comandos de Navegación (Se mantienen como RelayCommand porque son cambios instantáneos de memoria)
+        // Comandos
         public RelayCommand ShowGeneratorCommand { get; }
         public RelayCommand ShowVciCommand { get; }
         public RelayCommand ConfigSettingsCommand { get; set; }
+        public RelayCommand ReloadCacheCommand { get; set; }
 
-        // Comandos
+        // Comandos asincronos
         public AsyncRelayCommand DumpCacheCommand { get; set; }
-
 
 
         // ==================================================================================================================
@@ -126,9 +126,9 @@ namespace ZC_ALM_TOOLS.ViewModels
             ShowVciCommand = new RelayCommand(() => CurrentView = VciVM);
             ConfigSettingsCommand = new RelayCommand(() => CurrentView = SettingsVM);
 
-            // Comando Asíncrono
+            // Comandos
+            ReloadCacheCommand = new RelayCommand(OnTargetChanged);
             DumpCacheCommand = new AsyncRelayCommand(ExecuteDumpCache);
-
 
             // Suscripción al StatusService Global
             _statusService.OnStatusChanged += (msg, type) => {

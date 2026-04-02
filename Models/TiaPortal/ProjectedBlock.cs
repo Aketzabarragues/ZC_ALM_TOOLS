@@ -3,25 +3,33 @@ using ZC_ALM_TOOLS.Models.Common;
 
 namespace ZC_ALM_TOOLS.Models.TiaPortal
 {
+    // ==================================================================================================================
+    /// <summary>
+    /// Modelo que representa un bloque proyectado en TIA Portal, con información relevante para la sincronización y comparación con el bloque original.
+    /// </summary>
     public class ProjectedBlock : ObservableObject
     {
-        public string Tipo { get; set; }
-        public int NumeroProyectado { get; set; }
-        public string NombreProyectado { get; set; }
-        public string ArchivoOrigen { get; set; }
+        public string Type { get; set; }
+        public int ProjectedNumber { get; set; }
+        public string ProjectedName { get; set; }
+        public string PlcGroupPath { get; set; }
+        public string SourceFile { get; set; }
+        public int OriginalNumber { get; set; }
+        public string OriginalName { get; set; }
+        public string AbsoluteSourcePath { get; set; }
 
-        private SynchronizationStatus _estado = SynchronizationStatus.Pending;
-        public SynchronizationStatus Estado
+        private SynchronizationStatus _status = SynchronizationStatus.Pending;
+        public SynchronizationStatus Status
         {
-            get => _estado;
-            set { _estado = value; OnPropertyChanged(); }
+            get => _status;
+            set { _status = value; OnPropertyChanged(); }
         }
 
-        private string _mensaje = "Esperando comprobación...";
-        public string Mensaje
+        private string _message = "Pendiente de comprobar...";
+        public string Message
         {
-            get => _mensaje;
-            set { _mensaje = value; OnPropertyChanged(); }
+            get => _message;
+            set { _message = value; OnPropertyChanged(); }
         }
     }
 }

@@ -15,6 +15,7 @@ using Siemens.Engineering.SW.Blocks;
 using Siemens.Engineering.SW.ExternalSources;
 using Siemens.Engineering.SW.Tags;
 using Siemens.Engineering.SW.Types;
+using ZC_ALM_TOOLS.Models.Common;
 using ZC_ALM_TOOLS.Models.Generator;
 using ZC_ALM_TOOLS.Models.TiaPortal;
 using ZC_ALM_TOOLS.Services.Common;
@@ -618,6 +619,304 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
 
         // ==================================================================================================================
         /// <summary>
+        /// Importa masivamente respetando la estructura de carpetas.
+        /// </summary>
+        public async Task<bool> ImportBlocksMassivelyAsync(Dictionary<string, string> xmlPathsWithGroups, string tableNameToRollback = "", string tableGroupPathToRollback = "")
+        {
+            try
+            {
+                if (_currentPlc == null) return false;
+
+                var sortedKeys = xmlPathsWithGroups.Keys.OrderBy(p =>
+                {
+                    string name = Path.GetFileName(p).ToUpper();
+                    if (name.StartsWith("FC")) return 1;
+                    if (name.StartsWith("FB")) return 2;
+                    if (name.StartsWith("DB")) return 3;
+                    return 4;
+                }).ToList();
+
+                List<string> successfullyImportedBlocks = new List<string>();
+                bool allOk = true;
+                int counter = 1;
+
+                using (ExclusiveAccess exclusiveAccess = _tiaApp.ExclusiveAccess("Importando bloques generados..."))
+                {
+                    var rootBlockGroup = _currentPlc.BlockGroup;
+
+                    foreach (var xmlPath in sortedKeys)
+                    {
+                        if (File.Exists(xmlPath))
+                        {
+                            string fileName = Path.GetFileNameWithoutExtension(xmlPath);
+                            string targetGroupPath = xmlPathsWithGroups[xmlPath];
+
+                            _statusService.Set($"[TIA-PLC-SERVICE] Importando ({counter}/{sortedKeys.Count}): {fileName}...", StatusType.Warning);
+                            await Task.Delay(10);
+
+                            try
+                            {
+                                using (Transaction transaction = exclusiveAccess.Transaction(_currentProject, $"Import {fileName}"))
+                                {
+                                    var targetFolder = GetOrCreateBlockGroup(rootBlockGroup.Groups, targetGroupPath);
+                                    var targetBlockComposition = targetFolder != null ? targetFolder.Blocks : rootBlockGroup.Blocks;
+
+                                    targetBlockComposition.Import(new FileInfo(xmlPath), ImportOptions.Override);
+                                    transaction.CommitOnDispose();
+                                }
+                                successfullyImportedBlocks.Add(fileName);
+                            }
+                            catch (Exception blockEx)
+                            {
+                                _logService.Write($"[TIA-PLC-SERVICE] Error fatal en '{fileName}': {blockEx.Message}", true);
+                                allOk = false;
+                                break;
+                            }
+                            counter++;
+                        }
+                    }
+
+                    // --- LÓGICA DE ROLLBACK TOTAL ---
+                    if (!allOk)
+                    {
+                        _statusService.Set("[TIA-PLC-SERVICE] Error detectado. Ejecutando Rollback...", StatusType.Error);
+
+                        // 1. Borramos los bloques importados
+                        foreach (var importedName in successfullyImportedBlocks)
+                        {
+                            try
+                            {
+                                var xmlPathOriginal = sortedKeys.FirstOrDefault(k => Path.GetFileNameWithoutExtension(k) == importedName);
+                                if (xmlPathOriginal != null)
+                                {
+                                    string groupPath = xmlPathsWithGroups[xmlPathOriginal];
+                                    var targetFolder = GetOrCreateBlockGroup(rootBlockGroup.Groups, groupPath);
+                                    var blockComposition = targetFolder != null ? targetFolder.Blocks : rootBlockGroup.Blocks;
+
+                                    var blockToDelete = blockComposition.Find(importedName);
+                                    if (blockToDelete != null) blockToDelete.Delete();
+                                }
+                            }
+                            catch { }
+                        }
+
+                        // 2. Borramos la tabla de variables (Buscándola en su carpeta correspondiente)
+                        if (!string.IsNullOrEmpty(tableNameToRollback))
+                        {
+                            try
+                            {
+                                var targetFolder = GetOrCreateTagTableGroup(_currentPlc.TagTableGroup.Groups, tableGroupPathToRollback);
+                                var tagTableComposition = targetFolder != null ? targetFolder.TagTables : _currentPlc.TagTableGroup.TagTables;
+
+                                var table = tagTableComposition.Find(tableNameToRollback);
+                                if (table != null) table.Delete();
+                            }
+                            catch { }
+                        }
+
+                        // 3. LIMPIEZA DE CARPETAS VACÍAS
+                        // a) Limpiamos las carpetas de bloques
+                        foreach (var path in xmlPathsWithGroups.Values.Distinct())
+                        {
+                            CleanupEmptyBlockGroups(rootBlockGroup.Groups, path);
+                        }
+
+                        // b) Limpiamos las carpetas de tablas
+                        if (!string.IsNullOrEmpty(tableGroupPathToRollback))
+                        {
+                            CleanupEmptyTagTableGroups(_currentPlc.TagTableGroup.Groups, tableGroupPathToRollback);
+                        }
+                    }
+                }
+
+                BuildBlockCache();
+                return allOk;
+            }
+            catch (Exception ex)
+            {
+                _logService.Write($"[TIA-PLC-SERVICE] Error en importación masiva: {ex.Message}", true);
+                return false;
+            }
+        }
+
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Borra las carpetas de bloques de abajo hacia arriba, solo si están completamente vacías.
+        /// </summary>
+        private void CleanupEmptyBlockGroups(PlcBlockUserGroupComposition rootGroups, string groupPath)
+        {
+            if (string.IsNullOrEmpty(groupPath)) return;
+            string[] folders = groupPath.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries);
+
+            // Recorremos de la subcarpeta más profunda hacia la raíz
+            for (int i = folders.Length; i > 0; i--)
+            {
+                PlcBlockUserGroup currentGroup = null;
+                PlcBlockUserGroupComposition currentGroupCollection = rootGroups;
+                bool found = true;
+
+                for (int j = 0; j < i; j++)
+                {
+                    currentGroup = currentGroupCollection.Find(folders[j]);
+                    if (currentGroup == null) { found = false; break; }
+                    currentGroupCollection = currentGroup.Groups;
+                }
+
+                if (found && currentGroup != null)
+                {
+                    // Solo se borra si no tiene bloques ni otras subcarpetas
+                    if (currentGroup.Blocks.Count == 0 && currentGroup.Groups.Count == 0)
+                    {
+                        try { currentGroup.Delete(); } catch { }
+                    }
+                }
+            }
+        }
+
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Borra las carpetas de tablas de variables de abajo hacia arriba, solo si están completamente vacías.
+        /// </summary>
+        private void CleanupEmptyTagTableGroups(PlcTagTableUserGroupComposition rootGroups, string groupPath)
+        {
+            if (string.IsNullOrEmpty(groupPath)) return;
+            string[] folders = groupPath.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries);
+
+            for (int i = folders.Length; i > 0; i--)
+            {
+                PlcTagTableUserGroup currentGroup = null;
+                PlcTagTableUserGroupComposition currentGroupCollection = rootGroups;
+                bool found = true;
+
+                for (int j = 0; j < i; j++)
+                {
+                    currentGroup = currentGroupCollection.Find(folders[j]);
+                    if (currentGroup == null) { found = false; break; }
+                    currentGroupCollection = currentGroup.Groups;
+                }
+
+                if (found && currentGroup != null)
+                {
+                    if (currentGroup.TagTables.Count == 0 && currentGroup.Groups.Count == 0)
+                    {
+                        try { currentGroup.Delete(); } catch { }
+                    }
+                }
+            }
+        }
+
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Crea una nueva tabla de variables en TIA Portal (Fase 2.5)
+        /// </summary>
+        public async Task<bool> CreateTagTableAsync(string tableName)
+        {
+            try
+            {
+                if (_currentPlc == null) return false;
+                await Task.Delay(25);
+
+                using (ExclusiveAccess exclusiveAccess = _tiaApp.ExclusiveAccess("Creando Tabla de Variables..."))
+                {
+                    using (Transaction transaction = exclusiveAccess.Transaction(_currentProject, $"Crear Tabla {tableName}"))
+                    {
+                        if (FindTagTableByName(tableName) == null)
+                        {
+                            _currentPlc.TagTableGroup.TagTables.Create(tableName);
+                        }
+                        transaction.CommitOnDispose();
+                    }
+                }
+                BuildBlockCache();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logService.Write($"[TIA-PLC-SERVICE] [CreateTagTableAsync] Error creando tabla de variables '{tableName}': {ex.Message}", true);
+                return false;
+            }
+        }
+
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Importa un archivo XML de una Tabla de Variables y la ubica en su carpeta correspondiente.
+        /// </summary>
+        public async Task<bool> ImportTagTableAsync(string xmlPath, string groupPath)
+        {
+            try
+            {
+                if (_currentPlc == null || !File.Exists(xmlPath)) return false;
+
+                string fileName = Path.GetFileNameWithoutExtension(xmlPath);
+                _statusService.Set($"[TIA-PLC-SERVICE] [ImportTagTableAsync] Importando Tabla de Variables: {fileName}...", StatusType.Warning);
+                await Task.Delay(25);
+
+                using (ExclusiveAccess exclusiveAccess = _tiaApp.ExclusiveAccess("Importando Tabla de Variables..."))
+                {
+                    using (Transaction transaction = exclusiveAccess.Transaction(_currentProject, $"Importación Tabla {fileName}"))
+                    {
+                        var rootTagTableGroup = _currentPlc.TagTableGroup;
+
+                        // Buscamos o creamos la carpeta destino para la tabla
+                        var targetFolder = GetOrCreateTagTableGroup(rootTagTableGroup.Groups, groupPath);
+                        var targetTagTableComposition = targetFolder != null ? targetFolder.TagTables : rootTagTableGroup.TagTables;
+
+                        // Importamos en la carpeta correcta
+                        targetTagTableComposition.Import(new FileInfo(xmlPath), ImportOptions.Override);
+
+                        transaction.CommitOnDispose();
+                    }
+                }
+
+                _logService.Write($"[TIA-PLC-SERVICE] [ImportTagTableAsync] Tabla de variables importada con éxito: {fileName}");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logService.Write($"[TIA-PLC-SERVICE] [ImportTagTableAsync] Error al importar la tabla de variables: {ex.Message}", true);
+                return false;
+            }
+        }
+
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Helper privado para navegar o crear la estructura de carpetas de Tablas de Variables en el PLC.
+        /// </summary>
+        private PlcTagTableUserGroup GetOrCreateTagTableGroup(PlcTagTableUserGroupComposition rootGroups, string groupPath)
+        {
+            if (string.IsNullOrEmpty(groupPath)) return null;
+
+            string[] folders = groupPath.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries);
+            PlcTagTableUserGroup currentGroup = null;
+            PlcTagTableUserGroupComposition currentGroupCollection = rootGroups;
+
+            foreach (string folder in folders)
+            {
+                currentGroup = currentGroupCollection.Find(folder);
+                if (currentGroup == null)
+                {
+                    currentGroup = currentGroupCollection.Create(folder); // Si no existe, crea la carpeta en TIA Portal
+                }
+                currentGroupCollection = currentGroup.Groups; // Bajamos un nivel para la siguiente iteración
+            }
+
+            return currentGroup;
+        }
+
+
+
+        // ==================================================================================================================
+        /// <summary>
         /// Lee el XML de Siemens y extrae todas las referencias cruzadas con el formato estándar de Siemens LGF
         /// </summary>
         private string ExtractDependenciesFromXml(string xmlPath)
@@ -700,6 +999,141 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
 
         // ==================================================================================================================
         /// <summary>
+        /// Metodo principal para calcular los bloques proyectados a partir de una plantilla y un proceso, aplicando el calculo
+        /// a números y rutas de carpeta, y devolviendo una lista de ProjectedBlock con toda la información necesaria para la generación posterior.
+        /// </summary>
+        public List<ProjectedBlock> CalculateProjectedBlocks(string templateRootPath, string selectedTemplate, string processIdStr, string processCode)
+        {
+            var projectedBlocks = new List<ProjectedBlock>();
+
+            if (!int.TryParse(processIdStr, out int processId)) return projectedBlocks;
+
+            string templateIdStr = selectedTemplate.Split('_')[0];
+            if (!int.TryParse(templateIdStr, out int templateId)) return projectedBlocks;
+
+            // --- EL CÁLCULO MÁGICO (DELTA) ---
+            int templateBase = 50000 + templateId; // Ej: 50100
+            int delta = processId - templateBase;  // Ej: Proceso 500 - 50100 = -49600
+
+            string fullTemplatePath = Path.Combine(templateRootPath, selectedTemplate);
+            string blocksPath = Path.Combine(fullTemplatePath, "Bloques");
+            string tablePath = Path.Combine(fullTemplatePath, "Tabla");
+
+            if (!Directory.Exists(blocksPath))
+                throw new DirectoryNotFoundException($"Carpeta de bloques no encontrada: {blocksPath}");
+
+            string[] xmlFiles = Directory.GetFiles(blocksPath, "*.xml", SearchOption.AllDirectories);
+
+            Regex blockRegex = new Regex(@"^(FC|FB|DB)(\d+)", RegexOptions.IgnoreCase);
+            Regex numberRegex = new Regex(@"5\d{4}");
+
+            // 1. PROCESAR BLOQUES LÓGICOS
+            foreach (var filePath in xmlFiles)
+            {
+                string fileName = Path.GetFileNameWithoutExtension(filePath);
+                Match match = blockRegex.Match(fileName);
+
+                if (match.Success)
+                {
+                    string blockType = match.Groups[1].Value.ToUpper();
+                    int originalNumber = int.Parse(match.Groups[2].Value);
+
+                    // Aplicamos el salto exacto al número del bloque
+                    int projectedNumber = originalNumber >= 50000 ? originalNumber + delta : originalNumber;
+
+                    // --- CÁLCULO DE LA CARPETA ---
+                    string relativeFolderPath = Path.GetDirectoryName(filePath)
+                                                    .Replace(blocksPath, "")
+                                                    .TrimStart(Path.DirectorySeparatorChar);
+
+                    // Aplicamos el mismo salto a los números de la carpeta
+                    relativeFolderPath = numberRegex.Replace(relativeFolderPath, m =>
+                    {
+                        int num = int.Parse(m.Value);
+                        return (num + delta).ToString(); // Ej: 53100 -> 3500
+                    });
+
+                    // Reemplazamos el texto genérico de la plantilla
+                    relativeFolderPath = Regex.Replace(relativeFolderPath, "Compacto", processCode, RegexOptions.IgnoreCase);
+
+                    // --- CÁLCULO DEL NOMBRE DEL ARCHIVO ---
+                    string[] nameParts = fileName.Split('_');
+                    if (nameParts.Length >= 2)
+                    {
+                        nameParts[0] = $"{blockType}{projectedNumber}"; // Ej: DB3501
+                        nameParts[1] = processCode;                     // Ej: PINT
+                    }
+
+                    projectedBlocks.Add(new ProjectedBlock
+                    {
+                        Type = blockType,
+                        OriginalNumber = originalNumber,
+                        OriginalName = fileName,
+                        AbsoluteSourcePath = filePath,
+                        ProjectedNumber = projectedNumber,
+                        ProjectedName = string.Join("_", nameParts),
+                        SourceFile = fileName + ".xml",
+                        PlcGroupPath = relativeFolderPath,
+                        Status = SynchronizationStatus.Pending,
+                        Message = "Pendiente de comprobar..."
+                    });
+                }
+            }
+
+            // 2. PROCESAR TABLA DE VARIABLES
+            if (Directory.Exists(tablePath))
+            {
+                string[] tableFiles = Directory.GetFiles(tablePath, "*.xml", SearchOption.AllDirectories);
+
+                foreach (var tableFilePath in tableFiles)
+                {
+                    string originalTableName = Path.GetFileNameWithoutExtension(tableFilePath);
+
+                    Match tableMatch = Regex.Match(originalTableName, @"5\d{4}");
+                    int originalTableNum = tableMatch.Success ? int.Parse(tableMatch.Value) : templateBase;
+
+                    // Aplicamos el delta
+                    int projectedTableNum = tableMatch.Success ? (originalTableNum + delta) : processId;
+
+                    // --- CÁLCULO DE LA CARPETA ---
+                    string relativeFolderPath = Path.GetDirectoryName(tableFilePath)
+                                                    .Replace(tablePath, "")
+                                                    .TrimStart(Path.DirectorySeparatorChar);
+
+                    // Reemplazamos los números aplicando el Delta (Ej: 53100 -> 3500)
+                    relativeFolderPath = numberRegex.Replace(relativeFolderPath, m =>
+                    {
+                        int num = int.Parse(m.Value);
+                        return (num + delta).ToString();
+                    });
+
+                    // Reemplazamos el texto genérico
+                    relativeFolderPath = Regex.Replace(relativeFolderPath, "Compacto", processCode, RegexOptions.IgnoreCase);
+
+                    projectedBlocks.Add(new ProjectedBlock
+                    {
+                        Type = "Tabla",
+                        OriginalNumber = originalTableNum,
+                        OriginalName = originalTableName,
+                        AbsoluteSourcePath = tableFilePath,
+                        ProjectedNumber = projectedTableNum,
+                        ProjectedName = $"{projectedTableNum}_{processCode}",
+                        SourceFile = originalTableName + ".xml",
+                        PlcGroupPath = relativeFolderPath, // ¡Guardamos la carpeta calculada!
+                        Status = SynchronizationStatus.Pending,
+                        Message = "Pendiente de comprobar..."
+                    });
+                }
+            }
+
+            return projectedBlocks;
+        }
+
+
+
+
+        // ==================================================================================================================
+        /// <summary>
         /// Inyecta las dependencias en la cabecera estándar de Siemens (Requirements)
         /// </summary>
         private string InjectRequiresIntoScl(string originalScl, string dependenciesText)
@@ -732,6 +1166,103 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
             }
 
             return originalScl; // Si el archivo SCL está totalmente roto o vacío, no hacemos nada
+        }
+
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Metodo principal para preparar los bloques para su importación masiva a TIA Portal. Aplica el cálculo de números y rutas, 
+        /// y además hace una cirugía quirúrgica de reemplazo de nombres dentro del XML para asegurar que todas las referencias internas estén actualizadas.
+        /// </summary>
+        public Dictionary<string, string> PrepareBlocksForImport(
+            List<ProjectedBlock> blocksToProcess,
+            string tempDirectory,
+            string targetProcessCode)
+        {
+            var processedFiles = new Dictionary<string, string>();
+            var symbolDictionary = new Dictionary<string, string>(); // ¡El diccionario mágico!
+
+            // 1. Averiguar automáticamente el Delta y el código original a partir de los bloques
+            var sampleBlock = blocksToProcess.FirstOrDefault(b => b.OriginalNumber >= 50000);
+            int delta = sampleBlock != null ? (sampleBlock.ProjectedNumber - sampleBlock.OriginalNumber) : 0;
+
+            var sampleNameBlock = blocksToProcess.FirstOrDefault(b => b.OriginalName.Contains("_"));
+            string originalProcessCode = sampleNameBlock != null ? sampleNameBlock.OriginalName.Split('_').ElementAtOrDefault(1) : "CPR";
+
+            // 2. LLENAR DICCIONARIO CON LOS BLOQUES
+            foreach (var block in blocksToProcess)
+            {
+                if (!string.IsNullOrEmpty(block.OriginalName) && block.OriginalName != block.ProjectedName)
+                {
+                    symbolDictionary[block.OriginalName] = block.ProjectedName;
+                }
+            }
+
+            // 3. LLENAR DICCIONARIO CON VARIABLES Y CONSTANTES DE LA TABLA
+            var tableBlock = blocksToProcess.FirstOrDefault(b => b.Type == "Tabla");
+            if (tableBlock != null && File.Exists(tableBlock.AbsoluteSourcePath))
+            {
+                string tableXml = File.ReadAllText(tableBlock.AbsoluteSourcePath);
+
+                // Extraemos todos los nombres de variables y constantes buscando la etiqueta <Name>
+                MatchCollection nameMatches = Regex.Matches(tableXml, @"<Name>([^<]+)</Name>");
+
+                foreach (Match match in nameMatches)
+                {
+                    string originalName = match.Groups[1].Value;
+
+                    // Calculamos el nombre proyectado para esta variable:
+                    // a) Aplicamos el Delta a los números de la familia 50.000
+                    string projectedName = Regex.Replace(originalName, @"5\d{4}", m => {
+                        if (int.TryParse(m.Value, out int num)) return (num + delta).ToString();
+                        return m.Value;
+                    });
+
+                    // b) Reemplazamos el código del proceso (Ej: "_CPR_" por "_PINT_")
+                    if (!string.IsNullOrEmpty(originalProcessCode) && !string.IsNullOrEmpty(targetProcessCode))
+                    {
+                        projectedName = projectedName.Replace($"_{originalProcessCode}_", $"_{targetProcessCode}_");
+                    }
+
+                    // Si el nombre ha cambiado, lo añadimos al diccionario de reemplazos
+                    if (originalName != projectedName && !symbolDictionary.ContainsKey(originalName))
+                    {
+                        symbolDictionary[originalName] = projectedName;
+                    }
+                }
+            }
+
+            // 4. ORDENAR DE MÁS LARGO A MÁS CORTO
+            // Truco pro: Evita reemplazar partes de palabras (Ej: DB10 antes que DB100)
+            var sortedSymbols = symbolDictionary.Keys.OrderByDescending(k => k.Length).ToList();
+
+            // 5. APLICAR LA CIRUGÍA QUIRÚRGICA A TODOS LOS XML
+            foreach (var block in blocksToProcess)
+            {
+                if (!File.Exists(block.AbsoluteSourcePath)) continue;
+
+                string xmlContent = File.ReadAllText(block.AbsoluteSourcePath);
+
+                // a) Reemplazo del número interno estructural del bloque
+                if (block.OriginalNumber > 0 && block.OriginalNumber != block.ProjectedNumber)
+                {
+                    xmlContent = xmlContent.Replace($"<Number>{block.OriginalNumber}</Number>", $"<Number>{block.ProjectedNumber}</Number>");
+                }
+
+                // b) Reemplazo exacto usando nuestro diccionario de símbolos
+                foreach (var originalSymbol in sortedSymbols)
+                {
+                    xmlContent = xmlContent.Replace(originalSymbol, symbolDictionary[originalSymbol]);
+                }
+
+                // Guardamos el XML modificado
+                string newFilePath = Path.Combine(tempDirectory, $"{block.ProjectedName}.xml");
+                File.WriteAllText(newFilePath, xmlContent);
+                processedFiles.Add(newFilePath, block.PlcGroupPath);
+            }
+
+            return processedFiles;
         }
 
 
@@ -840,6 +1371,42 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                 return false;
             }
         }
+
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Compila TODO el bloque de software del PLC de una sola vez, resolviendo las dependencias cruzadas automáticamente.
+        /// </summary>
+        public async Task<bool> CompileSoftwareAsync()
+        {
+            try
+            {
+                if (_currentPlc == null) return false;
+
+                _statusService.Set("[TIA-PLC-SERVICE] Compilando todo el software del PLC...", StatusType.Warning);
+                await Task.Delay(25);
+
+                using (ExclusiveAccess exclusiveAccess = _tiaApp.ExclusiveAccess("Compilando Software (ZC ALM TOOLS)..."))
+                {
+                    // Obtenemos el servicio de compilación directamente del grupo de bloques
+                    var compileService = _currentPlc.BlockGroup.GetService<ICompilable>();
+                    if (compileService != null)
+                    {
+                        var result = compileService.Compile();
+                        // Compilación exitosa o con Advertencias se considera OK
+                        return result.State == CompilerResultState.Success || result.State == CompilerResultState.Warning;
+                    }
+                }
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _logService.Write($"[TIA-PLC-SERVICE] Error en compilación de software: {ex.Message}", true);
+                return false;
+            }
+        }
+
 
 
 
@@ -1106,6 +1673,33 @@ namespace ZC_ALM_TOOLS.Services.TiaPortal
                 _logService.Write($"[TIA-PLC-SERVICE] [SyncParamsAlarmsDbCommentsAsync] Error en la modificacion de DB: {ex.Message}", true);
                 return false;
             }
+        }
+
+
+
+        // ==================================================================================================================
+        /// <summary>
+        /// Helper privado para navegar o crear la estructura de carpetas (Grupos) en el PLC.
+        /// </summary>
+        private PlcBlockUserGroup GetOrCreateBlockGroup(PlcBlockUserGroupComposition rootGroups, string groupPath)
+        {
+            if (string.IsNullOrEmpty(groupPath)) return null;
+
+            string[] folders = groupPath.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries);
+            PlcBlockUserGroup currentGroup = null;
+            PlcBlockUserGroupComposition currentGroupCollection = rootGroups;
+
+            foreach (string folder in folders)
+            {
+                currentGroup = currentGroupCollection.Find(folder);
+                if (currentGroup == null)
+                {
+                    currentGroup = currentGroupCollection.Create(folder); // Si no existe, crea la carpeta en TIA Portal
+                }
+                currentGroupCollection = currentGroup.Groups; // Bajamos un nivel para la siguiente iteración
+            }
+
+            return currentGroup;
         }
 
 

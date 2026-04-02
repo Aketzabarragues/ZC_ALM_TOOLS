@@ -143,8 +143,8 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
             // Si cambian de PLC, obligamos a que vuelvan a comparar
             foreach (var block in ProjectedBlocks)
             {
-                block.Estado = SynchronizationStatus.Pending;
-                block.Mensaje = "PLC cambiado. Vuelva a comparar.";
+                block.Status = SynchronizationStatus.Pending;
+                block.Message = "PLC cambiado. Vuelva a comparar.";
             }
             CanGenerate = false;
         }
@@ -190,7 +190,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
 
 
-       // ==================================================================================================================
+        // ==================================================================================================================
         /// <summary>
         /// Metodo para rellenar la tabla con los bloques a generar
         /// </summary>
@@ -205,79 +205,37 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                 return;
             }
 
-            if (!int.TryParse(SelectedProcess.Id, out int processId)) return;
-
-            // Extraemos el ID de la plantilla desde el nombre de la carpeta (ej: "0100" -> 100)
-            string templateIdStr = SelectedTemplate.Split('_')[0];
-            if (!int.TryParse(templateIdStr, out int templateId)) return;
-
-            string templateRootPath = Path.Combine(_globalSettings.ProcessTemplatePath, SelectedTemplate);
-            string bloquesPath = Path.Combine(templateRootPath, "Bloques");
-
-            if (!Directory.Exists(bloquesPath))
+            try
             {
-                _statusService.Set($"[PROCESS-VM] [UpdateProjections] Falta la carpeta 'Bloques' en la plantilla.", StatusType.Error);
-                return;
-            }
+                // Delegamos toda la lógica de negocio, Regex y File I/O al servicio
+                var calculatedBlocks = _tiaPlcService.CalculateProjectedBlocks(
+                    _globalSettings.ProcessTemplatePath,
+                    SelectedTemplate,
+                    SelectedProcess.Id,
+                    SelectedProcess.Codigo);
 
-            // Escaneo de archivos
-            Regex regex = new Regex(@"^(FC|FB|DB)(\d+)", RegexOptions.IgnoreCase);
-            string[] archivosXml = Directory.GetFiles(bloquesPath, "*.xml", SearchOption.AllDirectories);
-
-            int basePlantillas = 50000;
-
-            foreach (var archivoPath in archivosXml)
-            {
-                string nombreArchivo = Path.GetFileNameWithoutExtension(archivoPath);
-                Match match = regex.Match(nombreArchivo);
-
-                if (match.Success)
+                if (calculatedBlocks.Count == 0)
                 {
-                    string tipoBloque = match.Groups[1].Value.ToUpper();
-                    int numeroOriginal = int.Parse(match.Groups[2].Value);
-
-                    // Cálculo matemático con tu sistema de rangos y offsets:
-                    // Ej DB53100 -> 53100 - 50000 - 100 + 200 = 3200
-                    int numeroProyectado = numeroOriginal - basePlantillas - templateId + processId;
-
-                    // Manipulación del nombre ("DB50100_CPR_PRINCIPAL" -> "DB200_COMP_PRINCIPAL")
-                    string[] parts = nombreArchivo.Split('_');
-                    if (parts.Length >= 2)
-                    {
-                        // parts[0] = "DB50100" -> Lo actualizamos a "DB200"
-                        parts[0] = $"{tipoBloque}{numeroProyectado}";
-
-                        // parts[1] = "CPR" -> Lo reemplazamos por el código del Excel ("COMP")
-                        parts[1] = SelectedProcess.Codigo;
-                    }
-
-                    // Volvemos a unir el nombre
-                    string nombreProyectadoFinal = string.Join("_", parts);
-
-                    ProjectedBlocks.Add(new ProjectedBlock
-                    {
-                        Tipo = tipoBloque,
-                        NumeroProyectado = numeroProyectado,
-                        NombreProyectado = nombreProyectadoFinal,
-                        ArchivoOrigen = nombreArchivo + ".xml",
-                        Estado = SynchronizationStatus.Pending,
-                        Mensaje = "Pendiente de comprobar..."
-                    });
+                    _statusService.Set("[PROCESS-VM] [UpdateProjections] No se encontraron archivos XML válidos en la plantilla.", StatusType.Warning);
+                    return;
                 }
+
+                // Alimentamos la ObservableCollection para que WPF renderice la tabla
+                foreach (var block in calculatedBlocks)
+                {
+                    ProjectedBlocks.Add(block);
+                }
+
+                _statusService.Set($"[PROCESS-VM] [UpdateProjections] Lista cargada. Pulsa 'Comparar con PLC' para validar los {ProjectedBlocks.Count} elementos.", StatusType.Ok);
             }
-
-            // Tabla de variables dinámica
-            ProjectedBlocks.Add(new ProjectedBlock
+            catch (DirectoryNotFoundException dirEx)
             {
-                Tipo = "Tabla",
-                NumeroProyectado = 0,
-                NombreProyectado = $"{SelectedProcess.Id}_{SelectedProcess.Codigo}",
-                ArchivoOrigen = "Generación Dinámica",
-                Estado = SynchronizationStatus.Pending,
-                Mensaje = "Pendiente de comprobar..."
-            });
-
-            _statusService.Set($"[PROCESS-VM] [UpdateProjections] Lista cargada. Pulsa 'Comparar con PLC' para validar los {ProjectedBlocks.Count} elementos.", StatusType.Ok);
+                _statusService.Set($"[PROCESS-VM] [UpdateProjections] Error de plantilla: {dirEx.Message}", StatusType.Error);
+            }
+            catch (Exception ex)
+            {
+                _statusService.Set($"[PROCESS-VM] [UpdateProjections] Error al calcular las proyecciones: {ex.Message}", StatusType.Error);
+            }
         }
 
 
@@ -317,37 +275,37 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
             // BUCLE DE MATRÍCULAS
             foreach (var bloque in ProjectedBlocks)
             {
-                bloque.Estado = SynchronizationStatus.Pending;
-                bloque.Mensaje = "Comprobando...";
+                bloque.Status = SynchronizationStatus.Pending;
+                bloque.Message = "Comprobando...";
                 await Task.Delay(50); // Refresco visual
 
-                if (bloque.Tipo == "Tabla")
+                if (bloque.Type == "Tabla")
                 {
-                    if (_tiaPlcService.FindTagTableByName(bloque.NombreProyectado) != null)
+                    if (_tiaPlcService.FindTagTableByName(bloque.ProjectedName) != null)
                     {
-                        bloque.Estado = SynchronizationStatus.Error;
-                        bloque.Mensaje = "La tabla ya existe";
+                        bloque.Status = SynchronizationStatus.Error;
+                        bloque.Message = "La tabla ya existe";
                         hayColisiones = true;
                     }
                     else
                     {
-                        bloque.Estado = SynchronizationStatus.Ok;
-                        bloque.Mensaje = "Libre";
+                        bloque.Status = SynchronizationStatus.Ok;
+                        bloque.Message = "Libre";
                     }
                 }
                 else
                 {
-                    var existente = _tiaPlcService.FindBlockByNumber(bloque.NumeroProyectado, bloque.Tipo);
+                    var existente = _tiaPlcService.FindBlockByNumber(bloque.ProjectedNumber, bloque.Type);
                     if (existente != null)
                     {
-                        bloque.Estado = SynchronizationStatus.Error;
-                        bloque.Mensaje = $"El bloque ya existe";
+                        bloque.Status = SynchronizationStatus.Error;
+                        bloque.Message = $"El bloque ya existe";
                         hayColisiones = true;
                     }
                     else
                     {
-                        bloque.Estado = SynchronizationStatus.Ok;
-                        bloque.Mensaje = "Libre";
+                        bloque.Status = SynchronizationStatus.Ok;
+                        bloque.Message = "Libre";
                     }
                 }
             }
@@ -368,25 +326,125 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
         // ==================================================================================================================
         /// <summary>
-        /// Metodo para generar el proceso desde la plantilla
+        /// Metodo para generar el proceso (Cirugía XML Profunda + Importación con Rollback)
         /// </summary>
         private async Task ExecuteGenerate()
         {
-            _statusService.Set($"[PROCESS-VM] [ExecuteGenerate] Iniciando generacion del proceso {SelectedProcess.Nombre}", StatusType.Warning);
+            _statusService.Set($"[PROCESS-VM] [ExecuteGenerate] Iniciando generación del proceso {SelectedProcess.Nombre}...", StatusType.Warning);
 
             try
             {
-                await Task.Delay(500); // Simulamos trabajo por ahora
+                string tempDirectory = AppConfigService.TempExportPathNewProcess;
+                if (Directory.Exists(tempDirectory)) Directory.Delete(tempDirectory, true);
+                Directory.CreateDirectory(tempDirectory);
 
-                // TODO: FASE 2 -> Modificar XMLs de la plantilla e inyectar tabla de variables.
+                // 1. CALCULAMOS LAS BASES Y PREPARAMOS TODOS LOS BLOQUES DE GOLPE
+                _statusService.Set("[PROCESS-VM] [ExecuteGenerate] Realizando cirugía XML offline de los bloques...", StatusType.Ok);
 
-                _statusService.Set("[PROCESS-VM] [ExecuteGenerate] ¡Generación completada con éxito!", StatusType.Ok);
+                int templateId = int.Parse(SelectedTemplate.Split('_')[0]); // Ej: Saca el 100 de "100_Plantilla"
+                string originalBaseStr = (50000 + templateId).ToString();   // Ej: "50100"
+                string projectedBaseStr = SelectedProcess.Id;               // Ej: "3100" (O la propiedad que contenga el número base real)
+
+                var allBlocks = ProjectedBlocks.ToList();
+                foreach (var block in allBlocks) block.Status = SynchronizationStatus.Pending;
+
+                // EJECUTAMOS LA CIRUGÍA CON TODOS LOS BLOQUES JUNTOS PARA NO PERDER REFERENCIAS
+                var allProcessedDict = _tiaPlcService.PrepareBlocksForImport(
+                    allBlocks,
+                    tempDirectory,
+                    SelectedProcess.Codigo);
+
+                // 2. FILTRAMOS LA TABLA DE VARIABLES Y LA SEPARAMOS DEL RESTO
+                var tagTableBlock = ProjectedBlocks.FirstOrDefault(b => b.Type == "Tabla");
+                string targetTableName = string.Empty;
+
+                if (tagTableBlock != null)
+                {
+                    _statusService.Set("[PROCESS-VM] [ExecuteGenerate] Procesando Tabla de Variables...", StatusType.Warning);
+
+                    string tableXmlPath = Path.Combine(tempDirectory, $"{tagTableBlock.ProjectedName}.xml");
+                    targetTableName = tagTableBlock.ProjectedName;
+
+                    // IMPORTAMOS LA TABLA DE VARIABLES PRIMERO
+                    bool isTableImported = await _tiaPlcService.ImportTagTableAsync(tableXmlPath, tagTableBlock.PlcGroupPath);
+
+                    if (!isTableImported)
+                    {
+                        _statusService.Set("[PROCESS-VM] [ExecuteGenerate] Abortando: Falló la importación de la Tabla de Variables.", StatusType.Error);
+                        tagTableBlock.Status = SynchronizationStatus.Error;
+                        return;
+                    }
+
+                    tagTableBlock.Status = SynchronizationStatus.Ok;
+                    tagTableBlock.Message = "Tabla inyectada";
+
+                    // Retiramos la tabla del diccionario global para no intentar importarla después como un bloque de código
+                    allProcessedDict.Remove(tableXmlPath);
+                }
+
+                await Task.Delay(25);
+
+                // 3 y 4. IMPORTAMOS EL RESTO DE BLOQUES LÓGICOS (DB, FC, FB)
+                var logicBlocks = ProjectedBlocks.Where(b => b.Type != "Tabla").ToList();
+
+                _statusService.Set("[PROCESS-VM] [ExecuteGenerate] Importando bloques a TIA Portal...", StatusType.Warning);
+
+                // Ahora allProcessedDict ya NO tiene la tabla, solo los bloques lógicos, y le pasamos el nombre de la tabla para enlazar
+                // Añadimos la ruta de la carpeta de la tabla de variables como tercer parámetro
+                bool isImportSuccessful = await _tiaPlcService.ImportBlocksMassivelyAsync(
+                    allProcessedDict,
+                    targetTableName,
+                    tagTableBlock != null ? tagTableBlock.PlcGroupPath : "");
+
+                if (!isImportSuccessful)
+                {
+                    _statusService.Set("[PROCESS-VM] [ExecuteGenerate] Falló la importación. Se ha ejecutado Rollback.", StatusType.Error);
+                    foreach (var block in logicBlocks) block.Status = SynchronizationStatus.Error;
+                    return;
+                }
+
+                // 5. COMPILAMOS TODO
+                _statusService.Set("[PROCESS-VM] [ExecuteGenerate] Compilando dependencias en TIA Portal...", StatusType.Warning);
+                foreach (var block in logicBlocks) block.Message = "Compilando...";
+
+                bool isCompilationSuccessful = await _tiaPlcService.CompileSoftwareAsync();
+
+                foreach (var block in logicBlocks)
+                {
+                    block.Status = isCompilationSuccessful ? SynchronizationStatus.Ok : SynchronizationStatus.Error;
+                    block.Message = isCompilationSuccessful ? "Generado y Compilado" : "Error en Compilación";
+                }
+
+                if (isCompilationSuccessful)
+                {
+                    _statusService.Set($"[PROCESS-VM] [ExecuteGenerate] ¡Proceso {SelectedProcess.Nombre} inyectado con éxito!", StatusType.Ok);
+                    CanGenerate = false;
+                }
+                else
+                {
+                    _statusService.Set("[PROCESS-VM] [ExecuteGenerate] Falló la importación. Se ha ejecutado Rollback.", StatusType.Error);
+
+                    foreach (var block in logicBlocks)
+                    {
+                        block.Status = SynchronizationStatus.Error;
+                        block.Message = "Rollback ejecutado";
+                    }
+
+                    if (tagTableBlock != null)
+                    {
+                        tagTableBlock.Status = SynchronizationStatus.Error;
+                        tagTableBlock.Message = "Rollback ejecutado";
+                    }
+
+                    return;
+                }
             }
             catch (Exception ex)
             {
                 _statusService.Set($"[PROCESS-VM] [ExecuteGenerate] Error crítico al generar: {ex.Message}", StatusType.Error);
             }
         }
+
 
     }
 }

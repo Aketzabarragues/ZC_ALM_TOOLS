@@ -66,7 +66,7 @@
                         <TextBlock Text="{Binding ProjectName, FallbackValue='Desconectado'}" 
                        Foreground="#007ACC" VerticalAlignment="Center" FontWeight="Bold" FontSize="14"/>
                     </StackPanel>
-                    
+
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,20,0">
                         <TextBlock Text="Selección PLC:" Foreground="#666" VerticalAlignment="Center" Margin="0,0,10,0" FontWeight="SemiBold"/>
 
@@ -84,6 +84,11 @@
                             </ComboBox.ItemTemplate>
                         </ComboBox>
 
+                        <Button Command="{Binding ReloadCacheCommand}"
+                                Style="{StaticResource SettingsButtonStyle}"
+                                ToolTip="Recargar Caché del PLC (Sincronizar con TIA Portal)"
+                                Content="🔄" Margin="10,0,0,0"/>
+
                         <Button Command="{Binding DumpCacheCommand}"
                                 Style="{StaticResource SettingsButtonStyle}"
                                 ToolTip="Exportar Caché del PLC a un archivo TXT"
@@ -92,7 +97,7 @@
                         <Button Command="{Binding ConfigSettingsCommand}"
                                 Style="{StaticResource SettingsButtonStyle}"
                                 ToolTip="Editar configuracion"
-                                Content="⚙️"/>
+                                Content="⚙️" Margin="10,0,10,0"/>
                     </StackPanel>
                 </Grid>
             </Border>

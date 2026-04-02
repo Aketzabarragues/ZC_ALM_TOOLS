@@ -29,6 +29,7 @@ namespace ZC_ALM_TOOLS.Services.Common
         public static string TempPath => Path.Combine(BasePath, "Temp");
         public static string TempExportPathXml => Path.Combine(TempPath, "Xml");
         public static string TempExportPathVci => Path.Combine(TempPath, "Vci");
+        public static string TempExportPathNewProcess => Path.Combine(TempPath, "GeneratedProcess");
         public static string AppConfigFile => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "app_config.json");
 
         private readonly ILogService _logService;
@@ -67,6 +68,7 @@ namespace ZC_ALM_TOOLS.Services.Common
                 if (!Directory.Exists(TempPath)) Directory.CreateDirectory(TempPath);
                 if (!Directory.Exists(TempExportPathXml)) Directory.CreateDirectory(TempExportPathXml);
                 if (!Directory.Exists(TempExportPathVci)) Directory.CreateDirectory(TempExportPathVci);
+                if (!Directory.Exists(TempExportPathNewProcess)) Directory.CreateDirectory(TempExportPathNewProcess);
 
                 // Comprobar si existe el archivo JSON en la ruta de ejecución
                 if (!File.Exists(AppConfigFile))
