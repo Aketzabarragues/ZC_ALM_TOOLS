@@ -27,9 +27,9 @@ namespace ZC_ALM_TOOLS.ViewModels
 
         // =================================================================================================================
         // Tia portal
-        private readonly TiaPortal _tiaPortal;
         private readonly Project _project;
-        public TiaPlcService _tiaPlcService;
+        private readonly TiaPlcCacheService _cacheService;
+
         private readonly TargetStateService _targetStateService;
 
         public ObservableCollection<TiaTarget> PlcTargets => _targetStateService.PlcTargets;
@@ -98,8 +98,9 @@ namespace ZC_ALM_TOOLS.ViewModels
         /// <summary>
         /// Constructor
         /// </summary>
-        public MainViewModel(TiaPortal tiaPortal, Project project,
-            TiaPlcService tiaPlcService,
+        public MainViewModel(
+            Project project,
+            TiaPlcCacheService cacheService,
             TargetStateService targetStateService,
             GeneratorMainViewModel generatorVM,
             VciMainViewModel vciVM,
@@ -108,9 +109,9 @@ namespace ZC_ALM_TOOLS.ViewModels
             IAppConfigService appConfigService)
         {
 
-            _tiaPortal = tiaPortal;
             _project = project;
-            _tiaPlcService = tiaPlcService;
+            _cacheService = cacheService;
+
             _targetStateService = targetStateService;
 
             _statusService = statusService;
@@ -219,8 +220,8 @@ namespace ZC_ALM_TOOLS.ViewModels
                 catch { }
 
                 // Avisamos al servicio central de que el usuario ha cambiado de PLC
-                _tiaPlcService.UpdatePlc(plc);
-                _tiaPlcService.BuildBlockCache();
+                _cacheService.UpdatePlc(plc);
+                _cacheService.BuildBlockCache();
 
                 // Avisamos a los módulos visuales
                 if (GeneratorVM != null) GeneratorVM.SelectedTarget = this.SelectedTarget;
@@ -260,7 +261,7 @@ namespace ZC_ALM_TOOLS.ViewModels
                     await Task.Run(() =>
                     {
                         // 1. Volcado del PLC (Sobrescribe/Crea el archivo)
-                        _tiaPlcService.DumpCacheToTxt(fileName);
+                        _cacheService.DumpCacheToTxt(fileName);
 
                         // 2. Append de AppConfig y Engineering Cache
                         using (StreamWriter sw = File.AppendText(fileName))

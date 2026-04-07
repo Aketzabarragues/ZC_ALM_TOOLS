@@ -21,7 +21,11 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
         // ==============================================================================
         // Servicios y cache
-        private TiaPlcService _tiaPlcService;
+        private readonly TiaPlcCacheService _cacheService;
+        private readonly TiaPlcImportExportService _importExportService;
+        private readonly TiaPlcGeneratorService _generatorService;
+        private readonly TiaPlcSyncService _syncService;
+
         private ConfigProcessSettings _processSettings;
         private Dictionary<string, List<object>> _engineeringCache;
 
@@ -75,9 +79,18 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
         /// <summary>
         /// Constructor
         /// </summary>
-        public ParamsAlarmsViewModel(TiaPlcService tiaPlcService, ILogService logService, IStatusService statusService, IAppConfigService appConfigService)
+        public ParamsAlarmsViewModel(TiaPlcCacheService cacheService,
+            TiaPlcImportExportService importExportService,
+            TiaPlcGeneratorService generatorService,
+            TiaPlcSyncService syncService,
+            ILogService logService,
+            IStatusService statusService,
+            IAppConfigService appConfigService)
         {
-            _tiaPlcService = tiaPlcService;
+            _cacheService = cacheService;
+            _generatorService = generatorService;
+            _importExportService = importExportService;
+            _syncService = syncService; // Corregido el error tipográfico aquí
             _logService = logService;
             _statusService = statusService;
             _appConfigService = appConfigService;
@@ -208,7 +221,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
         /// </summary>
         private async Task ExecuteCompare()
         {
-            if (SelectedProcess == null || _tiaPlcService == null) return;
+            if (SelectedProcess == null || _cacheService == null) return;
 
             RefreshView();
 
@@ -224,16 +237,16 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                 var env = new ParamsAlarmsEnvironment(
                     SelectedProcess, _processSettings,
                     CurrentRealParams, CurrentIntParams, CurrentAlarms,
-                    _tiaPlcService, forSync: false);
+                    _cacheService, forSync: false);
 
                 if (!env.IsValid) return;
 
                 // COMPARACIÓN DE CONSTANTES (N_MAX)
                 _logService.Write("[PARAMS-VM] [ExecuteCompare] Leyendo capacidades N_MAX...");
-                int plcMaxReal = _tiaPlcService.ReadGlobalConstant(env.TableName, env.ConstReal);
-                int plcMaxInt = _tiaPlcService.ReadGlobalConstant(env.TableName, env.ConstInt);
-                int plcMaxAlm = _tiaPlcService.ReadGlobalConstant(env.TableName, env.ConstAlm);
-                int plcMaxAlmHmi = _tiaPlcService.ReadGlobalConstant(env.TableName, env.ConstAlmHmi);
+                int plcMaxReal = _syncService.ReadGlobalConstant(env.TableName, env.ConstReal);
+                int plcMaxInt = _syncService.ReadGlobalConstant(env.TableName, env.ConstInt); // Cambio a _syncService
+                int plcMaxAlm = _syncService.ReadGlobalConstant(env.TableName, env.ConstAlm); // Cambio a _syncService
+                int plcMaxAlmHmi = _syncService.ReadGlobalConstant(env.TableName, env.ConstAlmHmi); // Cambio a _syncService
 
                 // Calculo de constante para alarmas HMI
                 int expectedAlmHmi = ((SelectedProcess.NumAlarmas / 16) - 1);
@@ -263,9 +276,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                 // Compilamos los DB antes de exportar para que no de fallos
                 _statusService.Set("[PARAMS-VM] [ExecuteCompare] Compilando Bloques de Datos en TIA Portal...", StatusType.Ok);
 
-                if (env.DbNumReal != -1) await _tiaPlcService.CompileBlockAsync(env.DbNameReal);
-                if (env.DbNumInt != -1) await _tiaPlcService.CompileBlockAsync(env.DbNameInt);
-                if (env.DbNumAlm != -1) await _tiaPlcService.CompileBlockAsync(env.DbNameAlm);
+                if (env.DbNumReal != -1) await _importExportService.CompileBlockAsync(env.DbNameReal); // Cambio a _importExportService
+                if (env.DbNumInt != -1) await _importExportService.CompileBlockAsync(env.DbNameInt); // Cambio a _importExportService
+                if (env.DbNumAlm != -1) await _importExportService.CompileBlockAsync(env.DbNameAlm); // Cambio a _importExportService
 
 
                 // ==============================================================================
@@ -278,9 +291,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                 string tempAlm = Path.Combine(tempDir, "db_alm.xml");
 
                 bool exportOk = true;
-                if (env.DbNumReal != -1) exportOk &= await _tiaPlcService.ExportBlockToXmlAsync(env.DbNameReal, tempReal);
-                if (env.DbNumInt != -1) exportOk &= await _tiaPlcService.ExportBlockToXmlAsync(env.DbNameInt, tempInt);
-                if (env.DbNumAlm != -1) exportOk &= await _tiaPlcService.ExportBlockToXmlAsync(env.DbNameAlm, tempAlm);
+                if (env.DbNumReal != -1) exportOk &= await _importExportService.ExportBlockToXmlAsync(env.DbNameReal, tempReal); // Cambio a _importExportService
+                if (env.DbNumInt != -1) exportOk &= await _importExportService.ExportBlockToXmlAsync(env.DbNameInt, tempInt); // Cambio a _importExportService
+                if (env.DbNumAlm != -1) exportOk &= await _importExportService.ExportBlockToXmlAsync(env.DbNameAlm, tempAlm); // Cambio a _importExportService
 
                 if (!exportOk)
                 {
@@ -426,7 +439,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                 return;
             }
 
-            if (SelectedProcess == null || _tiaPlcService == null) return;
+            if (SelectedProcess == null || _cacheService == null) return;
 
             _statusService.Set($"[PARAMS-VM] [ExecuteSync] Iniciando sincronización del proceso: {SelectedProcess.Nombre}", StatusType.Ok);
 
@@ -436,7 +449,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                 var env = new ParamsAlarmsEnvironment(
                     SelectedProcess, _processSettings,
                     CurrentRealParams, CurrentIntParams, CurrentAlarms,
-                    _tiaPlcService, forSync: true,
+                    _cacheService, forSync: true, // Cambio a _cacheService
                     SelectSyncReales, SelectSyncEnteros, SelectSyncAlarmas);
 
                 if (!env.IsValid) return;
@@ -448,14 +461,14 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                 int expectedAlmHmi = ((SelectedProcess.NumAlarmas / 16) - 1);
 
                 // Reales
-                if (SelectSyncReales && await _tiaPlcService.SyncGlobalConstantAsync(env.TableName, env.ConstReal, SelectedProcess.MaxPReal))
+                if (SelectSyncReales && await _syncService.SyncGlobalConstantAsync(env.TableName, env.ConstReal, SelectedProcess.MaxPReal)) // Cambio a _syncService
                 {
                     SelectedProcess.StatusPReal = SynchronizationStatus.Ok;
                     needsCompile = true;
                 }
 
                 // Enteros
-                if (SelectSyncEnteros && await _tiaPlcService.SyncGlobalConstantAsync(env.TableName, env.ConstInt, SelectedProcess.MaxPInt))
+                if (SelectSyncEnteros && await _syncService.SyncGlobalConstantAsync(env.TableName, env.ConstInt, SelectedProcess.MaxPInt)) // Cambio a _syncService
                 {
                     SelectedProcess.StatusPInt = SynchronizationStatus.Ok;
                     needsCompile = true;
@@ -464,12 +477,12 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                 // Alarmas y Alarmas HMI
                 if (SelectSyncAlarmas)
                 {
-                    if (await _tiaPlcService.SyncGlobalConstantAsync(env.TableName, env.ConstAlm, SelectedProcess.NumAlarmas))
+                    if (await _syncService.SyncGlobalConstantAsync(env.TableName, env.ConstAlm, SelectedProcess.NumAlarmas)) // Cambio a _syncService
                     {
                         SelectedProcess.StatusAlm = SynchronizationStatus.Ok;
                         needsCompile = true;
                     }
-                    if (await _tiaPlcService.SyncGlobalConstantAsync(env.TableName, env.ConstAlmHmi, expectedAlmHmi))
+                    if (await _syncService.SyncGlobalConstantAsync(env.TableName, env.ConstAlmHmi, expectedAlmHmi)) // Cambio a _syncService
                     {
                         SelectedProcess.StatusAlmHmi = SynchronizationStatus.Ok;
                     }
@@ -480,9 +493,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                 {
                     _statusService.Set("[PARAMS-VM] [ExecuteCompare] Compilando DBs tras redimensionado...", StatusType.Ok);
 
-                    if (SelectSyncReales && env.DbNumReal != -1) await _tiaPlcService.CompileBlockAsync(env.DbNameReal);
-                    if (SelectSyncEnteros && env.DbNumInt != -1) await _tiaPlcService.CompileBlockAsync(env.DbNameInt);
-                    if (SelectSyncAlarmas && env.DbNumAlm != -1) await _tiaPlcService.CompileBlockAsync(env.DbNameAlm);
+                    if (SelectSyncReales && env.DbNumReal != -1) await _importExportService.CompileBlockAsync(env.DbNameReal); // Cambio a _importExportService
+                    if (SelectSyncEnteros && env.DbNumInt != -1) await _importExportService.CompileBlockAsync(env.DbNameInt); // Cambio a _importExportService
+                    if (SelectSyncAlarmas && env.DbNumAlm != -1) await _importExportService.CompileBlockAsync(env.DbNameAlm); // Cambio a _importExportService
                 }
 
                 // Inyeccion de comentarios
@@ -497,25 +510,25 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
                 if (SelectSyncReales && env.DbNumReal != -1)
                 {
-                    commentsOk &= await _tiaPlcService.SyncParamsAlarmsDbCommentsAsync(env.DbNameReal, _processSettings.ArrayNameReal, validReals, p => p.Numero, p => p.ComentarioDB, true);
+                    commentsOk &= await _syncService.SyncParamsAlarmsDbCommentsAsync(env.DbNameReal, _processSettings.ArrayNameReal, validReals, p => p.Numero, p => p.ComentarioDB, true); // Cambio a _syncService
                 }
 
                 if (SelectSyncEnteros && env.DbNumInt != -1)
                 {
-                    commentsOk &= await _tiaPlcService.SyncParamsAlarmsDbCommentsAsync(env.DbNameInt, _processSettings.ArrayNameInt, validInts, p => p.Numero, p => p.ComentarioDB, true);
+                    commentsOk &= await _syncService.SyncParamsAlarmsDbCommentsAsync(env.DbNameInt, _processSettings.ArrayNameInt, validInts, p => p.Numero, p => p.ComentarioDB, true); // Cambio a _syncService
                 }
 
                 if (SelectSyncAlarmas && env.DbNumAlm != -1)
                 {
-                    commentsOk &= await _tiaPlcService.SyncParamsAlarmsDbCommentsAsync(env.DbNameAlm, _processSettings.ArrayNameAlm, validAlarms, a => a.Numero, a => a.ComentarioDB);
+                    commentsOk &= await _syncService.SyncParamsAlarmsDbCommentsAsync(env.DbNameAlm, _processSettings.ArrayNameAlm, validAlarms, a => a.Numero, a => a.ComentarioDB); // Cambio a _syncService
                 }
 
                 // Compilacion final tras modificar el DB
                 _statusService.Set("[PARAMS-VM] [ExecuteCompare] Guardando y realizando compilación final...", StatusType.Ok);
 
-                if (SelectSyncReales && env.DbNumReal != -1) await _tiaPlcService.CompileBlockAsync(env.DbNameReal);
-                if (SelectSyncEnteros && env.DbNumInt != -1) await _tiaPlcService.CompileBlockAsync(env.DbNameInt);
-                if (SelectSyncAlarmas && env.DbNumAlm != -1) await _tiaPlcService.CompileBlockAsync(env.DbNameAlm);
+                if (SelectSyncReales && env.DbNumReal != -1) await _importExportService.CompileBlockAsync(env.DbNameReal); // Cambio a _importExportService
+                if (SelectSyncEnteros && env.DbNumInt != -1) await _importExportService.CompileBlockAsync(env.DbNameInt); // Cambio a _importExportService
+                if (SelectSyncAlarmas && env.DbNumAlm != -1) await _importExportService.CompileBlockAsync(env.DbNameAlm); // Cambio a _importExportService
 
                 _statusService.Set("[PARAMS-VM] [ExecuteSync] Sincronización finalizada con éxito.", StatusType.Ok);
             }
@@ -539,9 +552,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
         private bool CanExecuteAction()
         {
             // Solo habilitamos si:
-            // 1. Tenemos servicio de TIA conectado
+            // 1. Tenemos servicio de TIA conectado (usando la cache)
             // 2. Tenemos un proceso seleccionado en el combo
-            return _tiaPlcService != null && SelectedProcess != null;
+            return _cacheService != null && SelectedProcess != null;
         }
 
     }

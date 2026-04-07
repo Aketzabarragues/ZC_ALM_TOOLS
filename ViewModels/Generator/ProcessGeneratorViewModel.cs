@@ -23,8 +23,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
     {
         // ==================================================================================================================
         // Tia portal
-        private TiaPlcService _tiaPlcService;
-        private TiaHmiService _tiaHmiService;
+        private readonly TiaPlcCacheService _cacheService;
+        private readonly TiaPlcImportExportService _importExportService;
+        private readonly TiaPlcGeneratorService _generatorService;
 
         private ObservableCollection<TiaTarget> _hmiTargets { get; set; }
 
@@ -81,15 +82,18 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
         /// <summary>
         /// Constructor
         /// </summary>
-        public ProcessGeneratorViewModel(TiaPlcService tiaPlcService,
-                                          TiaHmiService tiaHmiService,
-                                          TargetStateService targetStateService,
-                                          ILogService logService,
-                                          IStatusService statusService,
-                                          IAppConfigService appConfigService)
+        public ProcessGeneratorViewModel(TiaPlcCacheService cacheService,
+            TiaPlcImportExportService importExportService,
+            TiaPlcGeneratorService generatorService,
+            TargetStateService targetStateService,
+            ILogService logService,
+            IStatusService statusService,
+            IAppConfigService appConfigService)
         {
-            _tiaPlcService = tiaPlcService;
-            _tiaHmiService = tiaHmiService;
+
+            _cacheService = cacheService;
+            _importExportService = importExportService;
+            _generatorService = generatorService;
 
             _logService = logService;
             _statusService = statusService;
@@ -208,7 +212,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
             try
             {
                 // Delegamos toda la lógica de negocio, Regex y File I/O al servicio
-                var calculatedBlocks = _tiaPlcService.CalculateProjectedBlocks(
+                var calculatedBlocks = _generatorService.CalculateProjectedBlocks(
                     _globalSettings.ProcessTemplatePath,
                     SelectedTemplate,
                     SelectedProcess.Id,
@@ -246,7 +250,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
         /// </summary>
         private async Task ExecuteCompare()
         {
-            if (_tiaPlcService == null || ProjectedBlocks.Count == 0) return;
+            if (_cacheService.CurrentPlc == null || ProjectedBlocks.Count == 0) return;
 
             _statusService.Set("[PROCESS-VM] [ExecuteCompare] Validando contra TIA Portal...", StatusType.Ok);
             bool hayColisiones = false;
@@ -263,7 +267,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                     string depLimpia = dependecia.Trim();
                     if (string.IsNullOrEmpty(depLimpia)) continue;
 
-                    if (_tiaPlcService.FindBlockByName(depLimpia) == null)
+                    if (_cacheService.FindBlockByName(depLimpia) == null)
                     {
                         _statusService.Set($"[PROCESS-VM] [ExecuteCompare] Error: Falta el bloque '{depLimpia}' en el PLC (Dependencia de la plantilla).", StatusType.Error);
                         CanGenerate = false;
@@ -281,7 +285,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
                 if (bloque.Type == "Tabla")
                 {
-                    if (_tiaPlcService.FindTagTableByName(bloque.ProjectedName) != null)
+                    if (_cacheService.FindTagTableByName(bloque.ProjectedName) != null)
                     {
                         bloque.Status = SynchronizationStatus.Error;
                         bloque.Message = "La tabla ya existe";
@@ -295,7 +299,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                 }
                 else
                 {
-                    var existente = _tiaPlcService.FindBlockByNumber(bloque.ProjectedNumber, bloque.Type);
+                    var existente = _cacheService.FindBlockByNumber(bloque.ProjectedNumber, bloque.Type);
                     if (existente != null)
                     {
                         bloque.Status = SynchronizationStatus.Error;
@@ -349,7 +353,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                 foreach (var block in allBlocks) block.Status = SynchronizationStatus.Pending;
 
                 // EJECUTAMOS LA CIRUGÍA CON TODOS LOS BLOQUES JUNTOS PARA NO PERDER REFERENCIAS
-                var allProcessedDict = _tiaPlcService.PrepareBlocksForImport(
+                var allProcessedDict = _generatorService.PrepareBlocksForImport(
                     allBlocks,
                     tempDirectory,
                     SelectedProcess.Codigo);
@@ -366,7 +370,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                     targetTableName = tagTableBlock.ProjectedName;
 
                     // IMPORTAMOS LA TABLA DE VARIABLES PRIMERO
-                    bool isTableImported = await _tiaPlcService.ImportTagTableAsync(tableXmlPath, tagTableBlock.PlcGroupPath);
+                    bool isTableImported = await _importExportService.ImportTagTableAsync(tableXmlPath, tagTableBlock.PlcGroupPath);
 
                     if (!isTableImported)
                     {
@@ -391,7 +395,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
                 // Ahora allProcessedDict ya NO tiene la tabla, solo los bloques lógicos, y le pasamos el nombre de la tabla para enlazar
                 // Añadimos la ruta de la carpeta de la tabla de variables como tercer parámetro
-                bool isImportSuccessful = await _tiaPlcService.ImportBlocksMassivelyAsync(
+                bool isImportSuccessful = await _importExportService.ImportBlocksMassivelyAsync(
                     allProcessedDict,
                     targetTableName,
                     tagTableBlock != null ? tagTableBlock.PlcGroupPath : "");
@@ -407,7 +411,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                 _statusService.Set("[PROCESS-VM] [ExecuteGenerate] Compilando dependencias en TIA Portal...", StatusType.Warning);
                 foreach (var block in logicBlocks) block.Message = "Compilando...";
 
-                bool isCompilationSuccessful = await _tiaPlcService.CompileSoftwareAsync();
+                bool isCompilationSuccessful = await _importExportService.CompileSoftwareAsync();
 
                 foreach (var block in logicBlocks)
                 {

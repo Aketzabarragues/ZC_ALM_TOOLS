@@ -26,7 +26,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
         // ==================================================================================================================
         // Tia portal
-        private TiaPlcService _tiaPlcService;
+        private readonly TiaPlcCacheService _cacheService;
+        private readonly TiaPlcSyncService _syncService;
+        private readonly TiaPlcImportExportService _importExportService;
         private TiaHmiService _tiaHmiService;
 
         public string ActivePlcName { get; private set; }
@@ -103,7 +105,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
         /// <summary>
         /// Constructor
         /// </summary>
-        public DevicesViewModel(TiaPlcService tiaPlcService,
+        public DevicesViewModel(TiaPlcCacheService cacheService,
+                                TiaPlcSyncService syncService,
+                                TiaPlcImportExportService importExportService,
                                 TiaHmiService tiaHmiService,
                                 TargetStateService targetStateService,
                                 ILogService logService,
@@ -111,7 +115,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                                 IAppConfigService appConfigService,
                                 IDataService dataService)
         {
-            _tiaPlcService = tiaPlcService;
+            _cacheService = cacheService;
+            _syncService = syncService;
+            _importExportService = importExportService;
             _tiaHmiService = tiaHmiService;
 
             _logService = logService;
@@ -217,7 +223,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
         /// </summary>
         private void UpdateDimensionInfo()
         {
-            if (SelectedCategory == null || _tiaPlcService == null || _deviceSettings == null || _engineeringCache == null)
+            if (SelectedCategory == null || _cacheService == null || _deviceSettings == null || _engineeringCache == null)
             {
                 DimensionColor = "Transparent";
                 DimensionInfo = "Seleccione un PLC y Categoría";
@@ -227,13 +233,13 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
             try
             {
                 // Obtener valor del Excel
-                var env = new DevicesEnvironment(SelectedCategory, _deviceSettings, _engineeringCache, _tiaPlcService, validatePlc: false);
+                var env = new DevicesEnvironment(SelectedCategory, _deviceSettings, _engineeringCache, _cacheService, validatePlc: false);
                 int excelVal = env.ExcelNMax;
 
                 // Obtener valor del PLC (Consultar TIA o usar Caché)
                 if (!_plcCache.TryGetValue(SelectedCategory.Name, out _currentPlcNMax))
                 {
-                    _currentPlcNMax = _tiaPlcService.ReadGlobalConstant(_deviceSettings.TiaTable, SelectedCategory.PlcCountConstant);
+                    _currentPlcNMax = _syncService.ReadGlobalConstant(_deviceSettings.TiaTable, SelectedCategory.PlcCountConstant);
                     _plcCache[SelectedCategory.Name] = _currentPlcNMax;
                 }
 
@@ -268,12 +274,12 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
 
             try
             {
-                var env = new DevicesEnvironment(SelectedCategory, _deviceSettings, _engineeringCache, _tiaPlcService, validatePlc: true);
+                var env = new DevicesEnvironment(SelectedCategory, _deviceSettings, _engineeringCache, _cacheService, validatePlc: true);
                 if (!env.IsValid) return;
 
                 _statusService.Set($"[DEVICE-VM] [ExecuteSync] Inicio sincronización: {SelectedCategory.Name} ---", StatusType.Ok);
 
-                okNMax = await _tiaPlcService.SyncGlobalConstantAsync(_deviceSettings.TiaTable, SelectedCategory.PlcCountConstant, env.ExcelNMax);
+                okNMax = await _syncService.SyncGlobalConstantAsync(_deviceSettings.TiaTable, SelectedCategory.PlcCountConstant, env.ExcelNMax);
 
                 SelectedCategory.NMaxStatus = okNMax ? SynchronizationStatus.Ok : SynchronizationStatus.Error;
 
@@ -297,23 +303,23 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                                       .Where(d => d.Estado != "Eliminar")
                                       .ToList();
 
-                okConst = await _tiaPlcService.SyncDispUserConstants(SelectedCategory.TiaTable, deviceList);
+                okConst = await _syncService.SyncDispUserConstants(SelectedCategory.TiaTable, deviceList);
                 SelectedCategory.ConstantsStatus = okConst ? SynchronizationStatus.Ok : SynchronizationStatus.Error;
 
                 // COMPILACIÓN DEL DB
                 _statusService.Set("[DEVICE-VM] [ExecuteSync] Compilando DB tras redimensionado...", StatusType.Ok);
 
-                okComp = await _tiaPlcService.CompileBlockAsync(SelectedCategory.TiaDbName);
+                okComp = await _importExportService.CompileBlockAsync(SelectedCategory.TiaDbName);
 
                 if (okComp)
                 {
                     _statusService.Set("[DEVICE-VM] [ExecuteSync] Actualizando comentarios del DB...", StatusType.Ok);
 
-                    okDb = await _tiaPlcService.SyncDispDbComments(SelectedCategory.TiaDbName, SelectedCategory.TiaDbArrayName, deviceList);
+                    okDb = await _syncService.SyncDispDbComments(SelectedCategory.TiaDbName, SelectedCategory.TiaDbArrayName, deviceList);
                     SelectedCategory.DbStatus = okDb ? SynchronizationStatus.Ok : SynchronizationStatus.Error;
 
                     _statusService.Set("[DEVICE-VM] [ExecuteSync] Compilando DB tras actualizacion de comentarios...", StatusType.Ok);
-                    await _tiaPlcService.CompileBlockAsync(SelectedCategory.TiaDbName);
+                    await _importExportService.CompileBlockAsync(SelectedCategory.TiaDbName);
                 }
                 else
                 {
@@ -384,7 +390,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
             {
                 RefreshView();
 
-                var env = new DevicesEnvironment(SelectedCategory, _deviceSettings, _engineeringCache, _tiaPlcService, validatePlc: true);
+                var env = new DevicesEnvironment(SelectedCategory, _deviceSettings, _engineeringCache, _cacheService, validatePlc: true);
                 if (!env.IsValid) return;
 
                 _statusService.Set("[DEVICE-VM] [ExecuteCompare] Iniciando comparación: {SelectedCategory.Name}", StatusType.Ok);
@@ -406,7 +412,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
                 string tempXmlPath = Path.Combine(AppConfigService.TempExportPathXml, $"tabla_exportada_{SelectedCategory.TiaTable}.xml");
                 _statusService.Set($"[DEVICE-VM] [ExecuteCompare] Exportando tabla '{SelectedCategory.TiaTable}' desde TIA...", StatusType.Ok);
 
-                bool exportOk = await _tiaPlcService.ExportDispTagTableAsync(SelectedCategory.TiaTable, tempXmlPath);
+                bool exportOk = await _importExportService.ExportDispTagTableAsync(SelectedCategory.TiaTable, tempXmlPath);
 
                 if (!exportOk)
                 {
@@ -485,7 +491,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
             // 1. Tenemos servicio de TIA conectado
             // 2. Tenemos una categoría seleccionada en el combo
             // 3. Hay dispositivos en la lista (no está vacía)
-            return _tiaPlcService != null && SelectedCategory != null && CurrentDevices.Count > 0;
+            return _cacheService != null && SelectedCategory != null && CurrentDevices.Count > 0;
         }
 
     }

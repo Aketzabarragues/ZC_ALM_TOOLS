@@ -18,7 +18,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
     /// </summary>
     public class VciAuditViewModel : ObservableObject
     {
-        private readonly TiaPlcService _tiaPlcService;
+        // Nuevos servicios inyectados
+        private readonly TiaPlcCacheService _cacheService;
+        private readonly TiaPlcGeneratorService _generatorService;
 
         private ObservableCollection<VciSelectableItem> _blocks;
         public ObservableCollection<VciSelectableItem> Blocks
@@ -41,11 +43,13 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
         /// Constructor
         /// </summary>
         public VciAuditViewModel(
-            TiaPlcService tiaPlcService, 
-            ILogService logService, 
+            TiaPlcCacheService cacheService,
+            TiaPlcGeneratorService generatorService,
+            ILogService logService,
             IStatusService statusService)
         {
-            _tiaPlcService = tiaPlcService;
+            _cacheService = cacheService;
+            _generatorService = generatorService;
             _logService = logService;
             _statusService = statusService;
 
@@ -69,7 +73,8 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                 _statusService.Set("[VCI-AUDIT-VM] [ExecuteLoadBlocks] Cargando bloques para auditoría...", StatusType.Ok);
                 await Task.Delay(50); // Pausa visual para que WPF pinte el mensaje
 
-                var allBlocks = _tiaPlcService.GetAllBlocks();
+                // Uso de la caché para obtener todos los bloques
+                var allBlocks = _cacheService.GetAllBlocks();
 
                 // Filtramos para mostrar SOLO los bloques cuyas dependencias se pueden actualizar.
                 var selectableBlocks = allBlocks
@@ -138,14 +143,15 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
 
             await Task.Delay(50); // Pausa visual antes del trabajo pesado
 
-            // Ejecutamos en segundo plano para que la UI no se quede "No responde"
-            bool success = await _tiaPlcService.UpdateMassiveSclDependencies(selectedBlocks);
+            // Llamamos al nuevo servicio generador para hacer la actualización masiva SCL
+            bool success = await _generatorService.UpdateMassiveSclDependencies(selectedBlocks);
 
             if (success)
             {
                 _statusService.Set("[VCI-AUDIT] [ExecuteUpdateDependencies] Dependencias actualizadas y bloques re-importados con éxito.", StatusType.Ok);
 
-                _tiaPlcService.BuildBlockCache();
+                // Mandamos reconstruir la caché al servicio correspondiente
+                _cacheService.BuildBlockCache();
 
                 // Recargamos los datos actualizados
                 await ExecuteLoadBlocks();

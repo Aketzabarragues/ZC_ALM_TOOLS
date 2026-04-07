@@ -21,7 +21,8 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
     /// </summary>
     public class VciMappingViewModel : ObservableObject
     {
-        private readonly TiaPlcService _tiaPlcService;
+        // Nuevos servicios inyectados
+        private readonly TiaPlcCacheService _cacheService;
         private readonly TiaVciService _tiaVciService;
 
         // Esta propiedad se actualiza automáticamente desde el VciMainViewModel
@@ -73,14 +74,16 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
         /// <summary>
         /// Constructor
         /// </summary>
-        public VciMappingViewModel(TiaPlcService tiaPlcService, TiaVciService tiaVciService, ILogService logService, IStatusService statusService)
+        public VciMappingViewModel(
+            TiaPlcCacheService cacheService,
+            TiaVciService tiaVciService,
+            ILogService logService,
+            IStatusService statusService)
         {
-            _tiaPlcService = tiaPlcService;
+            _cacheService = cacheService;
+            _tiaVciService = tiaVciService;
             _logService = logService;
             _statusService = statusService;
-            
-            _tiaPlcService = tiaPlcService;
-            _tiaVciService = tiaVciService;
 
             MappingActions = new ObservableCollection<VciMappingAction>();
             WorkspaceStatusText = "Esperando análisis...";
@@ -140,7 +143,8 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                 _statusService.Set("[VCI-MAPPING-VM] [ExecuteAnalyzeProject] Extrayendo bloques del PLC...", StatusType.Ok);
                 await Task.Delay(50);
 
-                var plcBlocks = _tiaPlcService.GetAllBlocks();
+                // Consulta a la caché en lugar del servicio antiguo
+                var plcBlocks = _cacheService.GetAllBlocks();
                 _logService.Write($"[VCI-MAPPING-VM] [ExecuteAnalyzeProject] Bloques recuperados de la caché del PLC: {plcBlocks.Count()}");
 
                 // Consultamos a Tia portal el estado
@@ -311,7 +315,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
 
                 foreach (var item in itemsToMap)
                 {
-                    var plcBlock = _tiaPlcService.FindBlockByName(item.BlockName);
+                    // Consulta a la caché para buscar el bloque COM original
+                    var plcBlock = _cacheService.FindBlockByName(item.BlockName);
+
                     if (plcBlock != null)
                     {
                         string relativePath = item.DiskPath.StartsWith(basePath, StringComparison.OrdinalIgnoreCase)
@@ -395,7 +401,8 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                 var batchList = new List<(string BlockName, IEngineeringObject PlcObject)>();
                 foreach (var item in itemsToUnmap)
                 {
-                    var plcBlock = _tiaPlcService.FindBlockByName(item.BlockName);
+                    // Consulta a la caché para encontrar el objeto original
+                    var plcBlock = _cacheService.FindBlockByName(item.BlockName);
                     if (plcBlock != null) batchList.Add((item.BlockName, plcBlock));
                 }
 
@@ -413,8 +420,6 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                 _statusService.Set($"[VCI-MAPPING-VM] [ExecuteUnmapBlocks] Error al desvincular mapeos: {ex.Message}", StatusType.Error);
             }
         }
-
-
 
     }
 }

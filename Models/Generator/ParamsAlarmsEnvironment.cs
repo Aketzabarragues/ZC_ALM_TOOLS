@@ -32,14 +32,14 @@ namespace ZC_ALM_TOOLS.Models.Generator
             IEnumerable<Parameter> reales,
             IEnumerable<Parameter> enteros,
             IEnumerable<Alarms> alarmas,
-            TiaPlcService tiaPlcService,
+            TiaPlcCacheService cacheService,
             bool forSync = false,
             bool checkReales = true,
             bool checkEnteros = true,
             bool checkAlarmas = true)
         {
             // Validaciones iniciales de nulidad
-            if (process == null || settings == null || tiaPlcService == null) return;
+            if (process == null || settings == null || cacheService == null) return;
 
             // 1. Construcción dinámica de nombres según estándar del JSON
             TableName = $"{process.Id}_{process.Nombre}";
@@ -59,39 +59,39 @@ namespace ZC_ALM_TOOLS.Models.Generator
             DbNameAlm = DbNumAlm != -1 ? $"DB{DbNumAlm}{settings.SuffixDbAlm}" : null;
 
             // 2. Validación de existencia en el proyecto de TIA Portal
-            App.ServiceProvider?.GetService<ZC_ALM_TOOLS.Services.Common.ILogService>()?.Write($"[PARAMS-ENVIRONMENT] Validando entorno para proceso: {process.Nombre}");
+            App.ServiceProvider?.GetService<ILogService>()?.Write($"[PARAMS-ENVIRONMENT] Validando entorno para proceso: {process.Nombre}");
 
             // La tabla de variables es obligatoria
-            if (tiaPlcService.FindTagTableByName(TableName) == null)
+            if (cacheService.FindTagTableByName(TableName) == null)
             {
-                App.ServiceProvider?.GetService<ZC_ALM_TOOLS.Services.Common.IStatusService>()?.Set($"Error: Tabla de variables '{TableName}' no encontrada.", StatusType.Error);
+                App.ServiceProvider?.GetService<IStatusService>()?.Set($"Error: Tabla de variables '{TableName}' no encontrada.", StatusType.Error);
                 return;
             }
 
             // Validación condicional de bloques (solo si hay datos y se requiere check)
             if ((!forSync || checkReales) && DbNameReal != null)
             {
-                if (tiaPlcService.FindBlockByName(DbNameReal) == null)
+                if (cacheService.FindBlockByName(DbNameReal) == null)
                 {
-                    App.ServiceProvider?.GetService<ZC_ALM_TOOLS.Services.Common.IStatusService>()?.Set($"Error: Bloque '{DbNameReal}' no encontrado.", StatusType.Error);
+                    App.ServiceProvider?.GetService<IStatusService>()?.Set($"Error: Bloque '{DbNameReal}' no encontrado.", StatusType.Error);
                     return;
                 }
             }
 
             if ((!forSync || checkEnteros) && DbNameInt != null)
             {
-                if (tiaPlcService.FindBlockByName(DbNameInt) == null)
+                if (cacheService.FindBlockByName(DbNameInt) == null)
                 {
-                    App.ServiceProvider?.GetService<ZC_ALM_TOOLS.Services.Common.IStatusService>()?.Set($"Error: Bloque '{DbNameInt}' no encontrado.", StatusType.Error);
+                    App.ServiceProvider?.GetService<IStatusService>()?.Set($"Error: Bloque '{DbNameInt}' no encontrado.", StatusType.Error);
                     return;
                 }
             }
 
             if ((!forSync || checkAlarmas) && DbNameAlm != null)
             {
-                if (tiaPlcService.FindBlockByName(DbNameAlm) == null)
+                if (cacheService.FindBlockByName(DbNameAlm) == null)
                 {
-                    App.ServiceProvider?.GetService<ZC_ALM_TOOLS.Services.Common.IStatusService>()?.Set($"Error: Bloque '{DbNameAlm}' no encontrado.", StatusType.Error);
+                    App.ServiceProvider?.GetService<IStatusService>()?.Set($"Error: Bloque '{DbNameAlm}' no encontrado.", StatusType.Error);
                     return;
                 }
             }

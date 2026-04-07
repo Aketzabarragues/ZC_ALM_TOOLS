@@ -19,7 +19,9 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
     public class VciDocGeneratorViewModel : ObservableObject
     {
 
-        private readonly TiaPlcService _tiaPlcService;
+        // Nuevos servicios inyectados
+        private readonly TiaPlcCacheService _cacheService;
+        private readonly TiaPlcImportExportService _importExportService;
 
         public ObservableCollection<VciSelectableItem> PlcItems { get; set; }
 
@@ -38,9 +40,15 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
         /// <summary>
         /// Constructor
         /// </summary>
-        public VciDocGeneratorViewModel(TiaPlcService tiaPlcService, ILogService logService, IStatusService statusService, IAppConfigService appConfigService)
+        public VciDocGeneratorViewModel(
+            TiaPlcCacheService cacheService,
+            TiaPlcImportExportService importExportService,
+            ILogService logService,
+            IStatusService statusService,
+            IAppConfigService appConfigService)
         {
-            _tiaPlcService = tiaPlcService;
+            _cacheService = cacheService;
+            _importExportService = importExportService;
             _logService = logService;
             _statusService = statusService;
             _appConfigService = appConfigService;
@@ -68,8 +76,8 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
 
                 PlcItems.Clear();
 
-                // 1. Extracción de Bloques (FC, FB, OB, DB)
-                var blocks = _tiaPlcService.GetAllBlocks();
+                // 1. Extracción de Bloques (FC, FB, OB, DB) - Ahora desde la Caché
+                var blocks = _cacheService.GetAllBlocks();
                 _logService.Write($"[VCI-DOC-GENERATOR] [ExecuteLoadItems] Bloques recuperados de la caché: {blocks?.Count ?? 0}");
 
                 // Extracción de bloques exportables (SCL, DB, STL)
@@ -102,8 +110,8 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                     }
                 }
 
-                // Extracción de Tipos de Datos (UDT)
-                var types = _tiaPlcService.GetAllTypes();
+                // Extracción de Tipos de Datos (UDT) - Ahora desde la Caché
+                var types = _cacheService.GetAllTypes();
                 _logService.Write($"[VCI-DOC-GENERATOR] [ExecuteLoadItems] UDTs recuperados de la caché: {types?.Count ?? 0}");
 
                 if (types != null)
@@ -256,8 +264,8 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                         File.Delete(filePath);
                     }
 
-                    // Llamamos a nuestra nueva función en TiaPlcService
-                    bool isSuccess = await _tiaPlcService.ExportAsSourceAsync(item.OriginalItem, filePath);
+                    // Llamamos a nuestra nueva función en TiaPlcImportExportService
+                    bool isSuccess = await _importExportService.ExportAsSourceAsync(item.OriginalItem, filePath);
 
                     if (isSuccess)
                     {

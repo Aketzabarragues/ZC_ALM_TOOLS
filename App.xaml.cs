@@ -90,25 +90,29 @@ namespace ZC_ALM_TOOLS
 
         private void ConfigureServices(IServiceCollection services)
         {
-            // 1. Singleton de TIA Portal obtenidos del Launcher
+            // Singletons de TIA Portal (Abstracciones Directas)
             services.AddSingleton(TiaManager.Process);
             services.AddSingleton(TiaManager.CurrentProject);
 
-            // 2. Servicios Comunes (Nuevas Abstracciones)
+            // Singleton de Servicios Comunes
             services.AddSingleton<ILogService, AppLogService>();
             services.AddSingleton<IStatusService, AppStatusService>();
             services.AddSingleton<IAppConfigService, AppConfigService>();
 
-            // 3. Servicios de Estado Compartido
+            // Singleton de Servicios de Estado
             services.AddSingleton<TargetStateService>();
 
-            // 4. Servicios de Negocio 
-            services.AddSingleton<TiaPlcService>();
+            // Singleton de Servicios de TIA Portal
+            services.AddSingleton<TiaPlcCacheService>();
+            services.AddSingleton<TiaLibraryService>();
+            services.AddSingleton<TiaPlcImportExportService>();
+            services.AddSingleton<TiaPlcSyncService>();
+            services.AddSingleton<TiaPlcGeneratorService>();
             services.AddSingleton<TiaHmiService>();
             services.AddSingleton<TiaVciService>();
             services.AddSingleton<IDataService, DataService>();
 
-            // 5. ViewModels Hijos (VCI)
+            // Singletons de ViewModels Secundarios
             services.AddSingleton<VciMappingViewModel>();
             services.AddSingleton<VciAuditViewModel>();
             services.AddSingleton<VciDocGeneratorViewModel>();
@@ -116,13 +120,13 @@ namespace ZC_ALM_TOOLS
             services.AddSingleton<ParamsAlarmsViewModel>();
             services.AddSingleton<ProcessGeneratorViewModel>();
 
-            // 6. ViewModels Principales
+            // Singleton de ViewModels Principales
             services.AddSingleton<GeneratorMainViewModel>();
             services.AddSingleton<VciMainViewModel>();
             services.AddSingleton<SettingsMainViewModel>();
             services.AddSingleton<MainViewModel>();
 
-            // 7. Views
+            // Singleton de la MainWindow
             services.AddTransient<MainWindow>();
         }
 

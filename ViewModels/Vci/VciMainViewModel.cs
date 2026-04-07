@@ -24,8 +24,7 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
         // Tia portal
         private readonly Project _tiaproject;
         private readonly TiaPortal _tiaPortal;
-        private TiaPlcService _tiaPlcService;
-        private TiaVciService _tiaVciService;
+        private readonly TiaVciService _tiaVciService;
 
         private readonly TargetStateService _targetStateService;
         public ObservableCollection<TiaTarget> PlcTargets => _targetStateService.PlcTargets;
@@ -90,25 +89,22 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
         public AsyncRelayCommand ChangeWorkspaceFolderCommand { get; }
 
 
-
         // ==================================================================================================================
         /// <summary>
         /// Constructor
         /// </summary>
-        public VciMainViewModel(TiaPortal tiaPortal, 
-            Project project, 
-            TiaPlcService tiaPlcService, 
-            TiaVciService tiaVciService, 
+        public VciMainViewModel(TiaPortal tiaPortal,
+            Project project,
+            TiaVciService tiaVciService,
             TargetStateService targetStateService,
-            VciMappingViewModel mappingVM, 
-            VciAuditViewModel auditVM, 
+            VciMappingViewModel mappingVM,
+            VciAuditViewModel auditVM,
             VciDocGeneratorViewModel docGeneratorVM,
-            ILogService logService, 
+            ILogService logService,
             IStatusService statusService)
         {
             _tiaPortal = tiaPortal;
             _tiaproject = project;
-            _tiaPlcService = tiaPlcService;
             _tiaVciService = tiaVciService;
             _targetStateService = targetStateService;
             _logService = logService;
@@ -329,8 +325,5 @@ namespace ZC_ALM_TOOLS.ViewModels.Vci
                 }
             }
         }
-
-
-
     }
 }

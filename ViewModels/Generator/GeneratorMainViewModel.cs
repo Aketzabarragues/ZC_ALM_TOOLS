@@ -25,9 +25,6 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
     {
 
         // =================================================================================================================
-        // Tia portal
-        private readonly TiaPlcService _tiaPlcService;
-        private readonly TiaHmiService _tiaHmiService;
         private readonly TargetStateService _targetStateService;
 
         public ObservableCollection<TiaTarget> PlcTargets => _targetStateService.PlcTargets;
@@ -92,22 +89,17 @@ namespace ZC_ALM_TOOLS.ViewModels.Generator
         /// <summary>
         /// Constructor
         /// </summary>
-        public GeneratorMainViewModel(TiaPlcService tiaPlcService,
-                                       TiaHmiService tiaHmiService,
-                                       TargetStateService targetStateService,
-                                       DevicesViewModel devicesVM,
-                                       ParamsAlarmsViewModel paramsAlarmsVM,
-                                       ProcessGeneratorViewModel processGeneratorVM, 
-                                       ILogService logService, IStatusService statusService,
-                                       IAppConfigService appConfigService,
-                                       IDataService dataService)
+        public GeneratorMainViewModel(
+            TargetStateService targetStateService,
+            DevicesViewModel devicesVM,
+            ParamsAlarmsViewModel paramsAlarmsVM,
+            ProcessGeneratorViewModel processGeneratorVM, 
+            ILogService logService, IStatusService statusService,
+            IAppConfigService appConfigService,
+            IDataService dataService)
         {
 
-            
 
-            // Inicializamos servicios de Tia portal
-            _tiaPlcService = tiaPlcService;
-            _tiaHmiService = tiaHmiService;
             _targetStateService = targetStateService;
 
             _logService = logService;
