@@ -1,0 +1,6 @@
+siemens_tia_scripting
+psutil
+questionary
+pandas
+openpyxl
+rich

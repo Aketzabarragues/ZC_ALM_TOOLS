@@ -29,3 +29,5 @@ appsettings.Development.json
 *.tmp
 *.bak
 TestResults/
+.build/
+__pycache__/
