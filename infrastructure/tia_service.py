@@ -13,11 +13,19 @@ from pathlib import Path
 from typing import Any, Self
 
 import psutil
-import siemens_tia_scripting as ts
 
 from core.models import BloquePLC
 from infrastructure.tia_scanner import TIAScanner
 from infrastructure.tia_importer import TIAImporter
+from infrastructure.tia_runtime_loader import load_siemens_tia
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    # Solo para linter (Pylance/Mypy) - no se ejecuta en runtime
+    import siemens_tia_scripting as ts
+else:
+    # En runtime, cargamos dinámicamente desde _MEIPASS (PyInstaller) o site-packages
+    ts = load_siemens_tia()  # type: ignore[assignment]
 
 __all__ = ["TIAServiceError", "TIAService"]
 
@@ -137,6 +145,9 @@ class TIAService:
                 self._portal = ts.attach_portal(
                     portal_mode=ts.Enums.PortalMode.WithGraphicalUserInterface  # type: ignore[arg-type]
                 )
+
+            assert self._portal is not None, "Fallo critico: El objeto Portal es None tras attach."
+
             pid = self._portal.get_process_id()
             self._logger.info(f"Successfully attached to TIA Portal (PID={pid}).")
         except Exception as e:
