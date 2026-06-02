@@ -9,7 +9,7 @@
 **ZC ALM TOOLS** es una herramienta de automatización avanzada diseñada para ingenieros de automatización industrial que trabajan con Siemens TIA Portal. La aplicación permite:
 
 - **Lectura de datos desde Excel**: Extrae procesos, parámetros (PReal, PInt) y alarmas de un libro de cálculo maestro.
-- **Inyección masiva de bloques**: Genera y移植 bloques PLC (DBs, FCs, FBs) desde plantillas XML mutadas con datos específicos del proceso.
+- **Inyección masiva de bloques**: Genera y modifica bloques PLC (DBs, FCs, FBs) desde plantillas XML mutadas con datos específicos del proceso.
 - **Manipulación en vivo (COM)**: Modifica directamente las constantes de dimensionamiento (`N_MAX_PREAL`, `N_MAX_PINT`, etc.) en la memoria RAM del PLC sin necesidad de exportar/importar.
 
 ---
@@ -352,7 +352,7 @@ La ruta de plantillas se almacena en `config.json` (persistente entre sesiones):
 
 ```json
 {
-  "template_path": "C:/Zeus Control/Plantillas"
+  "template_path": "C:/Plantillas"
 }
 ```
 
@@ -376,6 +376,8 @@ La ruta de plantillas se almacena en `config.json` (persistente entre sesiones):
 ## Licencia y Autores
 
 **ZC ALM TOOLS** - Python Edition  
-Desarrollado con Siemens TIA Portal Openness API
+Desarrollado por ABH con Siemens TIA Portal Openness API
 
 > ⚠️ **Nota:** Esta herramienta manipula directamente la configuración del PLC. Úsela con precaución y siempre realice backup de sus proyectos antes de ejecutar operaciones masivas.
+
+---
