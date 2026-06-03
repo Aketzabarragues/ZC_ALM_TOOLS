@@ -4,3 +4,4 @@ questionary
 pandas
 openpyxl
 rich
+pyinstaller

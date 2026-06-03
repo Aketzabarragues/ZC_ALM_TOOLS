@@ -211,18 +211,25 @@ def _flujo_generar_procesos(
         # --- 2. SINCRONIZAR TEXTOS (COMENTARIOS DB) ---
         console.print("[cyan]⏳ 3/3: Sincronizando textos y descripciones...[/cyan]")
         uc_sync = SincronizarTextosUseCase(tia, session.scanner)
-        nombre_upper = proceso_destino.nombre.upper() if proceso_destino.nombre else ""
-        codigo_upper = proceso_destino.codigo.upper() if proceso_destino.codigo else ""
-
-        def pertenece_al_proceso(p_proceso: str) -> bool:
-            if not p_proceso:
-                return False
-            p_upper = p_proceso.upper()
-            return p_upper == nombre_upper or p_upper == codigo_upper
-
-        preal_proc = [p for p in preal_list if hasattr(p, 'proceso') and pertenece_al_proceso(p.proceso)]
-        pint_proc = [p for p in pint_list if hasattr(p, 'proceso') and pertenece_al_proceso(p.proceso)]
-        alm_proc = [a for a in alarmas_list if hasattr(a, 'proceso') and pertenece_al_proceso(a.proceso)]
+        # Usar helper module-level (sin closures duplicadas)
+        preal_proc = [
+            p for p in preal_list
+            if hasattr(p, 'proceso') and _pertenece_al_proceso(
+                p.proceso, proceso_destino.nombre, proceso_destino.codigo
+            )
+        ]
+        pint_proc = [
+            p for p in pint_list
+            if hasattr(p, 'proceso') and _pertenece_al_proceso(
+                p.proceso, proceso_destino.nombre, proceso_destino.codigo
+            )
+        ]
+        alm_proc = [
+            a for a in alarmas_list
+            if hasattr(a, 'proceso') and _pertenece_al_proceso(
+                a.proceso, proceso_destino.nombre, proceso_destino.codigo
+            )
+        ]
 
         tareas: list[dict[str, Any]] = []
 
@@ -295,18 +302,25 @@ def _flujo_sincronizar_textos(
     if not proceso:
         return
 
-    nombre_upper = proceso.nombre.upper() if proceso.nombre else ""
-    codigo_upper = proceso.codigo.upper() if proceso.codigo else ""
-
-    def pertenece_al_proceso(p_proceso: str) -> bool:
-        if not p_proceso:
-            return False
-        p_upper = p_proceso.upper()
-        return p_upper == nombre_upper or p_upper == codigo_upper
-
-    preal_proc = [p for p in preal_list if hasattr(p, 'proceso') and pertenece_al_proceso(p.proceso)]
-    pint_proc = [p for p in pint_list if hasattr(p, 'proceso') and pertenece_al_proceso(p.proceso)]
-    alm_proc = [a for a in alarmas_list if hasattr(a, 'proceso') and pertenece_al_proceso(a.proceso)]
+    # Usar helper module-level (sin closures duplicadas)
+    preal_proc = [
+        p for p in preal_list
+        if hasattr(p, 'proceso') and _pertenece_al_proceso(
+            p.proceso, proceso.nombre, proceso.codigo
+        )
+    ]
+    pint_proc = [
+        p for p in pint_list
+        if hasattr(p, 'proceso') and _pertenece_al_proceso(
+            p.proceso, proceso.nombre, proceso.codigo
+        )
+    ]
+    alm_proc = [
+        a for a in alarmas_list
+        if hasattr(a, 'proceso') and _pertenece_al_proceso(
+            a.proceso, proceso.nombre, proceso.codigo
+        )
+    ]
 
     console.print(
         f"\n[dim]Datos encontrados en Excel para '{proceso.nombre}': "
@@ -601,6 +615,8 @@ def run(version: str | None = None) -> None:
     tia: TIAService | None = None
 
     try:
+        tia = TIAService(version=version, scanner=session.scanner)
+
         if connection_mode == "open_new":
             # === ABRIR PROYECTO NUEVO ===
             ruta_proyecto = seleccionar_proyecto_tia()
@@ -609,7 +625,6 @@ def run(version: str | None = None) -> None:
                 return
 
             project_path = Path(ruta_proyecto)
-            tia = TIAService(version=version, scanner=session.scanner)
 
             # Spinner de Rich mientras se abre TIA Portal (puede tardar 20-60s)
             with console.status(
@@ -620,29 +635,29 @@ def run(version: str | None = None) -> None:
                 tia.open_new_portal(project_path)
 
             logger.info(f"TIAService abriendo en nueva instancia con proyecto: {project_path.name}")
-        else:
-            # === CONECTAR A INSTANCIA ABIERTA ===
-            tia = TIAService(version=version, scanner=session.scanner)
-            tia.__enter__()
 
-        # Validación de seguridad
-        assert tia is not None and tia._portal is not None, (
-            "Fallo critico: TIAService no conecto correctamente."
-        )
-        logger.info(f"TIAService creado con scanner inyectado. Scanner ID: {id(session.scanner)}")
+        # Context manager unificado (idempotente gracias a __enter__)
+        # tia.open_new_portal() ya pobló self._portal; para connect_open,
+        # __enter__() detecta _portal is None y llama a _attach().
+        with tia:
+            if tia._portal is None:
+                raise RuntimeError(
+                    "Fallo critico: TIAService no conecto correctamente."
+                )
+            logger.info(f"TIAService creado con scanner inyectado. Scanner ID: {id(session.scanner)}")
 
-        # Llamada al bucle principal con el TIAService ya conectado
-        _flujo_principal_con_tia(
-            tia=tia,
-            parser=parser,
-            ruta_excel=ruta_excel,
-            procesos=procesos,
-            preal_list=preal_list,
-            pint_list=pint_list,
-            alarmas_list=alarmas_list,
-            session=session,
-            logger=logger,
-        )
+            # Llamada al bucle principal con el TIAService ya conectado
+            _flujo_principal_con_tia(
+                tia=tia,
+                parser=parser,
+                ruta_excel=ruta_excel,
+                procesos=procesos,
+                preal_list=preal_list,
+                pint_list=pint_list,
+                alarmas_list=alarmas_list,
+                session=session,
+                logger=logger,
+            )
 
     except PortalNotRunningError:
         logger.error("TIA Portal no está ejecutándose.")
@@ -656,13 +671,6 @@ def run(version: str | None = None) -> None:
     except TIAServiceError as e:
         logger.exception("Error inesperado en TIAService.")
         print(f"ERROR: {e}")
-    finally:
-        # Detach garantizado en ambos modos
-        if tia is not None and tia._portal is not None:
-            try:
-                tia._detach()
-            except Exception as e:
-                logger.warning(f"Error durante detach final: {e}")
 
     logger.info("Flujo de automatización finalizado.")
 

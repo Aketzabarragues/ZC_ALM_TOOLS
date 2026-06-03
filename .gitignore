@@ -7,7 +7,9 @@ __pycache__/
 # PyInstaller / Build
 build/
 dist/
-*.spec
+# zc_alm_tools.spec es parte del codigo fuente (NO se ignora)
+zc_alm_tools.spec
+*.spec.bak
 *.pyd
 
 # TIA Portal temporales

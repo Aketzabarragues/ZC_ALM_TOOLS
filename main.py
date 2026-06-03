@@ -25,7 +25,8 @@ if sys.platform == "win32":
         sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 from application.automation_flow import run as automation_run
-from core.logger import setup_logging
+from core.logger import setup_logging, set_log_levels
+from infrastructure import config_manager
 
 # --- CONFIGURACIÓN DE DEBUG ---
 ENABLE_FILE_LOGGING: bool = True
@@ -43,6 +44,13 @@ def main() -> None:
     if sys.version_info < (3, 12) or sys.version_info >= (3, 15):
         logger.error("Versión de Python no soportada. Se requiere 3.12, 3.13 o 3.14.")
         sys.exit(1)
+
+    # Leer niveles de log del JSON y aplicarlos de forma diferenciada
+    # (archivo verbose, consola silenciosa para no contaminar la TUI de Rich)
+    file_lvl: str = config_manager.get_log_file_level()
+    console_lvl: str = config_manager.get_log_console_level()
+    set_log_levels(file_level=file_lvl, console_level=console_lvl)
+    logger.debug(f"Niveles de log -> file: {file_lvl}, console: {console_lvl}")
 
     # Ejecutar flujo de automatización
     # Pasar versión de TIA Portal como argumento si es necesario (ej: "18.0")

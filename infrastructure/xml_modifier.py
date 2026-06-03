@@ -49,20 +49,47 @@ class XMLModifier:
         return is_modified
 
     def _update_or_add_comment(self, member, index: int | str, text: str) -> bool:
-        """Actualiza o añade un comentario a un Subelement."""
+        """Actualiza o añade un comentario a un Subelement.
+
+        Args:
+            member: Nodo XML <Member> del array.
+            index: Índice del subelement. TIA Portal espera el **identificador
+                base-0** (NO el número de fila del Excel que es base-1).
+                Si el Excel trae "1" → TIA espera "0" (por eso casteamos a int()).
+            text: Texto del comentario a inyectar.
+
+        IMPORTANTE sobre TIA Portal:
+        - El atributo Path del Subelement es **base-0** (0, 1, 2, ...).
+        - El Excel del usuario es **base-1** (1, 2, 3, ...).
+        - El mapeo se hace en la capa de Use Cases (SincronizarTextosUseCase).
+        - Por seguridad casteamos a int() para detectar errores tempranamente.
+        """
         if not text:
             return False
+
+        # Cast explícito a int: TIA Portal requiere índices enteros.
+        # Si el llamador pasó '0' (str) lo aceptamos, pero no 'foo' (ValueError).
+        try:
+            index_int: int = int(index)
+        except (TypeError, ValueError) as e:
+            self._logger.error(
+                f"Indice invalido para Subelement: {index!r} (debe ser int o str numerico). {e}"
+            )
+            return False
+        index_str: str = str(index_int)
 
         # 1. Buscar Subelement (usamos localName para ignorar namespaces en la búsqueda)
         sub_element = None
         for child in member.childNodes:
-            if child.nodeType == child.ELEMENT_NODE and child.localName == "Subelement" and child.getAttribute("Path") == str(index):
+            if (child.nodeType == child.ELEMENT_NODE
+                    and child.localName == "Subelement"
+                    and child.getAttribute("Path") == index_str):
                 sub_element = child
                 break
 
         if not sub_element:
             sub_element = self.doc.createElement("Subelement")
-            sub_element.setAttribute("Path", str(index))
+            sub_element.setAttribute("Path", index_str)
             member.appendChild(sub_element)
 
         # 2. Buscar Comment

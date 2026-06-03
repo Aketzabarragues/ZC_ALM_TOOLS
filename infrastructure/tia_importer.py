@@ -201,7 +201,7 @@ class TIAImporter:
         """
         try:
             program_blocks = plc_object.get_program_blocks()
-            bloque = self._find_block_in_group(program_blocks, block_name)
+            bloque = self.find_block_in_group(program_blocks, block_name)
             
             if not bloque:
                 self._logger.error(f"Bloque '{block_name}' no encontrado.")
@@ -224,8 +224,11 @@ class TIAImporter:
             self._logger.error(f"Error exportando bloque {block_name}: {e}", exc_info=True)
             return False
 
-    def _find_block_in_group(self, group_or_blocks: Any, block_name: str) -> Any | None:
-        """Busca un bloque por nombre en un grupo de bloques."""
+    def find_block_in_group(self, group_or_blocks: Any, block_name: str) -> Any | None:
+        """Busca un bloque por nombre en un grupo de bloques.
+
+        Metodo publico del Importer (parte de su interfaz estable).
+        """
         items: list[Any] = []
         
         if hasattr(group_or_blocks, 'get_blocks'):
@@ -252,10 +255,10 @@ class TIAImporter:
             groups = group_or_blocks.Groups
         
         for sub_group in groups:
-            resultado = self._find_block_in_group(sub_group, block_name)
+            resultado = self.find_block_in_group(sub_group, block_name)
             if resultado:
                 return resultado
-        
+
         return None
 
     def importar_bloque_override(

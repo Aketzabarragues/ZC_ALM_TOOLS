@@ -14,7 +14,7 @@ Respeta estrictamente la separación de responsabilidades. No acoples capas.
 - **core/**: Lógica pura de negocio y dataclasses. No debe tener dependencias de TIA Portal ni de librerías externas.
 - **infrastructure/**: 
   - `tia_service.py`: ÚNICO lugar donde se importa `siemens_tia_scripting`.
-  - `ui_views.py`: Interacción con el usuario (ej. `Flet` o `tkinter`). Las interfaces NUNCA deben llamar directamente a la API de TIA.
+  - `ui_dialogs.py`: Interacción con el usuario (ej. `tkinter`). Las interfaces NUNCA deben llamar directamente a la API de TIA.
 - **application/**: Controladores que orquestan el flujo (UI -> Core -> Infraestructura).
 
 # 3. REGLAS CRÍTICAS PARA TIA PORTAL SCRIPTING

@@ -89,8 +89,14 @@ class TIAService:
         self._project: ts.Project | None = None
 
     def __enter__(self) -> Self:
-        """Establish connection to TIA Portal."""
-        self._attach()
+        """Establish connection to TIA Portal.
+
+        Idempotente: si ya hay un portal abierto (p.ej. tras open_new_portal),
+        no re-engancha. Esto permite usar el context manager tanto para attach
+        como para instancias nuevas.
+        """
+        if self._portal is None:
+            self._attach()
         return self
 
     def __exit__(
@@ -147,7 +153,8 @@ class TIAService:
                     portal_mode=ts.Enums.PortalMode.WithGraphicalUserInterface  # type: ignore[arg-type]
                 )
 
-            assert self._portal is not None, "Fallo critico: El objeto Portal es None tras attach."
+            if self._portal is None:
+                raise RuntimeError("Fallo critico: El objeto Portal es None tras attach.")
 
             pid = self._portal.get_process_id()
             self._logger.info(f"Successfully attached to TIA Portal (PID={pid}).")
@@ -222,7 +229,16 @@ class TIAService:
 
         Raises:
             TIAServiceError: Si la extensión no es válida o falla la apertura.
+            RuntimeError: Si ya hay un portal activo (proteccion anti-zombi).
         """
+        # Proteccion anti-zombi: no abrir otra instancia si ya hay un portal
+        # enganchado. El usuario debe primero hacer _detach() o salir del with.
+        if self._portal is not None:
+            raise RuntimeError(
+                "Ya hay un portal activo. Llama a _detach() o sal del context manager "
+                "antes de abrir uno nuevo."
+            )
+
         if not project_path.exists():
             raise TIAServiceError(f"El proyecto no existe: {project_path}")
 
@@ -239,9 +255,10 @@ class TIAService:
                 portal_mode=ts.Enums.PortalMode.WithGraphicalUserInterface,  # type: ignore[arg-type]
                 version=version_str
             )
-            assert self._portal is not None, (
-                f"Fallo critico: TIA Portal retorno None al abrir v{version_str}"
-            )
+            if self._portal is None:
+                raise RuntimeError(
+                    f"Fallo critico: TIA Portal retorno None al abrir v{version_str}"
+                )
 
             self._project = self._portal.open_project(
                 project_file_path=str(project_path),
@@ -340,7 +357,7 @@ class TIAService:
                 return False
                 
             program_blocks = plc.get_program_blocks()
-            com_block = self._importer._find_block_in_group(program_blocks, bloque_dto.nombre)
+            com_block = self._importer.find_block_in_group(program_blocks, bloque_dto.nombre)
             
             if com_block:
                 # is_consistent() es método directo - puede lanzar en bloques protegidos

@@ -2,6 +2,8 @@
 Script auxiliar para automatizar la compilación del .exe
 Uso: python build_exe.py
 """
+import glob
+import os
 import shutil
 import subprocess
 import sys
@@ -18,8 +20,20 @@ def check_python_version() -> None:
     print(f"[OK] Python {major}.{minor} detectado (compatible)")
 
 
-def find_siemens_pyd() -> Path | None:
-    """Localiza el archivo .pyd y sus .dll asociadas, y los copia a la raíz."""
+def find_siemens_pyd() -> tuple[Path | None, list[Path]]:
+    """
+    Localiza el archivo .pyd de siemens_tia_scripting y sus DLLs/XMLs asociadas,
+    y los copia a la raíz del proyecto para que PyInstaller los pueda encontrar.
+
+    Returns:
+        Tupla (ruta_pyd_destino, archivos_copiados):
+        - ruta_pyd_destino: Path al .pyd en la raíz o None si no se encontró.
+        - archivos_copiados: Lista exacta de archivos que hemos copiado a la raíz
+          (NO contendrá archivos que ya estuvieran allí o que sean DLLs del sistema).
+        Se devuelve explícitamente para que clean_vendor_copies() borre SOLO lo
+        que nosotros hemos ensuciado, no archivos legítimos del usuario.
+    """
+    archivos_copiados: list[Path] = []
     try:
         import siemens_tia_scripting
 
@@ -27,12 +41,12 @@ def find_siemens_pyd() -> Path | None:
         file_path_str = getattr(siemens_tia_scripting, '__file__', None)
         if file_path_str is None:
             print("[ERROR] El modulo no tiene archivo fisico (__file__ es None).")
-            return None
+            return None, archivos_copiados
 
         pyd_path = Path(file_path_str)
         if not pyd_path.exists():
             print(f"[ERROR] No se encontro {pyd_path}")
-            return None
+            return None, archivos_copiados
 
         print(f"[OK] siemens_tia_scripting detectado en: {pyd_path}")
 
@@ -40,29 +54,29 @@ def find_siemens_pyd() -> Path | None:
         dest_pyd = Path('siemens_tia_scripting.pyd').absolute()
         if pyd_path.resolve() != dest_pyd:
             shutil.copy(pyd_path, dest_pyd)
-            print("[OK] Archivo .pyd copiado a la raíz.")
+            archivos_copiados.append(dest_pyd)
+            print(f"[OK] .pyd copiado a la raíz: {dest_pyd.name}")
         else:
-            print("[OK] Archivo .pyd ya está en la raíz local.")
+            print("[OK] .pyd ya estaba en la raíz (no copiado de nuevo)")
 
         # 2. Copiar TODAS las .dll y .xml de esa misma carpeta
         base_dir = pyd_path.parent
-        asset_count = 0
         for ext in ['*.dll', '*.xml']:
             for asset_file in base_dir.glob(ext):
                 dest_asset = Path(asset_file.name).absolute()
                 if asset_file.resolve() != dest_asset:
                     shutil.copy(asset_file, dest_asset)
+                    archivos_copiados.append(dest_asset)
                 print(f"[OK] Dependencia detectada y copiada: {asset_file.name}")
-                asset_count += 1
 
-        if asset_count == 0:
-            print("[WARN] No se encontraron .dll ni .xml en la carpeta del wrapper.")
+        if not archivos_copiados:
+            print("[WARN] No se encontraron assets para copiar (solo .pyd)")
 
-        return dest_pyd
+        return dest_pyd, archivos_copiados
     except ImportError:
         print("[ERROR] siemens_tia_scripting no esta instalado.")
         print("        pip install siemens_tia_scripting-x.x.x-cp312-cp312-win_amd64.whl")
-        return None
+        return None, archivos_copiados
 
 
 def clean_build_dirs() -> None:
@@ -71,6 +85,32 @@ def clean_build_dirs() -> None:
         if Path(folder).exists():
             print(f"[CLEAN] Limpiando {folder}/...")
             shutil.rmtree(folder, ignore_errors=True)
+
+
+def clean_vendor_copies(archivos_a_borrar: list[Path]) -> None:
+    """
+    Borra de la raíz EXCLUSIVAMENTE los archivos que find_siemens_pyd() ha copiado.
+
+    Esto es seguro porque operamos sobre una lista explícita, no sobre globs
+    que podrían匹配 archivos legítimos del usuario (.dll/.xml en otros contextos).
+
+    Args:
+        archivos_a_borrar: Lista de Path devuelta por find_siemens_pyd().
+    """
+    if not archivos_a_borrar:
+        print("[CLEAN] Nada que limpiar (lista vacia)")
+        return
+
+    print(f"[CLEAN] Limpiando {len(archivos_a_borrar)} archivos vendor copiados a la raíz...")
+    for file_path in archivos_a_borrar:
+        try:
+            if file_path.exists():
+                os.remove(file_path)
+                print(f"  - Eliminado: {file_path.name}")
+            else:
+                print(f"  - Ya no existe (omitido): {file_path.name}")
+        except OSError as e:
+            print(f"  - Error eliminando {file_path.name}: {e}")
 
 
 def run_pyinstaller() -> bool:
@@ -108,13 +148,20 @@ def main() -> None:
 
     check_python_version()
 
-    if find_siemens_pyd() is None:
+    # Paso 1: copiar dependencias de Siemens a la raíz para que PyInstaller las encuentre
+    pyd_path, archivos_copiados = find_siemens_pyd()
+    if pyd_path is None:
         sys.exit(1)
 
+    # Paso 2: limpiar builds anteriores
     clean_build_dirs()
 
+    # Paso 3: ejecutar PyInstaller
     if not run_pyinstaller():
         sys.exit(1)
+
+    # Paso 4: limpieza explícita y SEGURA de los archivos que copiamos
+    clean_vendor_copies(archivos_copiados)
 
     print("\n[NEXT STEPS]")
     print("  1. Probar el .exe en una maquina con TIA Portal instalado")

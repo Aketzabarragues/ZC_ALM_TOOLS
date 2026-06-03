@@ -18,18 +18,26 @@ class Proceso:
         uid: Identificador único del proceso.
         nombre: Nombre descriptivo del proceso.
         codigo: Código interno del proceso.
-        num_etapas: Número de etapas del proceso.
-        p_real: Valor de presión real.
-        p_int: Valor de presión interna.
-        alarmas: Cantidad de alarmas asociadas.
+        preal: Texto libre con info adicional de PReal (None si está vacío).
+        index_preal: Índice del subelement de PReal (None si no aplica).
+        pint: Texto libre con info adicional de PInt (None si está vacío).
+        index_pint: Índice del subelement de PInt (None si no aplica).
+        alarmas: Texto libre con info de alarmas (None si está vacío).
+        p_real: Valor de presión real (cuenta de parámetros).
+        p_int: Valor de presión interna (cuenta de parámetros).
+        alm_hmi: Cantidad de alarmas HMI (derivada de alarmas).
     """
     uid: int
     nombre: str
     codigo: str
-    num_etapas: int
-    p_real: int
-    p_int: int
-    alarmas: int
+    preal: str | None = None
+    index_preal: int | str | None = None
+    pint: str | None = None
+    index_pint: int | str | None = None
+    alarmas: str | None = None
+    p_real: int = 0
+    p_int: int = 0
+    alm_hmi: int = 0
 
     @property
     def db_preal_numero(self) -> int:
@@ -62,9 +70,19 @@ class Proceso:
         return f"DB{self.db_alm_numero}_{self.codigo}_ALM"
 
     @property
-    def alm_hmi(self) -> int:
+    def alarmas_count(self) -> int:
+        """Cantidad numerica de alarmas (parseada del texto 'alarmas')."""
+        if self.alarmas is None:
+            return 0
+        try:
+            return int(str(self.alarmas).strip())
+        except (TypeError, ValueError):
+            return 0
+
+    @property
+    def alm_hmi_calculado(self) -> int:
         """Calcula las Words necesarias para el HMI."""
-        return max(0, (self.alarmas // 16) - 1)
+        return max(0, (self.alarmas_count // 16) - 1)
 
 
 @dataclass
@@ -76,22 +94,28 @@ class PReal:
         uid: Identificador único del parámetro (texto, ej. 'PR_1_001').
         numero: Número secuencial del parámetro (texto).
         proceso: Nombre del proceso al que pertenece.
+        codigo: Código interno del proceso.
         num_db: Número de bloque de datos (DB).
         producto: Nombre del producto asociado.
         tipo: Tipo de dato (ej. Real, LReal).
         descripcion: Descripción del parámetro.
         comentario_db: Comentario en el DB de TIA Portal.
         visibilidad: Visibilidad del parámetro.
+        num_lista: Número de lista (texto/numero).
+        txt_lista: Texto de la lista de selección.
     """
     uid: str
     numero: str
     proceso: str
+    codigo: str
     num_db: int
     producto: str
     tipo: str
     descripcion: str
     comentario_db: str
     visibilidad: str
+    num_lista: int | str
+    txt_lista: str
 
 
 @dataclass
@@ -103,22 +127,28 @@ class PInt:
         uid: Identificador único del parámetro (texto, ej. 'PI_1_001').
         numero: Número secuencial del parámetro (texto).
         proceso: Nombre del proceso al que pertenece.
+        codigo: Código interno del proceso.
         num_db: Número de bloque de datos (DB).
         producto: Nombre del producto asociado.
         tipo: Tipo de dato (ej. Int, DInt).
         descripcion: Descripción del parámetro.
         comentario_db: Comentario en el DB de TIA Portal.
         visibilidad: Visibilidad del parámetro.
+        num_lista: Número de lista (texto/numero).
+        txt_lista: Texto de la lista de selección.
     """
     uid: str
     numero: str
     proceso: str
+    codigo: str
     num_db: int
     producto: str
     tipo: str
     descripcion: str
     comentario_db: str
     visibilidad: str
+    num_lista: int | str
+    txt_lista: str
 
 
 @dataclass

@@ -1,3 +1,7 @@
 {
-    "template_path": "C:\\Plantilla"
+    "template_path": "C:\\Plantilla",
+    "log": {
+        "file_level": "DEBUG",
+        "console_level": "WARNING"
+    }
 }
