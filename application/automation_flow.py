@@ -19,7 +19,11 @@ from application.use_cases.generar_proceso import ResultadoPreFlight
 from core.models import Proceso, BloquePLC, PReal, PInt, Alarma
 from infrastructure import config_manager
 from infrastructure.excel_parser import ExcelParser, ExcelParsingError
-from infrastructure.ui_dialogs import seleccionar_excel, seleccionar_carpeta
+from infrastructure.ui_dialogs import (
+    seleccionar_excel,
+    seleccionar_carpeta,
+    seleccionar_proyecto_tia,
+)
 from infrastructure.tia_scanner import TIAScanner
 from infrastructure.tia_service import (
     TIAService,
@@ -414,6 +418,134 @@ def _imprimir_resumen_preflight(
         console.print(f"   [red][NÚMERO][/red] N°{pred.numero} ocupado por '{exist.nombre}'.")
 
 
+def _flujo_principal_con_tia(
+    tia: TIAService,
+    parser: ExcelParser,
+    ruta_excel: str,
+    procesos: list[Proceso],
+    preal_list: list[PReal],
+    pint_list: list[PInt],
+    alarmas_list: list[Alarma],
+    session: AppSession,
+    logger: logging.Logger,
+) -> None:
+    """
+    Bucle principal tras haber establecido una conexion con TIA Portal (via attach o open_new).
+    """
+    project_name: str = tia.get_project_name()
+    with tia.silenciar_ruido():
+        plc_names: list[str] = tia.get_plc_names()
+
+    _clear_screen()
+    _print_project_summary(project_name, plc_names)
+    confirmed: bool = _request_confirmation()
+
+    if not confirmed:
+        logger.info("Usuario rechazó el proyecto. Abortando.")
+        print("\nOperación cancelada por el usuario.")
+        return
+
+    logger.info(f"Proyecto confirmado: {project_name}")
+    print(f"\nProyecto '{project_name}' confirmado. Continuando...")
+
+    if not _seleccionar_plc(tia, session):
+        console.print("[bold yellow]⚠️ No se seleccionó PLC. Abortando.[/bold yellow]")
+        return
+
+    while True:
+        _clear_screen()
+        console.rule(
+            f"MENÚ PRINCIPAL | Proyecto: [bold orange1]{project_name}[/bold orange1] | "
+            f"PLC: [bold orange1]{session.plc_seleccionado}[/bold orange1]"
+        )
+        opcion_principal: str | None = questionary.select(
+            "Selecciona una opción:",
+            choices=[
+                Separator(),
+                Choice(" ⚡ Generar Procesos", value="generate"),
+                Choice(" 🔄 Sincronizar Parámetros y Alarmas", value="sync_texts"),
+                Separator(),
+                Choice(" 🔌 Cambiar PLC objetivo", value="change_plc"),
+                Choice(" 📡 Forzar escaneo completo del PLC", value="rescan"),
+                Choice(" 📊 Recargar datos del Excel Maestro", value="reload_excel"),
+                Choice(" 📂 Configurar Ruta de Plantillas", value="config_templates"),
+                Separator(),
+                Choice(" ❌ Salir", value="exit")
+            ]
+        ).ask()
+
+        if not opcion_principal or opcion_principal == "exit":
+            logger.info("Saliendo de la aplicación...")
+            _clear_screen()
+            print("\n👋 Desconectando de TIA Portal...")
+            break
+
+        if opcion_principal == "change_plc":
+            _seleccionar_plc(tia, session)
+            input("\nPulsa Enter para continuar...")
+
+        elif opcion_principal == "rescan":
+            if session.plc_seleccionado:
+                console.print(f"\n[cyan]⏳ Forzando re-escaneo completo de '{session.plc_seleccionado}'...[/cyan]")
+                try:
+                    with tia.silenciar_ruido():
+                        tia.force_rescan(session.plc_seleccionado)
+                        bloques = tia.get_existing_blocks(session.plc_seleccionado)
+                    console.print(f"[bold green]✅ Caché reconstruido: {len(bloques)} bloques.[/bold green]")
+                except Exception as e:
+                    console.print(f"[bold red]❌ Error en re-escaneo: {e}[/bold red]")
+            else:
+                console.print("[bold red]❌ No hay PLC seleccionado.[/bold red]")
+            input("\nPulsa Enter para continuar...")
+
+        elif opcion_principal == "generate":
+            _flujo_generar_procesos(procesos, preal_list, pint_list, alarmas_list, tia, session)
+            input("\nPulsa Enter para volver al Menú Principal...")
+
+        elif opcion_principal == "sync_texts":
+            _flujo_sincronizar_textos(procesos, preal_list, pint_list, alarmas_list, tia, session)
+            input("\nPulsa Enter para volver al Menú Principal...")
+
+        elif opcion_principal == "reload_excel":
+            logger.info("Opción seleccionada: Recargar Excel")
+            console.print(f"\n[cyan]⏳ Recargando datos desde: {ruta_excel}[/cyan]")
+            try:
+                procesos.clear()
+                procesos.extend(parser.extraer_procesos(ruta_excel))
+                preal_list.clear()
+                preal_list.extend(parser.extraer_preal(ruta_excel))
+                pint_list.clear()
+                pint_list.extend(parser.extraer_pint(ruta_excel))
+                alarmas_list.clear()
+                alarmas_list.extend(parser.extraer_alarmas(ruta_excel))
+                console.print(f"[bold green]✅ Datos recargados correctamente.[/bold green]")
+                console.print(f"[dim]  • Procesos: {len(procesos)}[/dim]")
+                console.print(f"[dim]  • PReal: {len(preal_list)}[/dim]")
+                console.print(f"[dim]  • PInt: {len(pint_list)}[/dim]")
+                console.print(f"[dim]  • Alarmas: {len(alarmas_list)}[/dim]")
+            except Exception as e:
+                logger.error(f"Error recargando Excel: {e}")
+                console.print(f"\n[bold red]❌ Error al recargar el Excel: {e}[/bold red]")
+            input("\nPulsa Enter para volver al Menú Principal...")
+
+        elif opcion_principal == "config_templates":
+            logger.info("Opción seleccionada: Configurar Ruta de Plantillas")
+            ruta_actual = config_manager.get_template_path() or "No configurada"
+            console.print(f"\n[dim]Ruta actual: {ruta_actual}[/dim]")
+            console.print("\nAbriendo explorador de archivos...")
+            nueva_ruta = seleccionar_carpeta("Selecciona la carpeta raíz de las plantillas")
+            if nueva_ruta:
+                path_obj = Path(nueva_ruta)
+                if path_obj.exists() and path_obj.is_dir():
+                    config_manager.set_template_path(str(path_obj.absolute()))
+                    console.print(f"\n[bold green]✅ Ruta de plantillas guardada correctamente: {nueva_ruta}[/bold green]")
+                else:
+                    console.print("\n[bold red]❌ La ruta seleccionada no es válida.[/bold red]")
+            else:
+                console.print("\n[dim]Operación cancelada.[/dim]")
+            input("\nPulsa Enter para volver al Menú Principal...")
+
+
 def run(version: str | None = None) -> None:
     """Ejecuta el flujo de automatización (Máquina de Estados)."""
     _clear_screen()
@@ -451,7 +583,7 @@ def run(version: str | None = None) -> None:
         "¿Cómo deseas conectar con TIA Portal?",
         choices=[
             Choice(" 🔌 Conectar a una instancia abierta", value="connect_open"),
-            Choice(" 🚀 Iniciar TIA Portal en background (Próximamente)", value="start_bg"),
+            Choice(" 🚀 Abrir un proyecto nuevo", value="open_new"),
             Separator(),
             Choice(" ❌ Salir", value="exit")
         ]
@@ -462,124 +594,55 @@ def run(version: str | None = None) -> None:
         print("\n👋 Saliendo de la aplicación.")
         return
 
-    if modo_tia == "start_bg":
-        logger.warning("Operación cancelada. La opción 2 aún no está implementada.")
-        print("\nOperación cancelada.")
-        return
+    connection_mode: str = modo_tia
+    logger.info(f"Modo de conexión seleccionado: {connection_mode}")
 
-    logger.info("Modo de conexión: Instancia abierta seleccionada.")
-
-    # Crear sesión con scanner
     session = AppSession(scanner=TIAScanner())
+    tia: TIAService | None = None
 
     try:
-        with TIAService(version=version, scanner=session.scanner) as tia:
-            logger.info(f"TIAService creado con scanner inyectado. Scanner ID: {id(session.scanner)}")
-            project_name: str = tia.get_project_name()
-            with tia.silenciar_ruido():
-                plc_names: list[str] = tia.get_plc_names()
-
-            _clear_screen()
-            _print_project_summary(project_name, plc_names)
-            confirmed: bool = _request_confirmation()
-
-            if not confirmed:
-                logger.info("Usuario rechazó el proyecto. Abortando.")
-                print("\nOperación cancelada por el usuario.")
+        if connection_mode == "open_new":
+            # === ABRIR PROYECTO NUEVO ===
+            ruta_proyecto = seleccionar_proyecto_tia()
+            if not ruta_proyecto:
+                console.print("[bold yellow]⚠️ No se seleccionó proyecto. Abortando.[/bold yellow]")
                 return
 
-            logger.info(f"Proyecto confirmado: {project_name}")
-            print(f"\nProyecto '{project_name}' confirmado. Continuando...")
+            project_path = Path(ruta_proyecto)
+            tia = TIAService(version=version, scanner=session.scanner)
 
-            if not _seleccionar_plc(tia, session):
-                console.print("[bold yellow]⚠️ No se seleccionó PLC. Abortando.[/bold yellow]")
-                return
+            # Spinner de Rich mientras se abre TIA Portal (puede tardar 20-60s)
+            with console.status(
+                "[bold green]🚀 Abriendo nueva instancia de TIA Portal "
+                "(esto puede tardar unos segundos)...",
+                spinner="dots"
+            ):
+                tia.open_new_portal(project_path)
 
-            while True:
-                _clear_screen()
-                console.rule(f"MENÚ PRINCIPAL | Proyecto: [bold orange1]{project_name}[/bold orange1] | PLC: [bold orange1]{session.plc_seleccionado}[/bold orange1]")
-                opcion_principal: str | None = questionary.select(
-                    "Selecciona una opción:",
-                    choices=[
-                        Separator(),
-                        Choice(" ⚡ Generar Procesos", value="generate"),
-                        Choice(" 🔄 Sincronizar Parámetros y Alarmas", value="sync_texts"),
-                        Separator(),
-                        Choice(" 🔌 Cambiar PLC objetivo", value="change_plc"),
-                        Choice(" 📡 Forzar escaneo completo del PLC", value="rescan"),
-                        Choice(" 📊 Recargar datos del Excel Maestro", value="reload_excel"),
-                        Choice(" 📂 Configurar Ruta de Plantillas", value="config_templates"),
-                        Separator(),
-                        Choice(" ❌ Salir", value="exit")
-                    ]
-                ).ask()
+            logger.info(f"TIAService abriendo en nueva instancia con proyecto: {project_path.name}")
+        else:
+            # === CONECTAR A INSTANCIA ABIERTA ===
+            tia = TIAService(version=version, scanner=session.scanner)
+            tia.__enter__()
 
-                if not opcion_principal or opcion_principal == "exit":
-                    logger.info("Saliendo de la aplicación...")
-                    _clear_screen()
-                    print("\n👋 Desconectando de TIA Portal...")
-                    break
+        # Validación de seguridad
+        assert tia is not None and tia._portal is not None, (
+            "Fallo critico: TIAService no conecto correctamente."
+        )
+        logger.info(f"TIAService creado con scanner inyectado. Scanner ID: {id(session.scanner)}")
 
-                if opcion_principal == "change_plc":
-                    _seleccionar_plc(tia, session)
-                    input("\nPulsa Enter para continuar...")
-
-                elif opcion_principal == "rescan":
-                    if session.plc_seleccionado:
-                        console.print(f"\n[cyan]⏳ Forzando re-escaneo completo de '{session.plc_seleccionado}'...[/cyan]")
-                        try:
-                            with tia.silenciar_ruido():
-                                tia.force_rescan(session.plc_seleccionado)
-                                bloques = tia.get_existing_blocks(session.plc_seleccionado)
-                            console.print(f"[bold green]✅ Caché reconstruido: {len(bloques)} bloques.[/bold green]")
-                        except Exception as e:
-                            console.print(f"[bold red]❌ Error en re-escaneo: {e}[/bold red]")
-                    else:
-                        console.print("[bold red]❌ No hay PLC seleccionado.[/bold red]")
-                    input("\nPulsa Enter para continuar...")
-
-                elif opcion_principal == "generate":
-                    _flujo_generar_procesos(procesos, preal_list, pint_list, alarmas_list, tia, session)
-                    input("\nPulsa Enter para volver al Menú Principal...")
-
-                elif opcion_principal == "sync_texts":
-                    _flujo_sincronizar_textos(procesos, preal_list, pint_list, alarmas_list, tia, session)
-                    input("\nPulsa Enter para volver al Menú Principal...")
-
-                elif opcion_principal == "reload_excel":
-                    logger.info("Opción seleccionada: Recargar Excel")
-                    console.print(f"\n[cyan]⏳ Recargando datos desde: {ruta_excel}[/cyan]")
-                    try:
-                        procesos = parser.extraer_procesos(ruta_excel)
-                        preal_list = parser.extraer_preal(ruta_excel)
-                        pint_list = parser.extraer_pint(ruta_excel)
-                        alarmas_list = parser.extraer_alarmas(ruta_excel)
-                        console.print(f"[bold green]✅ Datos recargados correctamente.[/bold green]")
-                        console.print(f"[dim]  • Procesos: {len(procesos)}[/dim]")
-                        console.print(f"[dim]  • PReal: {len(preal_list)}[/dim]")
-                        console.print(f"[dim]  • PInt: {len(pint_list)}[/dim]")
-                        console.print(f"[dim]  • Alarmas: {len(alarmas_list)}[/dim]")
-                    except Exception as e:
-                        logger.error(f"Error recargando Excel: {e}")
-                        console.print(f"\n[bold red]❌ Error al recargar el Excel: {e}[/bold red]")
-                    input("\nPulsa Enter para volver al Menú Principal...")
-
-                elif opcion_principal == "config_templates":
-                    logger.info("Opción seleccionada: Configurar Ruta de Plantillas")
-                    ruta_actual = config_manager.get_template_path() or "No configurada"
-                    console.print(f"\n[dim]Ruta actual: {ruta_actual}[/dim]")
-                    console.print("\nAbriendo explorador de archivos...")
-                    nueva_ruta = seleccionar_carpeta("Selecciona la carpeta raíz de las plantillas")
-                    if nueva_ruta:
-                        path_obj = Path(nueva_ruta)
-                        if path_obj.exists() and path_obj.is_dir():
-                            config_manager.set_template_path(str(path_obj.absolute()))
-                            console.print(f"\n[bold green]✅ Ruta de plantillas guardada correctamente: {nueva_ruta}[/bold green]")
-                        else:
-                            console.print("\n[bold red]❌ La ruta seleccionada no es válida.[/bold red]")
-                    else:
-                        console.print("\n[dim]Operación cancelada.[/dim]")
-                    input("\nPulsa Enter para volver al Menú Principal...")
+        # Llamada al bucle principal con el TIAService ya conectado
+        _flujo_principal_con_tia(
+            tia=tia,
+            parser=parser,
+            ruta_excel=ruta_excel,
+            procesos=procesos,
+            preal_list=preal_list,
+            pint_list=pint_list,
+            alarmas_list=alarmas_list,
+            session=session,
+            logger=logger,
+        )
 
     except PortalNotRunningError:
         logger.error("TIA Portal no está ejecutándose.")
@@ -593,6 +656,13 @@ def run(version: str | None = None) -> None:
     except TIAServiceError as e:
         logger.exception("Error inesperado en TIAService.")
         print(f"ERROR: {e}")
+    finally:
+        # Detach garantizado en ambos modos
+        if tia is not None and tia._portal is not None:
+            try:
+                tia._detach()
+            except Exception as e:
+                logger.warning(f"Error durante detach final: {e}")
 
     logger.info("Flujo de automatización finalizado.")
 

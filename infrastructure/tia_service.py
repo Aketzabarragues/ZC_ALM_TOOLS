@@ -8,6 +8,7 @@ Delega el escaneo de bloques en TIAScanner (patrón Facade).
 
 import logging
 import os
+import re
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Self
@@ -193,6 +194,68 @@ class TIAService:
         project = self._get_project_internal()
         plcs: list[ts.Plc] = project.get_plcs()
         return [plc.get_name() for plc in plcs]
+
+    def _extraer_version_de_proyecto(self, project_path: Path) -> str:
+        """
+        Extrae la versión de TIA Portal a partir de la extensión del archivo de proyecto.
+
+        Manejo especial para V15.1 cuya extensión es .ap15_1.
+        Para el resto (.ap18, .ap17, etc.) extrae el número y añade '.0'.
+        """
+        suffix = project_path.suffix.lower()
+        if suffix == '.ap15_1':
+            return '15.1'
+        # El resto: .ap15, .ap16, .ap17, .ap18, .ap19, .ap20, .ap21
+        match = re.match(r'^\.ap(\d+)$', suffix)
+        if not match:
+            raise TIAServiceError(
+                f"Extension invalida: '{suffix}'. Se esperaba .ap15 a .ap21 (o .ap15_1)"
+            )
+        return f"{match.group(1)}.0"
+
+    def open_new_portal(self, project_path: Path) -> None:
+        """
+        Abre una nueva instancia de TIA Portal y carga el proyecto indicado.
+
+        Args:
+            project_path: Ruta completa al archivo de proyecto (.apXX o .ap15_1).
+
+        Raises:
+            TIAServiceError: Si la extensión no es válida o falla la apertura.
+        """
+        if not project_path.exists():
+            raise TIAServiceError(f"El proyecto no existe: {project_path}")
+
+        version_str = self._extraer_version_de_proyecto(project_path)
+        self._logger.info(f"Abriendo nueva instancia de TIA Portal v{version_str}...")
+
+        # Apagar consola para no contaminar con logs nativos durante la carga
+        log_path = str(Path(".build/tia_wrapper_native.log").absolute())
+        Path(".build").mkdir(exist_ok=True)
+        ts.set_logging(path=log_path, console=False)
+
+        try:
+            self._portal = ts.open_portal(
+                portal_mode=ts.Enums.PortalMode.WithGraphicalUserInterface,  # type: ignore[arg-type]
+                version=version_str
+            )
+            assert self._portal is not None, (
+                f"Fallo critico: TIA Portal retorno None al abrir v{version_str}"
+            )
+
+            self._project = self._portal.open_project(
+                project_file_path=str(project_path),
+                server_project_view=False
+            )
+            self._logger.info(
+                f"Proyecto '{project_path.name}' abierto en nueva instancia TIA v{version_str}."
+            )
+        except Exception as e:
+            msg = f"Error abriendo nueva instancia de TIA Portal: {e}"
+            self._logger.error(msg)
+            raise TIAServiceError(msg) from e
+        finally:
+            ts.set_logging(path=log_path, console=True)
 
     def _get_project_internal(self) -> ts.Project:
         """Internal: get Project instance or raise. Also caches it in self.project."""

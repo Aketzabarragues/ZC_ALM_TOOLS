@@ -29,3 +29,19 @@ def seleccionar_carpeta(titulo: str = "Selecciona la carpeta de Plantillas XML")
     ruta = filedialog.askdirectory(title=titulo)
     root.destroy()
     return ruta if ruta else None
+
+
+def seleccionar_proyecto_tia() -> str | None:
+    """Abre un diálogo nativo para seleccionar el archivo de proyecto de TIA Portal."""
+    root = tk.Tk()
+    root.withdraw()
+    root.attributes('-topmost', True)
+    ruta = filedialog.askopenfilename(
+        title="Selecciona el proyecto de TIA Portal",
+        filetypes=[
+            ("TIA Portal Projects", "*.ap15 *.ap15_1 *.ap16 *.ap17 *.ap18 *.ap19 *.ap20 *.ap21"),
+            ("Todos los archivos", "*.*"),
+        ],
+    )
+    root.destroy()
+    return ruta if ruta else None
