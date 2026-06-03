@@ -13,6 +13,17 @@ import sys
 os.environ.pop("TERM", None)
 os.environ["PROMPT_TOOLKIT_FORCE_WINDOWS_CONSOLE"] = "1"
 
+# Forzar UTF-8 en stdout/stderr para que los emojis (\u23f3, \u2705) no rompan cp1252
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
+        sys.stderr.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
+    except (AttributeError, Exception):
+        # Fallback para Python <3.7 o si falla
+        import io
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+
 from application.automation_flow import run as automation_run
 from core.logger import setup_logging
 

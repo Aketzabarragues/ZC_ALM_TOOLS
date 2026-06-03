@@ -7,8 +7,8 @@ Cuando la aplicacion se compila con PyInstaller (--onefile), las dependencias
 se extraen en una carpeta temporal (_MEIPASS). Este modulo fuerza a Python a
 cargar el .pyd nativo desde ahi, evitando conflictos con versiones globales.
 
-Documentacion oficial de Siemens:
-https://support.industry.siemens.com (TIA Scripting Python)
+Implementa la solucion oficial documentada por Siemens (Manual v1.2.1, seccion 1.7.1)
+para resolver las rutas de los binarios .pyd y .dll en entornos PyInstaller.
 """
 import importlib.util
 import os
@@ -33,30 +33,31 @@ def get_file_path(file_name: str) -> str:
 
 def load_siemens_tia() -> object:
     """
-    Carga el modulo siemens_tia_scripting de forma segura.
-
-    Estrategia:
-    1. Si estamos en un .exe (PyInstaller), carga el .pyd desde _MEIPASS
-    2. Si no, intenta import normal (modo desarrollo)
-
-    Returns:
-        Modulo siemens_tia_scripting cargado
+    Carga el módulo de Siemens TIA Portal de forma dinámica.
+    Implementa la solución oficial documentada por Siemens (Manual v1.2.1)
+    para resolver las rutas de los binarios .pyd y .dll en entornos PyInstaller.
     """
-    pyd_name = "siemens_tia_scripting.pyd"
-    pyd_path = get_file_path(pyd_name)
-
-    # En modo .exe, cargar desde _MEIPASS
     meipass = getattr(sys, '_MEIPASS', None)
-    if meipass is not None and os.path.exists(pyd_path):
-        spec = importlib.util.spec_from_file_location(
-            "siemens_tia_scripting",
-            pyd_path
-        )
-        if spec is not None and spec.loader is not None:
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)
-            return module
+    if meipass is not None:
+        # Modo Producción (.exe): Cargar usando importlib apuntando a _MEIPASS
+        # Esto permite que el CLR de .NET encuentre las .dll adyacentes al .pyd
 
-    # Fallback: import normal (modo desarrollo o si el .pyd no esta en _MEIPASS)
-    import siemens_tia_scripting  # type: ignore[import-not-found]
-    return siemens_tia_scripting
+        # Inyectar _MEIPASS en todas las rutas de búsqueda posibles de Windows y Python
+        sys.path.append(meipass)
+        os.environ['PATH'] = meipass + os.pathsep + os.environ.get('PATH', '')
+        if hasattr(os, 'add_dll_directory'):
+            os.add_dll_directory(meipass)
+
+        pyd_path = os.path.join(meipass, "siemens_tia_scripting.pyd")
+
+        spec = importlib.util.spec_from_file_location("siemens_tia_scripting", pyd_path)
+        if spec is None or spec.loader is None:
+            raise ImportError(f"No se pudo crear el spec para el módulo en {pyd_path}")
+
+        ts = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(ts)
+        return ts
+    else:
+        # Modo Desarrollo: Usar el paquete instalado global/virtual via pip
+        import siemens_tia_scripting as ts  # type: ignore[import-not-found]
+        return ts

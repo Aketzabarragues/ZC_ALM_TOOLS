@@ -19,7 +19,7 @@ def check_python_version() -> None:
 
 
 def find_siemens_pyd() -> Path | None:
-    """Localiza el archivo siemens_tia_scripting.pyd y lo copia a la raíz."""
+    """Localiza el archivo .pyd y sus .dll asociadas, y los copia a la raíz."""
     try:
         import siemens_tia_scripting
 
@@ -36,12 +36,29 @@ def find_siemens_pyd() -> Path | None:
 
         print(f"[OK] siemens_tia_scripting detectado en: {pyd_path}")
 
-        # Copiar a la raíz para que el .spec lo encuentre
-        dest_path = Path('siemens_tia_scripting.pyd')
-        shutil.copy(pyd_path, dest_path)
-        print(f"[OK] Archivo copiado a la raíz local para el empaquetado.")
+        # 1. Copiar el .pyd
+        dest_pyd = Path('siemens_tia_scripting.pyd').absolute()
+        if pyd_path.resolve() != dest_pyd:
+            shutil.copy(pyd_path, dest_pyd)
+            print("[OK] Archivo .pyd copiado a la raíz.")
+        else:
+            print("[OK] Archivo .pyd ya está en la raíz local.")
 
-        return dest_path
+        # 2. Copiar TODAS las .dll y .xml de esa misma carpeta
+        base_dir = pyd_path.parent
+        asset_count = 0
+        for ext in ['*.dll', '*.xml']:
+            for asset_file in base_dir.glob(ext):
+                dest_asset = Path(asset_file.name).absolute()
+                if asset_file.resolve() != dest_asset:
+                    shutil.copy(asset_file, dest_asset)
+                print(f"[OK] Dependencia detectada y copiada: {asset_file.name}")
+                asset_count += 1
+
+        if asset_count == 0:
+            print("[WARN] No se encontraron .dll ni .xml en la carpeta del wrapper.")
+
+        return dest_pyd
     except ImportError:
         print("[ERROR] siemens_tia_scripting no esta instalado.")
         print("        pip install siemens_tia_scripting-x.x.x-cp312-cp312-win_amd64.whl")
