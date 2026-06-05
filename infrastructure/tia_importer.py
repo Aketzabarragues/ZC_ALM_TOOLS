@@ -34,6 +34,78 @@ class TIAImporter:
         self._export_with_defaults = export_with_defaults_enum
         self._import_override = import_override_enum
 
+    def asegurar_consistencia(self, objeto: Any) -> bool:
+        """
+        Garantiza que un objeto TIA Portal este compilado antes de manipularlo.
+
+        Inspirado en el metodo exportar_objeto_si_consistente para robustez:
+        si el bloque esta en estado inconsistente, intenta compilarlo al
+        vuelo antes de permitir que el programa falle con un error .NET.
+
+        Args:
+            objeto: Cualquier objeto COM del wrapper (PlcBlock, HmiScreen, etc.).
+
+        Returns:
+            True si el objeto esta compilado (o no requiere compilarse).
+            False si ni siquiera tras compilarlo al vuelo queda consistente.
+        """
+        # 1. Si no expone is_consistent(), asumimos que no requiere compilacion
+        if not hasattr(objeto, "is_consistent"):
+            return True
+
+        # 2. Helper para extraer el nombre del objeto COM de forma segura
+        obj_name: str = "<sin_nombre>"
+        try:
+            if hasattr(objeto, "Name"):
+                obj_name = str(objeto.Name)
+            elif hasattr(objeto, "get_name"):
+                obj_name = str(objeto.get_name())
+        except Exception:
+            # Si leer el nombre ya falla, no podemos hacer mucho mas
+            obj_name = "<inaccesible>"
+
+        # 3. Comprobacion inicial
+        try:
+            if bool(objeto.is_consistent()):
+                return True
+        except Exception as e:
+            self._logger.warning(
+                f"No se pudo verificar is_consistent() de '{obj_name}': {e}. "
+                f"Tratando como no consistente."
+            )
+
+        # 4. Si no esta consistente y existe compile(), intentamos al vuelo
+        if hasattr(objeto, "compile"):
+            self._logger.debug(f"Compilando objeto '{obj_name}' al vuelo...")
+            try:
+                # El wrapper Siemens retorna True si HAY errores, False si OK.
+                # Por eso comprobamos el resultado de compile() de forma defensiva.
+                compile_result = objeto.compile()
+                if compile_result is True:
+                    self._logger.warning(
+                        f"compile() de '{obj_name}' retorno True (=errores de compilacion)."
+                    )
+            except Exception as e:
+                self._logger.warning(f"compile() de '{obj_name}' lanzo excepcion: {e}")
+                return False
+
+        # 5. Re-comprobar consistencia tras el intento de compilacion
+        try:
+            if bool(objeto.is_consistent()):
+                self._logger.info(f"Objeto '{obj_name}' compilado con exito al vuelo.")
+                return True
+        except Exception as e:
+            self._logger.warning(
+                f"No se pudo re-verificar is_consistent() de '{obj_name}': {e}"
+            )
+
+        # 6. Sigue siendo inconsistente: log warning y retorno False
+        self._logger.warning(
+            f"El objeto '{obj_name}' tiene errores de codigo que impiden su compilacion. "
+            f"Se omitira su procesamiento para evitar un crash de Openness."
+        )
+        return False
+
     def sanitize_import_path(self, full_path: str) -> str:
         """
         Sana la ruta absoluta para extraer solo la parte relativa al grupo de usuario.
@@ -207,6 +279,15 @@ class TIAImporter:
                 self._logger.error(f"Bloque '{block_name}' no encontrado.")
                 return False
 
+            # COMPILACION DEFENSIVA: garantizar que el bloque esta consistente
+            # antes de intentar exportarlo. Si no se puede compilar, abortamos
+            # esta exportacion pero NO rompemos el bucle principal.
+            if not self.asegurar_consistencia(bloque):
+                self._logger.error(
+                    f"Saltando exportacion de '{block_name}': no se logro compilar."
+                )
+                return False
+
             destino = Path(target_dir).absolute()  # CRÍTICO: Ruta absoluta para Siemens
             destino.mkdir(parents=True, exist_ok=True)
 
@@ -216,7 +297,7 @@ class TIAImporter:
                 export_options=self._export_with_defaults,
                 keep_folder_structure=False
             )
-            
+
             self._logger.info(f"Bloque '{block_name}' exportado a: {target_dir}")
             return True
 

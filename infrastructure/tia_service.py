@@ -342,7 +342,13 @@ class TIAService:
 
     def is_bloque_consistente(self, plc_name: str, block_name: str) -> bool:
         """
-        Verifica si un bloque está compilado y consistente.
+        Verifica si un bloque esta compilado y consistente.
+
+        Ademas, ahora aplica Compilacion Defensiva: si el bloque no esta
+        consistente, intenta compilarlo al vuelo antes de retornar False.
+        Asi evitamos que un solo bloque con errores de codigo detenga el
+        flujo principal del usuario.
+
         IMPORTANTE: Envuelve en try/except para manejar bloques protegidos
         (Know-How Protect) o bloques de sistema cerrados.
         Si no podemos leerlo, asumimos TRUE para no forzar compilación innecesaria.
@@ -351,21 +357,30 @@ class TIAService:
             bloque_dto = self._get_scanner_internal().find_block_case_insensitive(block_name)
             if not bloque_dto:
                 return False
-            
+
             plc = self._get_plc(plc_name)
             if not plc:
                 return False
-                
+
             program_blocks = plc.get_program_blocks()
             com_block = self._importer.find_block_in_group(program_blocks, bloque_dto.nombre)
-            
-            if com_block:
-                # is_consistent() es método directo - puede lanzar en bloques protegidos
-                return bool(com_block.is_consistent())
-            return False
+
+            if not com_block:
+                return False
+
+            # Delegamos en el helper de Compilacion Defensiva del importer.
+            # El helper ya incluye:
+            #  - lectura segura de is_consistent()
+            #  - intento de compile() si es False
+            #  - re-comprobacion
+            #  - logging granular
+            return self._importer.asegurar_consistencia(com_block)
         except Exception as e:
-            self._logger.warning(f"No se pudo verificar consistencia de '{block_name}' (bloque protegido o inaccesible): {e}")
-            # Por seguridad, asumimos TRUE (no forzar compilación)
+            self._logger.warning(
+                f"No se pudo verificar consistencia de '{block_name}' "
+                f"(bloque protegido o inaccesible): {e}"
+            )
+            # Por seguridad, asumimos TRUE (no forzar compilacion)
             return True
 
     def compilar_software(self, plc_name: str) -> bool:

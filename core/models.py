@@ -30,14 +30,11 @@ class Proceso:
     uid: int
     nombre: str
     codigo: str
-    preal: str | None = None
-    index_preal: int | str | None = None
-    pint: str | None = None
-    index_pint: int | str | None = None
-    alarmas: str | None = None
-    p_real: int = 0
-    p_int: int = 0
-    alm_hmi: int = 0
+    preal: int = 0
+    index_preal: int = 0
+    pint: int = 0
+    index_pint: int = 0
+    alarmas: int = 0
 
     @property
     def db_preal_numero(self) -> int:
@@ -70,19 +67,9 @@ class Proceso:
         return f"DB{self.db_alm_numero}_{self.codigo}_ALM"
 
     @property
-    def alarmas_count(self) -> int:
-        """Cantidad numerica de alarmas (parseada del texto 'alarmas')."""
-        if self.alarmas is None:
-            return 0
-        try:
-            return int(str(self.alarmas).strip())
-        except (TypeError, ValueError):
-            return 0
-
-    @property
-    def alm_hmi_calculado(self) -> int:
-        """Calcula las Words necesarias para el HMI."""
-        return max(0, (self.alarmas_count // 16) - 1)
+    def alm_hmi(self) -> int:
+        """Calcula las Words necesarias para el HMI derivadas del conteo de alarmas."""
+        return max(0, (self.alarmas // 16) - 1)
 
 
 @dataclass

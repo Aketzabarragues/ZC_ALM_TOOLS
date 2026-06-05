@@ -193,8 +193,8 @@ def _flujo_generar_procesos(
         nombre_tabla = f"{uid}_{codigo}"
 
         constantes_dict = {
-            f"{uid}_N_MAX_PREAL": proceso_destino.p_real,
-            f"{uid}_N_MAX_PINT": proceso_destino.p_int,
+            f"{uid}_N_MAX_PREAL": proceso_destino.preal,
+            f"{uid}_N_MAX_PINT": proceso_destino.pint,
             f"{uid}_N_MAX_ALARMAS": proceso_destino.alarmas,
             f"{uid}_N_MAX_ALARMAS_HMI": proceso_destino.alm_hmi
         }
@@ -367,8 +367,8 @@ def _flujo_sincronizar_textos(
     nombre_tabla = f"{proceso.uid}_{proceso.codigo}"
 
     constantes_dict = {
-        f"{proceso.uid}_N_MAX_PREAL": proceso.p_real,
-        f"{proceso.uid}_N_MAX_PINT": proceso.p_int,
+        f"{proceso.uid}_N_MAX_PREAL": proceso.preal,
+        f"{proceso.uid}_N_MAX_PINT": proceso.pint,
         f"{proceso.uid}_N_MAX_ALARMAS": proceso.alarmas,
         f"{proceso.uid}_N_MAX_ALARMAS_HMI": proceso.alm_hmi
     }
