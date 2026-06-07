@@ -1,6 +1,6 @@
 # 🚀 ZC_ALM_TOOLS
 
-> **ZEUS CONTROL ALIMENTACION — La navaja suiza de la automatización de TIA Portal.
+> **ZEUS CONTROL ALIMENTACION** — La navaja suiza de la automatización de TIA Portal.
 
 ---
 
