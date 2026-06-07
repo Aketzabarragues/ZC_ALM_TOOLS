@@ -49,26 +49,23 @@ class XMLModifier:
         return is_modified
 
     def _update_or_add_comment(self, member, index: int | str, text: str) -> bool:
-        """Actualiza o añade un comentario a un Subelement.
+        """
+        Actualiza o añade un comentario a un Subelement.
 
         Args:
             member: Nodo XML <Member> del array.
             index: Índice del subelement. TIA Portal espera el **identificador
                 base-0** (NO el número de fila del Excel que es base-1).
-                Si el Excel trae "1" → TIA espera "0" (por eso casteamos a int()).
             text: Texto del comentario a inyectar.
 
         IMPORTANTE sobre TIA Portal:
         - El atributo Path del Subelement es **base-0** (0, 1, 2, ...).
         - El Excel del usuario es **base-1** (1, 2, 3, ...).
         - El mapeo se hace en la capa de Use Cases (SincronizarTextosUseCase).
-        - Por seguridad casteamos a int() para detectar errores tempranamente.
         """
         if not text:
             return False
 
-        # Cast explícito a int: TIA Portal requiere índices enteros.
-        # Si el llamador pasó '0' (str) lo aceptamos, pero no 'foo' (ValueError).
         try:
             index_int: int = int(index)
         except (TypeError, ValueError) as e:
@@ -78,7 +75,7 @@ class XMLModifier:
             return False
         index_str: str = str(index_int)
 
-        # 1. Buscar Subelement (usamos localName para ignorar namespaces en la búsqueda)
+        # 1. Buscar Subelement
         sub_element = None
         for child in member.childNodes:
             if (child.nodeType == child.ELEMENT_NODE
@@ -114,7 +111,6 @@ class XMLModifier:
                 break
 
         if ml_node:
-            # Actualizar texto existente
             if ml_node.firstChild and ml_node.firstChild.nodeType == ml_node.TEXT_NODE:
                 if ml_node.firstChild.nodeValue != text:
                     ml_node.firstChild.nodeValue = text # type: ignore
@@ -123,7 +119,6 @@ class XMLModifier:
                 ml_node.appendChild(self.doc.createTextNode(text))
                 return True
         else:
-            # Crear nuevo nodo de texto
             new_ml = self.doc.createElement("MultiLanguageText")
             new_ml.setAttribute("Lang", "es-ES")
             new_ml.appendChild(self.doc.createTextNode(text))
@@ -131,6 +126,33 @@ class XMLModifier:
             return True
 
         return False
+
+    def set_comentario_array(
+        self,
+        array_name: str,
+        index: int,
+        comentario: str,
+    ) -> bool:
+        """
+        Inyecta el comentario de un Subelement dentro de un array simple
+        (NO un parametro). Logica identica a set_comentario pero
+        sin manejar arrays hermanos (ValorAnterior / Vis).
+
+        Args:
+            array_name: Name del <Member> (ej. "ED").
+            index: Indice base-0 del Subelement (NO el numero de fila del Excel).
+            comentario: Texto a inyectar.
+
+        Returns:
+            True si el XML fue modificado, False en caso contrario.
+        """
+        member = self._find_member(array_name)
+        if member is None:
+            self._logger.warning(
+                f"<Member name='{array_name}'> no encontrado en {self.xml_path.name}."
+            )
+            return False
+        return self._update_or_add_comment(member, index, comentario)
 
     def save(self) -> None:
         """Guarda los cambios al archivo XML usando encoding UTF-8 binario."""

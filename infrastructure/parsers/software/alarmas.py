@@ -1,7 +1,7 @@
 """
-Infrastructure Layer - Alarmas Parser
-=====================================
-Parser específico para extraer alarmas del Excel Maestro.
+Software Parser - Alarmas
+==========================
+Extrae la tabla de alarmas del Excel Maestro.
 """
 
 from core.models import Alarma
@@ -12,15 +12,6 @@ class AlarmasParser(BaseParser):
     """Parser para extraer la tabla de alarmas."""
 
     def extraer(self, ruta_excel: str) -> list[Alarma]:
-        """
-        Extrae la lista de alarmas desde el Excel.
-
-        Args:
-            ruta_excel: Ruta al archivo Excel Maestro.
-
-        Returns:
-            Lista de objetos Alarma.
-        """
         df = self._leer_tabla(
             ruta_excel=ruta_excel,
             sheet_name="ALARMAS",

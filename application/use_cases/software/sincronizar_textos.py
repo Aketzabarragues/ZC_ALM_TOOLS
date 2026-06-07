@@ -13,15 +13,15 @@ import shutil
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
-from infrastructure.tia_service import TIAService
-from infrastructure.tia_scanner import TIAScanner
-from infrastructure.xml_modifier import XMLModifier
+from infrastructure.tia.scanner import TIAScanner
+from infrastructure.xml.modifier import XMLModifier
+from core.ports import ISoftwareRepository
 
 
 class SincronizarTextosUseCase:
     """Caso de uso para sincronizar comentarios de DBs con datos del Excel."""
 
-    def __init__(self, tia: TIAService, scanner: 'TIAScanner') -> None:
+    def __init__(self, tia: ISoftwareRepository, scanner: 'TIAScanner') -> None:
         self._tia = tia
         self._scanner = scanner  # DI: misma instancia que el Composition Root
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")

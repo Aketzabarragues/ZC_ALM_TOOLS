@@ -1,55 +1,20 @@
 """
-Infrastructure Layer - PReal Parser
-====================================
-Parser específico para extraer parámetros reales del Excel Maestro.
+Software Parser - PReal
+========================
+Extrae parametros reales del Excel Maestro.
 """
-
-import math
-from typing import Any
 
 from core.models import PReal
 from infrastructure.parsers.base_parser import BaseParser
+from infrastructure.parsers.utils import _safe_num_lista
 
-
-def _safe_str(value: Any) -> str | None:
-    """Convierte un valor de celda a str, devolviendo None para NaN/None/vacio."""
-    if value is None:
-        return None
-    if isinstance(value, float) and math.isnan(value):
-        return None
-    s = str(value).strip()
-    if not s or s.lower() in ("nan", "none", "null"):
-        return None
-    return s
-
-
-def _safe_num_lista(value: Any) -> int | str:
-    """
-    Para Num.Lista: limpiamos NaN y casteamos a int cuando es posible.
-    Si falla, devolvemos el string tal cual (ej. '1' o '1.0' o 'N/A').
-    """
-    cleaned = _safe_str(value)
-    if cleaned is None:
-        return 0
-    try:
-        return int(float(cleaned))
-    except (TypeError, ValueError):
-        return cleaned
+__all__ = ["PRealParser"]
 
 
 class PRealParser(BaseParser):
     """Parser para extraer la tabla de parámetros reales."""
 
     def extraer(self, ruta_excel: str) -> list[PReal]:
-        """
-        Extrae la lista de parámetros reales desde el Excel.
-
-        Args:
-            ruta_excel: Ruta al archivo Excel Maestro.
-
-        Returns:
-            Lista de objetos PReal.
-        """
         df = self._leer_tabla(
             ruta_excel=ruta_excel,
             sheet_name="P_REAL",

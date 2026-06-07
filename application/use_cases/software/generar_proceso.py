@@ -9,8 +9,9 @@ import logging
 import re
 
 from core.models import BloquePLC, Proceso
+from core.ports import ISoftwareRepository
 from infrastructure.tia_service import TIAService
-from infrastructure.xml_generator import XMLGenerator
+from infrastructure.xml.generator import XMLGenerator
 
 
 @dataclass
@@ -52,7 +53,7 @@ class GenerarProcesoUseCase:
     No tiene dependencias de UI.
     """
 
-    def __init__(self, tia: TIAService) -> None:
+    def __init__(self, tia: ISoftwareRepository) -> None:
         self._tia = tia
         self._generador = XMLGenerator()
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")

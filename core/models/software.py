@@ -1,12 +1,16 @@
 """
-Core Layer - Domain Models
-==========================
-Puro dominio, sin dependencias de frameworks o servicios externos.
+Core Layer - Software Domain Models
+====================================
+DTOs del dominio de SOFTWARE: procesos, parametros, alarmas.
+
+Estos modelos representan el domino LOGICO de la aplicacion
+(configuracion de procesos industriales) y NO deben depender
+de TIA Portal, infrastructure ni de librerias externas.
 """
 
 from dataclasses import dataclass
 
-__all__ = ["Proceso", "PReal", "PInt", "Alarma", "BloquePLC"]
+__all__ = ["Proceso", "PReal", "PInt", "Alarma"]
 
 
 @dataclass
@@ -20,7 +24,7 @@ class Proceso:
         codigo: Código interno del proceso.
         preal: Texto libre con info adicional de PReal (None si está vacío).
         index_preal: Índice del subelement de PReal (None si no aplica).
-        pint: Texto libre con info adicional de PInt (None si está vacío).
+        pint: Texto libre con info adicional de PInt (None si no aplica).
         index_pint: Índice del subelement de PInt (None si no aplica).
         alarmas: Texto libre con info de alarmas (None si está vacío).
         p_real: Valor de presión real (cuenta de parámetros).
@@ -159,23 +163,3 @@ class Alarma:
     num_db: int
     descripcion: str
     comentario_db: str
-
-
-@dataclass
-class BloquePLC:
-    """
-    Representa la radiografía de un bloque dentro de TIA Portal.
-
-    Se usa en el Radar Anti-colisiones para comparar objetos
-    existentes en el PLC con los que se van a generar.
-
-    Attributes:
-        nombre: Nombre completo del bloque (ej. "DB3110_Datos").
-        numero: Número del bloque (ej. 3110 para DB3110).
-        tipo: Tipo de bloque (ej. "DB", "FC", "FB", "OB").
-        ruta: Ruta en el árbol de TIA Portal.
-    """
-    nombre: str
-    numero: int
-    tipo: str
-    ruta: str

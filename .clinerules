@@ -9,13 +9,20 @@ No utilices frases de cortesía. Ve directo al código y a la resolución del pr
 - **Extracción de Propiedades:** Si necesitas un atributo que no tiene un método explícito, usa SIEMPRE la función genérica `get_property(name="NombrePropiedad")` o inspecciona el objeto primero con `get_properties()`.
 - **Código Heredado (C#):** Si revisas código antiguo para entender la lógica de dominio, NO traduzcas métodos de C# directamente a Python. Adapta la sintaxis usando EXCLUSIVAMENTE lo devuelto por `search_tia_manual`.
 
-# 2. ARQUITECTURA DEL PROYECTO (CLEAN ARCHITECTURE)
+# 2. ARQUITECTURA DEL PROYECTO (CLEAN ARCHITECTURE + HEXAGONAL)
 Respeta estrictamente la separación de responsabilidades. No acoples capas.
-- **core/**: Lógica pura de negocio y dataclasses. No debe tener dependencias de TIA Portal ni de librerías externas.
-- **infrastructure/**: 
-  - `tia_service.py`: ÚNICO lugar donde se importa `siemens_tia_scripting`.
-  - `ui_dialogs.py`: Interacción con el usuario (ej. `tkinter`). Las interfaces NUNCA deben llamar directamente a la API de TIA.
-- **application/**: Controladores que orquestan el flujo (UI -> Core -> Infraestructura).
+- **core/**: Lógica pura de negocio y dataclasses. No debe tener dependencias de TIA Portal ni de librerias externas. Aqui vive `core/ports.py` con los Protocols (ISoftwareRepository, etc.) que las use cases consumen.
+- **infrastructure/**:
+  - `tia/gateway.py` (**TIAAPortalGateway**): ÚNICO lugar donde se importa `siemens_tia_scripting`. Gestiona el ciclo de vida COM (attach/detach, open_new_portal, parseo de version, silenciar_ruido) y ofrece la API publica `resolve_plc()` y `resolve_project()` para que el repositorio no toque `_get_plc` ni `_get_project_internal` directamente.
+  - `tia/software_repository.py` (**SoftwareRepository**): implementa `ISoftwareRepository` y delega TODO el acceso COM al gateway. Aqui vive la logica de bloques (build_cache, compilar_software, importar/exportar XML, constantes N_MAX).
+  - `tia/scanner.py` / `tia/importer.py`: especialistas de cache y de importacion/exportacion XML. **Son inyectados al Repository, no usados directamente desde application/**.
+  - `tia_service.py`: shim de retro-compatibilidad. Hereda del Gateway y delega los metodos de software al `SoftwareRepository` interno. Sera eliminado en una fase futura.
+  - `ui_dialogs.py`: Interacción con el usuario (tkinter). Las interfaces NUNCA deben llamar directamente a la API de TIA.
+  - Patrón: **Gateway + Repositories** dentro del subpaquete `infrastructure/tia/`. Los casos de uso en `application/` SOLO importan `ISoftwareRepository` (de `core.ports`), nunca el shim `TIAService` ni los detalles de TIA.
+- **application/**:
+  - `session.py` (`AppSession`): Contexto que se pasa a cada flujo. Contiene los repositorios (gateway, software_repo) y el scanner. NUNCA instanciar la API de TIA directamente.
+  - `tui/`: Subpaquete de TUI (main_flow, software_flows, utils).
+  - `use_cases/software/`: Casos de uso de software que dependen SOLO de `ISoftwareRepository` (no del shim).
 
 # 3. REGLAS CRÍTICAS PARA TIA PORTAL SCRIPTING
 - **Gestión de Recursos (Zero Zombies):** Siempre que inicies o te conectes a un portal (`attach_portal` o `open_portal`), DEBES garantizar su cierre o desvinculación mediante `portal.detach()` utilizando bloques `try...finally`. Dejar instancias COM colgadas es inaceptable.
