@@ -11,6 +11,7 @@ para evitar releer el disco en cada flujo.
 from dataclasses import dataclass, field
 
 from core.models import DimensionesDispositivos, DispED
+from core.models.software import Alarma, PInt, PReal, Proceso
 from core.ports import ISoftwareRepository
 from infrastructure.tia.gateway import TIAPortalGateway
 from infrastructure.tia.scanner import TIAScanner
@@ -31,6 +32,11 @@ class AppSession:
     ruta_excel: str | None = None
 
     # --- Carga Maestra del Excel (precargada al inicio) ---
+    # Software
+    procesos: list[Proceso] = field(default_factory=list)
+    preal_list: list[PReal] = field(default_factory=list)
+    pint_list: list[PInt] = field(default_factory=list)
+    alarmas_list: list[Alarma] = field(default_factory=list)
     # Hardware
     disp_ed_list: list[DispED] = field(default_factory=list)
     dimensiones: DimensionesDispositivos = field(

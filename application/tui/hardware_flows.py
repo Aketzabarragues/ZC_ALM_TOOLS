@@ -13,8 +13,12 @@ en el AppSession (Carga Maestra en run()), por lo que este
 flujo no relee el disco: es instantaneo.
 """
 
+from pathlib import Path
+
 import questionary
 from rich.console import Console
+
+from infrastructure import config_manager
 
 from application.session import AppSession
 from application.use_cases.hardware.sincronizar_dispositivos import (
@@ -82,8 +86,8 @@ def _flujo_sincronizar_dispositivos(session: AppSession) -> None:
     #  Ejecucion del caso de uso
     # ------------------------------------------------------------------ #
     use_case = SincronizarDispositivosUseCase(session.software_repo)
-    from pathlib import Path  # local import: solo se usa aqui
-    export_dir = str(Path(".build/hardware").absolute())
+    build_root = Path(config_manager.get_build_root())
+    export_dir = str((build_root / "hardware").absolute())
 
     try:
         # Usar el context manager nativo del Gateway para silenciar
@@ -91,7 +95,8 @@ def _flujo_sincronizar_dispositivos(session: AppSession) -> None:
         with session.gateway.silenciar_ruido():
             use_case.ejecutar(
                 plc_name=session.plc_seleccionado,
-                disp_ed_list=disp_ed_list,
+                hw_type="ed",
+                dispositivos=disp_ed_list,
                 dimensiones=dimensiones,
                 export_dir=export_dir,
             )

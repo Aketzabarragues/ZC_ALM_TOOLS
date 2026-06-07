@@ -368,6 +368,10 @@ def run(version: str | None = None) -> None:
         software_repo=software_repo,
         scanner=scanner,
         ruta_excel=ruta_excel,  # Inyectamos al AppSession para evitar re-prompt.
+        procesos=procesos,
+        preal_list=preal_list,
+        pint_list=pint_list,
+        alarmas_list=alarmas_list,
         disp_ed_list=disp_ed_list,
         dimensiones=dimensiones,
     )

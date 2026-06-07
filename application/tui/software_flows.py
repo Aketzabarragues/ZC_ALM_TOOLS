@@ -36,6 +36,36 @@ __all__ = [
 console = Console()
 
 
+def _build_tareas(proceso, preal_list, pint_list, alarmas_list) -> list[Any]:
+    """Helper que construye la lista de TareaSincronizacion a partir de las
+    listas ya filtradas por proceso. Vive aqui para evitar duplicacion
+    entre los dos flujos TUI (generar y sincronizar)."""
+    from application.use_cases.software.sincronizar_textos import TareaSincronizacion
+
+    tareas: list[Any] = []
+    db_configs = [
+        (proceso.db_preal_nombre, "PReal", preal_list, True),
+        (proceso.db_pint_nombre, "PInt", pint_list, True),
+        (proceso.db_alm_nombre, "ALM", alarmas_list, False),
+    ]
+    for db_name, array_name, datos, es_parametro in db_configs:
+        if not datos:
+            continue
+        tareas.append(
+            TareaSincronizacion(
+                db_name=db_name,
+                array_name=array_name,
+                items=list(datos),
+                get_id_func=lambda x: getattr(x, "numero", 0),
+                get_comment_func=lambda x: getattr(
+                    x, "comentario_db", getattr(x, "texto", "")
+                ),
+                es_parametro=es_parametro,
+            )
+        )
+    return tareas
+
+
 def _flujo_generar_procesos(
     procesos: list[Proceso],
     preal_list: list[PReal],
@@ -49,7 +79,9 @@ def _flujo_generar_procesos(
         PlantillaVaciaError,
         ProcesoOrigenNoEncontradoError,
     )
-    from application.use_cases.software.sincronizar_textos import SincronizarTextosUseCase
+    from application.use_cases.software.sincronizar_textos import (
+        SincronizarTextosUseCase,
+    )
 
     if not session.plc_seleccionado:
         console.print("[bold red]❌ Selecciona un PLC primero desde el Menú Principal.[/bold red]")
@@ -151,7 +183,6 @@ def _flujo_generar_procesos(
             )
             console.print("[bold green]✅ 1/3: Código base y estructura inyectados correctamente.[/bold green]")
 
-            # --- 1. ACTUALIZAR CONSTANTES N_MAX ---
             uid = proceso_destino.uid
             codigo = proceso_destino.codigo
             nombre_tabla = f"{uid}_{codigo}"
@@ -174,58 +205,31 @@ def _flujo_generar_procesos(
 
             console.print("[bold green]✅ 2/3: Dimensiones de DataBlocks ajustadas (N_MAX).[/bold green]")
 
-            # --- 2. SINCRONIZAR TEXTOS (COMENTARIOS DB) ---
+            preal_proc = [
+                p for p in preal_list
+                if hasattr(p, "proceso") and _pertenece_al_proceso(
+                    p.proceso, proceso_destino.nombre, proceso_destino.codigo
+                )
+            ]
+            pint_proc = [
+                p for p in pint_list
+                if hasattr(p, "proceso") and _pertenece_al_proceso(
+                    p.proceso, proceso_destino.nombre, proceso_destino.codigo
+                )
+            ]
+            alm_proc = [
+                a for a in alarmas_list
+                if hasattr(a, "proceso") and _pertenece_al_proceso(
+                    a.proceso, proceso_destino.nombre, proceso_destino.codigo
+                )
+            ]
+            tareas = _build_tareas(proceso_destino, preal_proc, pint_proc, alm_proc)
+
             with console.status(
                 "[cyan]⏳ 3/3: Sincronizando textos y descripciones...[/cyan]",
                 spinner="dots",
             ):
                 uc_sync = SincronizarTextosUseCase(session.software_repo, session.scanner)
-                preal_proc = [
-                    p for p in preal_list
-                    if hasattr(p, 'proceso') and _pertenece_al_proceso(
-                        p.proceso, proceso_destino.nombre, proceso_destino.codigo
-                    )
-                ]
-                pint_proc = [
-                    p for p in pint_list
-                    if hasattr(p, 'proceso') and _pertenece_al_proceso(
-                        p.proceso, proceso_destino.nombre, proceso_destino.codigo
-                    )
-                ]
-                alm_proc = [
-                    a for a in alarmas_list
-                    if hasattr(a, 'proceso') and _pertenece_al_proceso(
-                        a.proceso, proceso_destino.nombre, proceso_destino.codigo
-                    )
-                ]
-                tareas: list[dict[str, Any]] = []
-                if preal_proc:
-                    tareas.append({
-                        "db_name": proceso_destino.db_preal_nombre,
-                        "array_name": "PReal",
-                        "items": preal_proc,
-                        "get_id_func": lambda x: getattr(x, 'numero', 0),
-                        "get_comment_func": lambda x: getattr(x, 'comentario_db', getattr(x, 'texto', '')),
-                        "es_parametro": True,
-                    })
-                if pint_proc:
-                    tareas.append({
-                        "db_name": proceso_destino.db_pint_nombre,
-                        "array_name": "PInt",
-                        "items": pint_proc,
-                        "get_id_func": lambda x: getattr(x, 'numero', 0),
-                        "get_comment_func": lambda x: getattr(x, 'comentario_db', getattr(x, 'texto', '')),
-                        "es_parametro": True,
-                    })
-                if alm_proc:
-                    tareas.append({
-                        "db_name": proceso_destino.db_alm_nombre,
-                        "array_name": "ALM",
-                        "items": alm_proc,
-                        "get_id_func": lambda x: getattr(x, 'numero', 0),
-                        "get_comment_func": lambda x: getattr(x, 'comentario_db', getattr(x, 'texto', '')),
-                        "es_parametro": False,
-                    })
                 if tareas:
                     with session.gateway.silenciar_ruido():
                         resultados = uc_sync.sincronizar_multiple_db(
@@ -239,7 +243,6 @@ def _flujo_generar_procesos(
                     console.print("[dim]No hay datos en Excel para sincronizar textos.[/dim]")
             console.print("[green]✅ 3/3 Textos sincronizados correctamente.[/green]")
 
-            # Resumen final (visible DESPUES del spinner).
             if tareas:
                 console.print("")
                 console.rule("[bold blue]RESUMEN FINAL DE COMPONENTES[/bold blue]")
@@ -278,19 +281,19 @@ def _flujo_sincronizar_textos(
 
     preal_proc = [
         p for p in preal_list
-        if hasattr(p, 'proceso') and _pertenece_al_proceso(
+        if hasattr(p, "proceso") and _pertenece_al_proceso(
             p.proceso, proceso.nombre, proceso.codigo
         )
     ]
     pint_proc = [
         p for p in pint_list
-        if hasattr(p, 'proceso') and _pertenece_al_proceso(
+        if hasattr(p, "proceso") and _pertenece_al_proceso(
             p.proceso, proceso.nombre, proceso.codigo
         )
     ]
     alm_proc = [
         a for a in alarmas_list
-        if hasattr(a, 'proceso') and _pertenece_al_proceso(
+        if hasattr(a, "proceso") and _pertenece_al_proceso(
             a.proceso, proceso.nombre, proceso.codigo
         )
     ]
@@ -303,31 +306,14 @@ def _flujo_sincronizar_textos(
     if not questionary.confirm("¿Iniciar sincronización con TIA Portal?").ask():
         return
 
-    tareas: list[dict[str, Any]] = []
-
-    db_configs = [
-        (proceso.db_preal_nombre, "PReal", preal_proc, True),
-        (proceso.db_pint_nombre, "PInt", pint_proc, True),
-        (proceso.db_alm_nombre, "ALM", alm_proc, False),
-    ]
-
-    for db_name, array_name, datos, es_parametro in db_configs:
-        if not datos:
-            console.print(f"[dim]- Omitiendo {db_name} (No hay datos en Excel)[/dim]")
+    # Construir tareas candidatas y descartar las que no existan en el PLC.
+    tareas_candidatas = _build_tareas(proceso, preal_proc, pint_proc, alm_proc)
+    tareas: list[Any] = []
+    for t in tareas_candidatas:
+        if not session.software_repo.bloque_existe(session.plc_seleccionado, t.db_name):
+            console.print(f"[dim]- Omitiendo {t.db_name} (No existe en PLC)[/dim]")
             continue
-
-        if not session.software_repo.bloque_existe(session.plc_seleccionado, db_name):
-            console.print(f"[dim]- Omitiendo {db_name} (No existe en PLC)[/dim]")
-            continue
-
-        tareas.append({
-            "db_name": db_name,
-            "array_name": array_name,
-            "items": datos,
-            "get_id_func": lambda x: getattr(x, 'numero', 0),
-            "get_comment_func": lambda x: getattr(x, 'comentario_db', getattr(x, 'texto', '')),
-            "es_parametro": es_parametro,
-        })
+        tareas.append(t)
 
     if not tareas:
         console.print("[bold yellow]⚠️ No hay bloques válidos para sincronizar.[/bold yellow]")
@@ -338,8 +324,7 @@ def _flujo_sincronizar_textos(
     # ------------------------------------------------------------------ #
     #  TRANSACCION GLOBAL: agrupa los 4 pasos en una sola entrada
     #  en el historial de TIA Portal. Si algo falla a mitad, ROLLBACK
-    #  completo (N_MAX + DBs + cache). El gateway es reentrante: si
-    #  el importer ya abrió su propia transacción, se fusiona.
+    #  completo (N_MAX + DBs + cache).
     # ------------------------------------------------------------------ #
     with session.software_repo.transaccion(
         f"Sinc. Textos: {proceso.nombre} (UID {proceso.uid})"

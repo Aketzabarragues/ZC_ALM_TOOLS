@@ -3,5 +3,21 @@
     "log": {
         "file_level": "DEBUG",
         "console_level": "WARNING"
+    },
+    "tia_folders": {
+        "proceso": "003_Proceso",
+        "dispositivos_ed": "2000_Dispositivos"
+    },
+    "build_folders": {
+        "root": ".build"
+    },
+    "hardware": {
+        "ed": {
+            "db_name": "DB2000_ED",
+            "db_array_name": "ED",
+            "tag_table": "2000_Disp_ED",
+            "config_table": "000_Config_Dispositivos",
+            "config_constant": "N_MAX_DISP_ED"
+        }
     }
 }

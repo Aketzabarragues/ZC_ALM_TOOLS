@@ -8,20 +8,16 @@ Implementa el contrato ISoftwareRepository (ver core/ports.py).
 """
 
 import logging
+from collections.abc import Generator
 from contextlib import AbstractContextManager
 from pathlib import Path
 from typing import Any
 
 from core.models import BloquePLC
+from infrastructure import config_manager
 from infrastructure.tia.gateway import TIAPortalGateway, TIAServiceError
 from infrastructure.tia.importer import TIAImporter
 from infrastructure.tia.scanner import TIAScanner
-from infrastructure.tia_runtime_loader import load_siemens_tia
-
-# Cargamos el wrapper una sola vez al importar el modulo.
-# 'ts.Enums.ExportOptions.WithDefaults' es la sintaxis confirmada en
-# el manual oficial de TIA Scripting Python (seccion 2.28.3).
-_ts: Any = load_siemens_tia()
 
 __all__ = ["SoftwareRepository"]
 
@@ -315,16 +311,21 @@ class SoftwareRepository:
         if not plc:
             return False
 
+        tia_folder_proceso = config_manager.get_tia_folder_proceso()
         try:
-            self._logger.info(f"Buscando tabla de variables '{nombre_tabla}' en '003_Proceso'...")
-            tablas = plc.get_plc_tag_tables(folder_path="003_Proceso")
+            self._logger.info(
+                f"Buscando tabla de variables '{nombre_tabla}' en '{tia_folder_proceso}'..."
+            )
+            tablas = plc.get_plc_tag_tables(folder_path=tia_folder_proceso)
 
             tabla = next(
                 (t for t in tablas if t.get_property(name="Name") == nombre_tabla),
                 None,
             )
             if not tabla:
-                self._logger.error(f"Tabla '{nombre_tabla}' no encontrada en '003_Proceso'.")
+                self._logger.error(
+                    f"Tabla '{nombre_tabla}' no encontrada en '{tia_folder_proceso}'."
+                )
                 return False
 
             user_constants = tabla.get_user_constants()
@@ -553,14 +554,12 @@ class SoftwareRepository:
         export_dir_path.mkdir(parents=True, exist_ok=True)
 
         try:
-            # getattr defensivo: si WithDefaults no existe, caemos al int 1
-            # (que es el ordinal del enum en la mayoria de versiones).
-            export_opts = getattr(
-                _ts.Enums.ExportOptions, "WithDefaults", 1
-            )
+            # El enum viene del Gateway (vía TIAImporter). El repo
+            # NO debe recargar el wrapper de TIA Portal (Clean Arch).
+            export_opts = self._importer.export_opts
         except AttributeError:
             self._logger.error(
-                "No se encontró Enums.ExportOptions.WithDefaults en el wrapper."
+                "TIAImporter no tiene export_opts configurado."
             )
             return ""
 

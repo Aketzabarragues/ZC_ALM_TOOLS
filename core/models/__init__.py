@@ -10,7 +10,11 @@ como antes del refactor.
 """
 
 from core.models.blocks import BloquePLC
-from core.models.hardware import DimensionesDispositivos, DispED
+from core.models.hardware import (
+    DimensionesDispositivos,
+    DispED,
+    DispositivoHardware,
+)
 from core.models.software import Alarma, PInt, PReal, Proceso
 
 __all__ = [
@@ -21,4 +25,5 @@ __all__ = [
     "BloquePLC",
     "DispED",
     "DimensionesDispositivos",
+    "DispositivoHardware",
 ]

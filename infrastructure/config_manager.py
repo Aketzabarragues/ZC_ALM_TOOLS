@@ -5,6 +5,7 @@ Gestiona la persistencia de la configuración del usuario (JSON).
 """
 
 import json
+from dataclasses import dataclass
 from pathlib import Path
 
 CONFIG_FILE = Path("config.json")
@@ -107,3 +108,75 @@ def set_log_levels(file_level: str, console_level: str) -> None:
         "console_level": console_level.upper(),
     }
     _save_config(config)
+
+
+# --- RUTAS DE TIA PORTAL (carpetas virtuales del proyecto) ---
+
+
+def get_tia_folder_proceso() -> str:
+    """Ruta de la carpeta de tablas del proceso (N_MAX). Default: "003_Proceso"."""
+    config: dict = _load_config()
+    tia_folders: dict = config.get("tia_folders", {})
+    return str(tia_folders.get("proceso", "003_Proceso"))
+
+
+def get_tia_folder_dispositivos_ed() -> str:
+    """Ruta de la carpeta de dispositivos ED. Default: "2000_Dispositivos"."""
+    config: dict = _load_config()
+    tia_folders: dict = config.get("tia_folders", {})
+    return str(tia_folders.get("dispositivos_ed", "2000_Dispositivos"))
+
+
+# --- DIRECTORIOS TEMPORALES DE BUILD ---
+
+
+def get_build_root() -> str:
+    """Raíz de los directorios temporales de build. Default: ".build"."""
+    config: dict = _load_config()
+    build_folders: dict = config.get("build_folders", {})
+    return str(build_folders.get("root", ".build"))
+
+
+# --- CONFIGURACIÓN TIA POR TIPO DE HARDWARE (escalable a EA, SD, etc.) ---
+
+
+@dataclass(frozen=True)
+class HardwareTIAConfig:
+    """Rutas y constantes de TIA Portal para un tipo de hardware concreto."""
+    db_name: str
+    db_array_name: str
+    tag_table: str
+    config_table: str
+    config_constant: str
+
+
+def get_hardware_tia_config(hw_type: str) -> HardwareTIAConfig:
+    """
+    Buscador DINÁMICO de configuración de TIA Portal por tipo de hardware.
+    Permite escalar a EA, SD, ANA, etc. sin tocar el codigo.
+
+    Back-compat 100%: si el JSON no tiene la clave, devuelve los defaults
+    historicos (los mismos que estaban hardcodeados en DispED.TIA_*).
+    """
+    hw_type = hw_type.lower()
+    config: dict = _load_config()
+    hardware_dict: dict = config.get("hardware", {})
+    hw_data: dict = hardware_dict.get(hw_type, {})
+
+    if hw_type == "ed":
+        return HardwareTIAConfig(
+            db_name=hw_data.get("db_name", "DB2000_ED"),
+            db_array_name=hw_data.get("db_array_name", "ED"),
+            tag_table=hw_data.get("tag_table", "2000_Disp_ED"),
+            config_table=hw_data.get("config_table", "000_Config_Dispositivos"),
+            config_constant=hw_data.get("config_constant", "N_MAX_DISP_ED"),
+        )
+
+    # Para futuros tipos (ea, sd, etc.) si no están en config:
+    return HardwareTIAConfig(
+        db_name=hw_data.get("db_name", f"DB_{hw_type.upper()}"),
+        db_array_name=hw_data.get("db_array_name", hw_type.upper()),
+        tag_table=hw_data.get("tag_table", f"TagTable_{hw_type.upper()}"),
+        config_table=hw_data.get("config_table", "000_Config_Dispositivos"),
+        config_constant=hw_data.get("config_constant", f"N_MAX_{hw_type.upper()}"),
+    )

@@ -10,12 +10,33 @@ Motor de compilación inteligente: Pre-check y Post-check de consistencia.
 import logging
 import os
 import shutil
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
+from infrastructure import config_manager
 from infrastructure.tia.scanner import TIAScanner
 from infrastructure.xml.modifier import XMLModifier
 from core.ports import ISoftwareRepository
+
+
+@dataclass
+class TareaSincronizacion:
+    """
+    DTO que describe una tarea de sincronizacion de comentarios en un DB.
+
+    Reemplaza el uso de diccionarios literales (que eran inferibles
+    pero no chequeables estaticamente). Cada tarea tiene todos los
+    parametros que necesita para ejecutarse autonomamente.
+    """
+    db_name: str
+    array_name: str
+    items: list = field(default_factory=list)
+    get_id_func: Callable[[Any], int] = lambda x: getattr(x, 'numero', 0)
+    get_comment_func: Callable[[Any], str] = lambda x: getattr(
+        x, 'comentario_db', getattr(x, 'texto', '')
+    )
+    es_parametro: bool = False
 
 
 class SincronizarTextosUseCase:
@@ -27,7 +48,7 @@ class SincronizarTextosUseCase:
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         # Limpieza proactiva del entorno temporal
-        self._temp_dir = Path(".build/temp")
+        self._temp_dir = Path(config_manager.get_build_root()) / "temp"
         if self._temp_dir.exists():
             shutil.rmtree(self._temp_dir, ignore_errors=True)
         self._temp_dir.mkdir(parents=True, exist_ok=True)
@@ -102,7 +123,7 @@ class SincronizarTextosUseCase:
     def sincronizar_multiple_db(
         self,
         plc_name: str,
-        tareas: list[dict[str, Any]]
+        tareas: list[TareaSincronizacion]
     ) -> dict[str, bool]:
         """
         Sincroniza múltiples DBs en una sola transacción.
@@ -130,7 +151,7 @@ class SincronizarTextosUseCase:
         necesita_compilacion_pre = False
         
         for tarea in tareas:
-            db_name = tarea.get("db_name", "")
+            db_name = tarea.db_name
             if not self._tia.is_bloque_consistente(plc_name, db_name):
                 self._logger.warning(f"Bloque '{db_name}' no está consistente. Se requerirá compilación.")
                 necesita_compilacion_pre = True
@@ -140,7 +161,7 @@ class SincronizarTextosUseCase:
             self._logger.info("⏳ Compilando antes de sincronizar (Pre-Check)...")
             if not self._tia.compilar_software(plc_name):
                 self._logger.error("❌ Fallo en compilación Pre-Check. Abortando sincronización.")
-                return {t["db_name"]: False for t in tareas}
+                return {t.db_name: False for t in tareas}
         
         # ===== EJECUCIÓN DEL LOTE =====
         self._logger.info(f"🚀 Iniciando lote de sincronización ({len(tareas)} DBs)...")
@@ -150,14 +171,14 @@ class SincronizarTextosUseCase:
         for tarea in tareas:
             resultado = self.sincronizar_comentarios_db(
                 plc_name=plc_name,
-                db_name=tarea["db_name"],
-                array_name=tarea["array_name"],
-                items=tarea["items"],
-                get_id_func=tarea["get_id_func"],
-                get_comment_func=tarea["get_comment_func"],
-                es_parametro=tarea.get("es_parametro", False)
+                db_name=tarea.db_name,
+                array_name=tarea.array_name,
+                items=tarea.items,
+                get_id_func=tarea.get_id_func,
+                get_comment_func=tarea.get_comment_func,
+                es_parametro=tarea.es_parametro,
             )
-            resultados[tarea["db_name"]] = resultado
+            resultados[tarea.db_name] = resultado
             if resultado:
                 bloques_importados += 1
         

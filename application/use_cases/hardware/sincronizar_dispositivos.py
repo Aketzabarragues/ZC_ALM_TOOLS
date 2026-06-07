@@ -17,10 +17,12 @@ varias llamadas en una transaccion si fuera necesario.
 """
 
 import logging
+from collections.abc import Sequence
 from pathlib import Path
 
-from core.models import DimensionesDispositivos, DispED
+from core.models import DimensionesDispositivos, DispositivoHardware
 from core.ports import ISoftwareRepository
+from infrastructure import config_manager
 from infrastructure.xml.modifier import XMLModifier
 from infrastructure.xml.tag_modifier import TagTableModifier
 
@@ -30,8 +32,8 @@ __all__ = ["SincronizarDispositivosUseCase"]
 class SincronizarDispositivosUseCase:
     """
     Caso de uso: sincroniza las UserConstants de la tabla de tags
-    de dispositivos (DispED.TIA_TAG_TABLE) con los datos del Excel
-    Maestro.
+    de dispositivos (configurable via config_manager) con los datos
+    del Excel Maestro.
 
     El repositorio se inyecta via Protocol (ISoftwareRepository) para
     que la logica sea testeable con un mock y no dependa de TIA Portal.
@@ -46,7 +48,8 @@ class SincronizarDispositivosUseCase:
     def ejecutar(
         self,
         plc_name: str,
-        disp_ed_list: list[DispED],
+        hw_type: str,
+        dispositivos: Sequence[DispositivoHardware],
         dimensiones: DimensionesDispositivos,
         export_dir: str,
     ) -> None:
@@ -55,7 +58,10 @@ class SincronizarDispositivosUseCase:
 
         Args:
             plc_name: nombre del PLC objetivo.
-            disp_ed_list: dispositivos leidos del Excel.
+            hw_type: tipo de hardware ("ed", "ea", "sd", etc.). Determina
+                el DTO de TIA Portal a usar (config.json).
+            dispositivos: lista de cualquier tipo que cumpla el Protocol
+                DispositivoHardware (DispED, DispEA, DispSD, ...).
             dimensiones: contadores N_MAX leidos de las celdas nombradas.
             export_dir: directorio temporal donde exportar el XML de la
                 tabla para anadir las nuevas constantes.
@@ -67,33 +73,40 @@ class SincronizarDispositivosUseCase:
         #  cede el control sin anidar (TIA no lo soporta).
         # ------------------------------------------------------------------ #
         with self._repo.transaccion(
-            f"Sincronizar {len(disp_ed_list)} DispED en PLC '{plc_name}'"
+            f"Sincronizar {len(dispositivos)} disp. {hw_type.upper()} en PLC '{plc_name}'"
         ):
             self._ejecutar_fases(
-                plc_name, disp_ed_list, dimensiones, export_dir
+                plc_name, hw_type, dispositivos, dimensiones, export_dir
             )
 
     def _ejecutar_fases(
         self,
         plc_name: str,
-        disp_ed_list: list[DispED],
+        hw_type: str,
+        dispositivos: Sequence[DispositivoHardware],
         dimensiones: DimensionesDispositivos,
         export_dir: str,
     ) -> None:
         """
         Cuerpo de las 4 fases, envuelto en transaccion global por ejecutar().
         """
+        # Obtenemos la configuracion de TIA Portal para este tipo de hardware.
+        # Vive en config_manager (externalizable en config.json) en vez de
+        # en el modelo de dominio, para poder escalar a EA, SD, ANA, etc.
+        hw_config = config_manager.get_hardware_tia_config(hw_type)
+        tia_folder_dispositivos = config_manager.get_tia_folder_dispositivos_ed()
+
         # ------------------------------------------------------------------ #
         #  1. UPDATE del N_MAX en la tabla de configuracion
         # ------------------------------------------------------------------ #
         self._logger.info(
-            f"Actualizando N_MAX ({DispED.TIA_CONFIG_CONSTANT}) = "
-            f"{dimensiones.num_disp_ed} en tabla {DispED.TIA_CONFIG_TABLE}."
+            f"Actualizando N_MAX ({hw_config.config_constant}) = "
+            f"{dimensiones.num_disp_ed} en tabla {hw_config.config_table}."
         )
         self._repo.update_user_constant_value(
             plc_name=plc_name,
-            table_name=DispED.TIA_CONFIG_TABLE,
-            constant_name=DispED.TIA_CONFIG_CONSTANT,
+            table_name=hw_config.config_table,
+            constant_name=hw_config.config_constant,
             new_value=dimensiones.num_disp_ed,
         )
 
@@ -102,10 +115,10 @@ class SincronizarDispositivosUseCase:
         # ------------------------------------------------------------------ #
         plc_consts: dict[int, str] = self._repo.get_user_constants(
             plc_name=plc_name,
-            table_name=DispED.TIA_TAG_TABLE,
+            table_name=hw_config.tag_table,
         )
         excel_dict: dict[int, str] = {
-            d.numero: d.plc_tag for d in disp_ed_list if d.plc_tag
+            d.numero: d.plc_tag for d in dispositivos if d.plc_tag
         }
 
         self._logger.info(
@@ -122,7 +135,7 @@ class SincronizarDispositivosUseCase:
                 )
                 self._repo.delete_user_constant(
                     plc_name=plc_name,
-                    table_name=DispED.TIA_TAG_TABLE,
+                    table_name=hw_config.tag_table,
                     name=pl_name_in_plc,
                 )
             else:
@@ -135,7 +148,7 @@ class SincronizarDispositivosUseCase:
                     )
                     self._repo.update_user_constant_name(
                         plc_name=plc_name,
-                        table_name=DispED.TIA_TAG_TABLE,
+                        table_name=hw_config.tag_table,
                         current_name=pl_name_in_plc,
                         new_name=expected_name,
                     )
@@ -143,7 +156,7 @@ class SincronizarDispositivosUseCase:
         # ------------------------------------------------------------------ #
         #  3. XML SYNC: anadir los nuevos via export/modify/import
         # ------------------------------------------------------------------ #
-        nuevos = [d for d in disp_ed_list if d.numero not in plc_consts]
+        nuevos = [d for d in dispositivos if d.numero not in plc_consts]
         if nuevos:
             self._logger.info(
                 f"Hay {len(nuevos)} constantes nuevas. "
@@ -152,7 +165,7 @@ class SincronizarDispositivosUseCase:
 
             xml_path = self._repo.exportar_tabla_variables(
                 plc_name=plc_name,
-                table_name=DispED.TIA_TAG_TABLE,
+                table_name=hw_config.tag_table,
                 export_dir=export_dir,
             )
             if not xml_path or not Path(xml_path).exists():
@@ -174,11 +187,11 @@ class SincronizarDispositivosUseCase:
                 )
             modifier.save()
 
-            # Folder por defecto para ED: "2000_Dispositivos".
+            # Folder para ED: externalizable en config.json.
             self._repo.importar_tabla_variables(
                 plc_name=plc_name,
                 xml_path=xml_path,
-                folder_path="2000_Dispositivos",
+                folder_path=tia_folder_dispositivos,
             )
         else:
             # Sin nuevos: la Fase 3 no se ejecuta, pero la Fase 4 SIEMPRE corre.
@@ -214,14 +227,14 @@ class SincronizarDispositivosUseCase:
         # la ruta manualmente para evitar incompatibilidades de tipo.
         export_ok = self._repo.exportar_bloque(
             plc_name=plc_name,
-            block_name=DispED.TIA_DB_NAME,
+            block_name=hw_config.db_name,
             target_dir=export_dir,
         )
-        db_xml_path = str(Path(export_dir) / f"{DispED.TIA_DB_NAME}.xml")
+        db_xml_path = str(Path(export_dir) / f"{hw_config.db_name}.xml")
 
         if not export_ok or not Path(db_xml_path).exists():
             self._logger.error(
-                f"Fallo exportando DB '{DispED.TIA_DB_NAME}' "
+                f"Fallo exportando DB '{hw_config.db_name}' "
                 "o el archivo no existe; abortando Fase 4."
             )
             return
@@ -229,20 +242,20 @@ class SincronizarDispositivosUseCase:
         # Mapear: el Excel es base-1, TIA espera Path base-0.
         # Restamos 1 al numero del Excel al construir el indice del Subelement.
         modifier = XMLModifier(db_xml_path)
-        for d in disp_ed_list:
+        for d in dispositivos:
             texto = f"{d.plc_tag} - {d.descripcion}"
             index_base_0 = d.numero - 1
             modifier.set_comentario_array(
-                DispED.TIA_DB_ARRAY_NAME, index_base_0, texto
+                hw_config.db_array_name, index_base_0, texto
             )
         modifier.save()
 
         self._repo.importar_bloque(
             plc_name=plc_name,
             xml_path=db_xml_path,
-            folder_path="2000_Dispositivos",
+            folder_path=tia_folder_dispositivos,
         )
-        self._repo.compilar_bloque(plc_name, DispED.TIA_DB_NAME)
+        self._repo.compilar_bloque(plc_name, hw_config.db_name)
         self._logger.info(
             "Sincronizacion de dispositivos finalizada. "
             "Refrescando caché COM..."

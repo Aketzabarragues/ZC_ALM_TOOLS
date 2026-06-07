@@ -9,6 +9,8 @@ de core.ports, garantizando la inversión de dependencias (Clean Architecture).
 
 from contextlib import AbstractContextManager
 from typing import Any, Protocol
+from collections.abc import Generator
+
 
 from core.models import BloquePLC
 

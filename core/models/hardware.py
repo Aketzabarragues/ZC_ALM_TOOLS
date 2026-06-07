@@ -11,9 +11,29 @@ librerias externas.
 """
 
 from dataclasses import dataclass
-from typing import ClassVar
+from typing import Protocol
 
-__all__ = ["DispED", "DimensionesDispositivos"]
+__all__ = ["DispositivoHardware", "DispED", "DimensionesDispositivos"]
+
+
+class DispositivoHardware(Protocol):
+    """
+    Contrato base (Protocol) que cualquier dispositivo hardware
+    (ED, EA, SD, Motor, etc.) debe cumplir para ser gestionado
+    por SincronizarDispositivosUseCase.
+
+    Define solo las propiedades MINIMAS que el caso de uso necesita.
+    Implementaciones concretas (DispED, futuros DispEA/DispSD) pueden
+    tener muchos mas atributos; este contrato no los obliga.
+
+    Cumplimiento estatico (duck typing): cualquier clase con estos 4
+    atributos (con los tipos correctos) es aceptada por Pylance/Mypy
+    sin necesidad de herencia explicita.
+    """
+    numero: int
+    plc_tag: str
+    plc_comentario: str
+    descripcion: str
 
 
 @dataclass
@@ -25,19 +45,15 @@ class DispED:
     (pulsadores, finales de carrera, sensores digitales, etc.).
 
     Attributes:
-        TIA_DB_NAME: Nombre canonico del DB en TIA Portal (placeholder Fase 2).
-        TIA_TAG_TABLE: Nombre canonico de la tabla de tags PLC.
-        TIA_CONFIG_CONSTANT: Nombre de la constante de dimensionamiento.
+        uid, numero, tag, descripcion, fat, e_byte, e_bit, gr_alarma,
+        cuadro, observaciones, plc_tag, plc_tipo, plc_index, plc_comentario,
+        cgf_habilitar, cgf_byte_entrada, cgf_bit_entrada, cgf_grupo_alarma.
+        (Las rutas de TIA Portal han salido del modelo de dominio
+        y viven ahora en config_manager.get_hardware_tia_config('ed').)
     """
-    # --- Metadatos de TIA Portal (PLACEHOLDERS Fase 2) ---
-    TIA_DB_NAME: ClassVar[str] = "DB2000_ED"
-    TIA_DB_ARRAY_NAME: ClassVar[str] = "ED"
-    TIA_TAG_TABLE: ClassVar[str] = "2000_Disp_ED"
-    TIA_CONFIG_TABLE: ClassVar[str] = "000_Config_Dispositivos"
-    TIA_CONFIG_CONSTANT: ClassVar[str] = "N_MAX_DISP_ED"
 
-    # --- Atributos leidos del Excel ---
-    uid: str
+    # --- Atributos leídos del Excel ---
+    uid: str = ""
     numero: int = 0
     tag: str = ""
     descripcion: str = ""

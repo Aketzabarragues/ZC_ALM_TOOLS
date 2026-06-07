@@ -10,6 +10,7 @@ import shutil
 from pathlib import Path
 
 from core.models import BloquePLC, Proceso
+from infrastructure import config_manager
 
 __all__ = ["XMLGenerator", "XMLGeneratorError"]
 
@@ -193,9 +194,11 @@ class XMLGenerator:
         self,
         ruta_plantilla: str,
         reemplazos: dict[str, str],
-        build_dir: str = ".build"
+        build_dir: str | None = None,
     ) -> str:
         """Genera físicamente los archivos XML mutados en el directorio destino."""
+        if build_dir is None:
+            build_dir = config_manager.get_build_root()
         ruta_origen = Path(ruta_plantilla)
         directorio_salida = Path(build_dir)
 

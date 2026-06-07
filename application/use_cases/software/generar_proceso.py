@@ -10,7 +10,6 @@ import re
 
 from core.models import BloquePLC, Proceso
 from core.ports import ISoftwareRepository
-from infrastructure.tia_service import TIAService
 from infrastructure.xml.generator import XMLGenerator
 
 

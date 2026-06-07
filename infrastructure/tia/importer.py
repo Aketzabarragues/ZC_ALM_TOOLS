@@ -10,6 +10,8 @@ import shutil
 from pathlib import Path
 from typing import Any
 
+from infrastructure import config_manager
+
 
 class TIAImporterError(Exception):
     """Base exception for TIA Importer errors."""
@@ -32,6 +34,16 @@ class TIAImporter:
         )
         self._export_with_defaults = export_with_defaults_enum
         self._import_override = import_override_enum
+
+    @property
+    def export_opts(self) -> Any:
+        """
+        Expone el enum de opciones de exportacion al SoftwareRepository,
+        evitando que el repo tenga que recargar el wrapper de TIA Portal
+        (Clean Architecture: el wrapper se carga UNA sola vez en el
+        Composition Root / TIAPortalGateway).
+        """
+        return self._export_with_defaults
 
     def asegurar_consistencia(self, objeto: Any) -> bool:
         """
@@ -117,7 +129,7 @@ class TIAImporter:
         target_relative_path: str = ""
     ) -> bool:
         """Importa un único bloque XML usando carpeta staging efímera."""
-        staging_dir = Path(".build/import_stage").absolute()
+        staging_dir = (Path(config_manager.get_build_root()) / "import_stage").absolute()
 
         try:
             xml_file = Path(xml_file_path)

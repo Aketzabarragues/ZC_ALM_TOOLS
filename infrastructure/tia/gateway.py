@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING, Any, Self
 
 import psutil
 
+from infrastructure import config_manager
 from infrastructure.tia.importer import TIAImporter
 from infrastructure.tia.scanner import TIAScanner
 from infrastructure.tia_runtime_loader import load_siemens_tia
@@ -148,8 +149,8 @@ class TIAPortalGateway:
                 f"Process '{self.PROCESS_NAME}' is not running."
             )
 
-        log_path = str(Path(".build/tia_wrapper_native.log").absolute())
-        Path(".build").mkdir(exist_ok=True)
+        log_path = str((Path(config_manager.get_build_root()) / "tia_wrapper_native.log").absolute())
+        Path(config_manager.get_build_root()).mkdir(exist_ok=True)
         ts.set_logging(path=log_path, console=False)
 
         self._logger.info(f"Attaching to TIA Portal (version={self._version})...")
@@ -177,8 +178,8 @@ class TIAPortalGateway:
     def _detach(self) -> None:
         if self._portal is not None:
             self._logger.info("Detaching from TIA Portal...")
-            log_path = str(Path(".build/tia_wrapper_native.log").absolute())
-            Path(".build").mkdir(exist_ok=True)
+            log_path = str((Path(config_manager.get_build_root()) / "tia_wrapper_native.log").absolute())
+            Path(config_manager.get_build_root()).mkdir(exist_ok=True)
             ts.set_logging(path=log_path, console=False)
             try:
                 self._portal.detach()
@@ -222,8 +223,8 @@ class TIAPortalGateway:
         version_str = self._extraer_version_de_proyecto(project_path)
         self._logger.info(f"Abriendo nueva instancia de TIA Portal v{version_str}...")
 
-        log_path = str(Path(".build/tia_wrapper_native.log").absolute())
-        Path(".build").mkdir(exist_ok=True)
+        log_path = str((Path(config_manager.get_build_root()) / "tia_wrapper_native.log").absolute())
+        Path(config_manager.get_build_root()).mkdir(exist_ok=True)
         ts.set_logging(path=log_path, console=False)
 
         try:
@@ -360,8 +361,8 @@ class TIAPortalGateway:
     @contextmanager
     def silenciar_ruido(self):
         """Silencia el output nativo del wrapper durante un bloque 'with'."""
-        log_path = str(Path(".build/tia_wrapper_native.log").absolute())
-        Path(".build").mkdir(exist_ok=True)
+        log_path = str((Path(config_manager.get_build_root()) / "tia_wrapper_native.log").absolute())
+        Path(config_manager.get_build_root()).mkdir(exist_ok=True)
 
         ts.set_logging(path=log_path, console=False)
         try:
