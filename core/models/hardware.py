@@ -47,30 +47,44 @@ class DispED:
     Attributes:
         uid, numero, tag, descripcion, fat, e_byte, e_bit, gr_alarma,
         cuadro, observaciones, plc_tag, plc_tipo, plc_index, plc_comentario,
-        cgf_habilitar, cgf_byte_entrada, cgf_bit_entrada, cgf_grupo_alarma.
+        hmi_index, hmi_texto, cfg_habilitar, cfg_byte_entrada, cfg_bit_entrada,
+        cfg_grupo_alarma.
         (Las rutas de TIA Portal han salido del modelo de dominio
         y viven ahora en config_manager.get_hardware_tia_config('ed').)
     """
 
-    # --- Atributos leídos del Excel ---
-    uid: str = ""
+    # --- Atributos mínimos del Protocol DispositivoHardware ---
     numero: int = 0
-    tag: str = ""
+    plc_tag: str = ""
+    plc_comentario: str = ""
     descripcion: str = ""
+
+    # --- Atributos extendidos del Excel ---
+    uid: str = ""
+    tag: str = ""
     fat: str = ""
     e_byte: int = 0
     e_bit: int = 0
     gr_alarma: int = 0
     cuadro: str = ""
     observaciones: str = ""
-    plc_tag: str = ""
+
+    # --- Datos PLC adicionales ---
     plc_tipo: str = ""
     plc_index: int = 0
-    plc_comentario: str = ""
-    cgf_habilitar: str = ""
-    cgf_byte_entrada: str = ""
-    cgf_bit_entrada: str = ""
-    cgf_grupo_alarma: str = ""
+
+    # --- Datos HMI ---
+    hmi_index: int = 0
+    hmi_texto: str = ""
+
+    # --- Datos de Configuración (Cfg) ---
+    # Los Cfg almacenan líneas de código SCL crudas (ej:
+    # 'DB2000_ED.ED[1].Config_Habilitar := TRUE;') que se inyectan
+    # en el proyecto TIA al sincronizar. Por eso son str, no bool/int.
+    cfg_habilitar: str = ""
+    cfg_byte_entrada: str = ""
+    cfg_bit_entrada: str = ""
+    cfg_grupo_alarma: str = ""
 
 
 @dataclass
