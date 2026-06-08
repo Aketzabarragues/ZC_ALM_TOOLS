@@ -139,19 +139,28 @@ class XMLModifier:
         sin manejar arrays hermanos (ValorAnterior / Vis).
 
         Args:
-            array_name: Name del <Member> (ej. "ED").
+            array_name: Name del <Member> (ej. "ED", "V").
             index: Indice base-0 del Subelement (NO el numero de fila del Excel).
             comentario: Texto a inyectar.
 
         Returns:
             True si el XML fue modificado, False en caso contrario.
+
+        Raises:
+            RuntimeError: Si el <Member name='{array_name}'> no existe en
+                el DataBlock. Antes retornaba False silenciosamente, lo
+                que dejaba el DB sin comentarios sin notificar al caller.
+                Ahora fallamos ruidosamente: el `with self._repo.transaccion(...)`
+                del caso de uso detectara el RuntimeError y hara ROLLBACK
+                completo (N_MAX + DB).
         """
         member = self._find_member(array_name)
         if member is None:
-            self._logger.warning(
-                f"<Member name='{array_name}'> no encontrado en {self.xml_path.name}."
+            raise RuntimeError(
+                f"<Member name='{array_name}'> no encontrado en {self.xml_path.name}. "
+                f"Asegúrate de que el DataBlock en TIA Portal tiene un array llamado '{array_name}'. "
+                "Abortando para forzar ROLLBACK."
             )
-            return False
         return self._update_or_add_comment(member, index, comentario)
 
     def save(self) -> None:

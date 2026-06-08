@@ -41,6 +41,7 @@ __all__ = [
     "_flujo_sincronizar_dispositivos",
     "_flujo_sincronizar_dispositivos_ea",
     "_flujo_sincronizar_dispositivos_sa",
+    "_flujo_sincronizar_dispositivos_m_vf",
 ]
 
 console = Console()
@@ -195,23 +196,32 @@ def _flujo_sincronizar_dispositivos_generico(
         # Ademas, llevamos un contador `ultimo_paso_visto` para IMPRIMIR
         # (no solo actualizar) cada fase al terminar, de modo que quede un
         # registro visual permanente aunque el spinner desaparezca al final.
+        # Callback inteligente: recuerda el texto de la fase actual
+        # para imprimirlo de forma descriptiva al completarse
+        # (ej: "✅ 1/4 Actualizando constantes de dimensionamiento (Completado)").
         ultimo_paso_visto: int = 0
+        ultimo_mensaje_fase: str = ""
 
         with console.status("Iniciando sincronización...") as status_spinner:
             def _update_status(mensaje: str) -> None:
-                nonlocal ultimo_paso_visto
-                # Detectar si el mensaje empieza por "X/Y" (ej: "1/4", "2/4")
+                nonlocal ultimo_paso_visto, ultimo_mensaje_fase
+                # Detectar patron "X/Y Texto de la fase..."
+                # (sin el emoji ⏳: el spinner ya lo dibuja)
                 import re
-                match = re.match(r"^(\d+)/", mensaje)
+                match = re.match(r"^(\d+)/\d+\s+(.*)", mensaje)
                 if match:
                     paso_actual = int(match.group(1))
+                    texto_fase = match.group(2)
+
                     # Si hemos avanzado de paso, imprimimos el anterior
-                    # como completado ANTES de empezar el nuevo.
+                    # como completado (con su TEXTO) ANTES de empezar el nuevo.
                     if paso_actual > ultimo_paso_visto and ultimo_paso_visto > 0:
                         console.print(
-                            f"[green]✅ Fase {ultimo_paso_visto} completada.[/green]"
+                            f"[green]✅ {ultimo_paso_visto}/4 {ultimo_mensaje_fase} (Completado).[/green]"
                         )
+
                     ultimo_paso_visto = paso_actual
+                    ultimo_mensaje_fase = texto_fase
 
                 status_spinner.update(f"⏳ {mensaje}")
 
@@ -231,7 +241,9 @@ def _flujo_sincronizar_dispositivos_generico(
         # (porque la lógica del callback solo imprime al AVANZAR de fase,
         # no al terminar la última).
         if ultimo_paso_visto > 0:
-            console.print(f"[green]✅ Fase {ultimo_paso_visto} completada.[/green]\n")
+            console.print(
+                f"[green]✅ {ultimo_paso_visto}/4 {ultimo_mensaje_fase} (Completado).[/green]\n"
+            )
 
         
     except Exception as e:
@@ -283,4 +295,37 @@ def _flujo_sincronizar_dispositivos_sa(session: AppSession) -> None:
         nombre_humano="SA",
         dispositivos=session.disp_sa_list,
         subdir="sa",
+    )
+
+
+def _flujo_sincronizar_dispositivos_v(session: AppSession) -> None:
+    """Wrapper para Valvulas (V)."""
+    _flujo_sincronizar_dispositivos_generico(
+        session=session,
+        hw_type="v",
+        nombre_humano="Valvulas (V)",
+        dispositivos=session.disp_v_list,
+        subdir="v",
+    )
+
+
+def _flujo_sincronizar_dispositivos_m(session: AppSession) -> None:
+    """Wrapper para Motores (M)."""
+    _flujo_sincronizar_dispositivos_generico(
+        session=session,
+        hw_type="m",
+        nombre_humano="Motores (M)",
+        dispositivos=session.disp_m_list,
+        subdir="m",
+    )
+
+
+def _flujo_sincronizar_dispositivos_m_vf(session: AppSession) -> None:
+    """Wrapper para Motor Variador de Frecuencia (M_VF)."""
+    _flujo_sincronizar_dispositivos_generico(
+        session=session,
+        hw_type="m_vf",
+        nombre_humano="Motor variador (VF)",
+        dispositivos=session.disp_m_vf_list,
+        subdir="m_vf",
     )

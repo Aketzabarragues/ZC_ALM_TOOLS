@@ -32,6 +32,27 @@
             "tag_table": "2000_Disp_SA",
             "config_table": "000_Config_Dispositivos",
             "config_constant": "N_MAX_DISP_SA"
+        },
+        "v": {
+            "db_name": "DB2010_V",
+            "db_array_name": "V",
+            "tag_table": "2000_Disp_V",
+            "config_table": "000_Config_Dispositivos",
+            "config_constant": "N_MAX_DISP_V"
+        },
+        "m": {
+            "db_name": "DB2015_M",
+            "db_array_name": "M",
+            "tag_table": "2000_Disp_M",
+            "config_table": "000_Config_Dispositivos",
+            "config_constant": "N_MAX_DISP_M"
+        },
+        "m_vf": {
+            "db_name": "DB2016_M_VF",
+            "db_array_name": "M_VF",
+            "tag_table": "2000_Disp_M_VF",
+            "config_table": "000_Config_Dispositivos",
+            "config_constant": "N_MAX_DISP_M_VF"
         }
     }
 }

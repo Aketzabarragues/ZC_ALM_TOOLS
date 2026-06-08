@@ -10,7 +10,7 @@ para evitar releer el disco en cada flujo.
 
 from dataclasses import dataclass, field
 
-from core.models import DimensionesDispositivos, DispEA, DispED, DispSA
+from core.models import DimensionesDispositivos, DispEA, DispED, DispM, DispM_VF, DispSA, DispV
 from core.models.software import Alarma, PInt, PReal, Proceso
 from core.ports import ISoftwareRepository
 from infrastructure.tia.gateway import TIAPortalGateway
@@ -41,6 +41,9 @@ class AppSession:
     disp_ed_list: list[DispED] = field(default_factory=list)
     disp_ea_list: list[DispEA] = field(default_factory=list)
     disp_sa_list: list[DispSA] = field(default_factory=list)
+    disp_v_list: list[DispV] = field(default_factory=list)
+    disp_m_list: list[DispM] = field(default_factory=list)
+    disp_m_vf_list: list[DispM_VF] = field(default_factory=list)
     dimensiones: DimensionesDispositivos = field(
         default_factory=DimensionesDispositivos
     )

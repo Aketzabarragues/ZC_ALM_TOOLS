@@ -14,12 +14,22 @@ from core.models import (
     DimensionesDispositivos,
     DispEA,
     DispED,
+    DispM,
+    DispM_VF,
     DispSA,
+    DispV,
     PInt,
     PReal,
     Proceso,
 )
-from infrastructure.parsers.hardware import DispEAParser, DispEDParser, DispSAParser
+from infrastructure.parsers.hardware import (
+    DispEAParser,
+    DispEDParser,
+    DispMParser,
+    DispMVFarser,
+    DispSAParser,
+    DispVParser,
+)
 from infrastructure.parsers.software import (
     AlarmasParser,
     PIntParser,
@@ -45,6 +55,9 @@ class ExcelParser:
     _DN_NUM_DISP_ED: str = "Num_Disp_ED"
     _DN_NUM_DISP_EA: str = "Num_Disp_EA"
     _DN_NUM_DISP_SA: str = "Num_Disp_SA"
+    _DN_NUM_DISP_V: str = "Num_Disp_V"
+    _DN_NUM_DISP_M: str = "Num_Disp_M"
+    _DN_NUM_DISP_M_VF: str = "Num_Disp_M_VF"
 
     def __init__(self) -> None:
         self._logger: logging.Logger = logging.getLogger(
@@ -59,6 +72,9 @@ class ExcelParser:
         self._disp_ed: DispEDParser = DispEDParser()
         self._disp_ea: DispEAParser = DispEAParser()
         self._disp_sa: DispSAParser = DispSAParser()
+        self._disp_v: DispVParser = DispVParser()
+        self._disp_m: DispMParser = DispMParser()
+        self._disp_m_vf: DispMVFarser = DispMVFarser()
 
     # ------------------------------------------------------------------ #
     #  Software
@@ -113,6 +129,27 @@ class ExcelParser:
         self._logger.debug(f"DUMP DispSA: {datos}")
         return datos
 
+    def extraer_disp_v(self, ruta_excel: str) -> list[DispV]:
+        """Extrae la lista de dispositivos de Valvulas."""
+        self._logger.info(f"Extrayendo DispV de: {ruta_excel}")
+        datos: list[DispV] = self._disp_v.extraer(ruta_excel)
+        self._logger.debug(f"DUMP DispV: {datos}")
+        return datos
+
+    def extraer_disp_m(self, ruta_excel: str) -> list[DispM]:
+        """Extrae la lista de dispositivos de Motores."""
+        self._logger.info(f"Extrayendo DispM de: {ruta_excel}")
+        datos: list[DispM] = self._disp_m.extraer(ruta_excel)
+        self._logger.debug(f"DUMP DispM: {datos}")
+        return datos
+
+    def extraer_disp_m_vf(self, ruta_excel: str) -> list[DispM_VF]:
+        """Extrae la lista de dispositivos de Motores Variadores de Frecuencia."""
+        self._logger.info(f"Extrayendo DispM_VF de: {ruta_excel}")
+        datos: list[DispM_VF] = self._disp_m_vf.extraer(ruta_excel)
+        self._logger.debug(f"DUMP DispM_VF: {datos}")
+        return datos
+
     def extraer_dimensiones(self, ruta_excel: str) -> DimensionesDispositivos:
         """
         Lee las celdas nombradas (Defined Names) del Excel Maestro
@@ -141,6 +178,15 @@ class ExcelParser:
                 )
                 dims.num_disp_sa = self._leer_defined_name(
                     wb, self._DN_NUM_DISP_SA, "Num_Disp_SA"
+                )
+                dims.num_disp_v = self._leer_defined_name(
+                    wb, self._DN_NUM_DISP_V, "Num_Disp_V"
+                )
+                dims.num_disp_m = self._leer_defined_name(
+                    wb, self._DN_NUM_DISP_M, "Num_Disp_M"
+                )
+                dims.num_disp_m_vf = self._leer_defined_name(
+                    wb, self._DN_NUM_DISP_M_VF, "Num_Disp_M_VF"
                 )
             finally:
                 wb.close()

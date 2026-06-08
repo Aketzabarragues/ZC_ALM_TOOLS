@@ -157,7 +157,15 @@ class TIAScanner:
                 block_path = block.get_path()
             elif hasattr(block, 'Path'):
                 block_path = block.Path
-        except Exception:
+        except Exception as e:
+            # El escáner silenció COM exceptions menores al leer la ruta
+            # de un bloque. TIA Portal las detecta y envenena la
+            # transacción si esto ocurre DENTRO del with transaccion().
+            # Como ahora el escaneo se hace fuera, solo logueamos.
+            self._logger.debug(
+                f"El escaner no pudo obtener la ruta del bloque "
+                f"'{block_name}' (estado temporal): {e}"
+            )
             block_path = ""
 
         block_num: int = 0

@@ -339,9 +339,9 @@ class TIAPortalGateway:
             raise
         finally:
             if exito:
-                self._logger.info("Transacción exitosa. Ejecutando COMMIT.")
                 try:
                     project.end_transaction(rollback=False)
+                    self._logger.info("Transacción exitosa. COMMIT confirmado por TIA Portal.")
                 except Exception as commit_err:
                     self._logger.critical(
                         f"Fallo crítico durante el commit: {commit_err}. "

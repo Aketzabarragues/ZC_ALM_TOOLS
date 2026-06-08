@@ -195,12 +195,30 @@ class SincronizarDispositivosUseCase:
         #  reentrante; si ya hay una transacción abierta (p.ej. importer),
         #  cede el control sin anidar (TIA no lo soporta).
         # ------------------------------------------------------------------ #
+        # 1. Ejecutar todo el trabajo crítico dentro de la transacción.
+        # Si la Fase 4 falla, la Fase 1 (cambio de N_MAX) debe revertirse.
+        # El Gateway expone un context manager reentrante; si ya hay una
+        # transacción abierta (p.ej. importer), cede el control sin
+        # anidar (TIA no lo soporta).
         with self._repo.transaccion(
             f"Sincronizar {len(dispositivos)} disp. {hw_type.upper()} en PLC '{plc_name}'"
         ):
             self._ejecutar_fases(
                 plc_name, hw_type, dispositivos, dimensiones, export_dir, progress_callback
             )
+
+        # 2. Refrescar el caché SOLO si la transacción terminó y se hizo
+        # COMMIT con éxito. Si el escaner sufre excepciones COM menores
+        # al re-leer el PLC, ya NO corrompe la transacción (porque está
+        # cerrada). Antes este escaneo estaba dentro del `with` y TIA
+        # Portal detectaba el fallo y rechazaba el COMMIT con
+        # "Commit of a Transaction is not allowed after an exception
+        # is thrown due to potential project data corruption."
+        self._logger.info(
+            "Sincronizacion de dispositivos finalizada. "
+            "Refrescando caché COM (post-COMMIT)..."
+        )
+        self._repo.force_rescan(plc_name)
 
     def _ejecutar_fases(
         self,
@@ -325,6 +343,9 @@ class SincronizarDispositivosUseCase:
                     value=d.numero,
                     comment=d.plc_comentario,
                 )
+            self._logger.debug(
+                f"Guardando XML modificado en: {xml_path}"
+            )
             modifier.save()
 
             # Folder para ED: externalizable en config.json.
@@ -339,11 +360,17 @@ class SincronizarDispositivosUseCase:
                     f"Fallo critico: el XML modificado '{xml_path}' "
                     "desaparecio antes de la importacion. Abortando transaccion."
                 )
-            self._repo.importar_tabla_variables(
+            if not self._repo.importar_tabla_variables(
                 plc_name=plc_name,
                 xml_path=xml_path,
                 folder_path=tia_folder_dispositivos,
-            )
+            ):
+                raise RuntimeError(
+                    f"Fallo critico: TIA Portal rechazo la importacion de la "
+                    f"tabla '{hw_config.tag_table}' desde '{xml_path}'. "
+                    "Abortando transaccion para forzar ROLLBACK completo "
+                    "(N_MAX + DB)."
+                )
         else:
             # Sin nuevos: la Fase 3 no se ejecuta, pero la Fase 4 SIEMPRE corre.
             self._logger.info(
@@ -411,16 +438,20 @@ class SincronizarDispositivosUseCase:
                 "desaparecio antes de la importacion. Abortando transaccion."
             )
 
-        # importar_bloque (firma void en el port) — si TIA Portal falla
-        # la importacion, el siguiente compilar_bloque lo detectaria. Pero
-        # para que el context manager vea el fallo INMEDIATAMENTE y haga
-        # ROLLBACK (en vez de continuar con transaccion corrupta),
-        # hacemos una validacion de consistencia post-importacion.
-        self._repo.importar_bloque(
+        # importar_bloque ahora retorna bool: si TIA Portal falla la
+        # importacion, el context manager ve la excepcion INMEDIATAMENTE
+        # y hace ROLLBACK (en vez de continuar con transaccion corrupta
+        # y fallar despues en compilar_bloque con datos a medio escribir).
+        if not self._repo.importar_bloque(
             plc_name=plc_name,
             xml_path=db_xml_path,
             folder_path=tia_folder_dispositivos,
-        )
+        ):
+            raise RuntimeError(
+                f"Fallo critico: TIA Portal rechazo la importacion del bloque "
+                f"DB '{hw_config.db_name}' desde '{db_xml_path}'. Abortando "
+                "transaccion para forzar ROLLBACK completo (N_MAX + DB)."
+            )
 
         if not self._repo.compilar_bloque(plc_name, hw_config.db_name):
             raise RuntimeError(
@@ -429,12 +460,7 @@ class SincronizarDispositivosUseCase:
                 "sido rechazada por TIA Portal. Abortando transaccion para "
                 "forzar ROLLBACK completo (N_MAX + DB)."
             )
-        self._logger.info(
-            "Sincronizacion de dispositivos finalizada. "
-            "Refrescando caché COM..."
-        )
-        # Tras importar tablas y DBs, los objetos COM cacheados en
-        # TIAScanner quedan invalidados (Disposed) por TIA Portal.
-        # Forzamos un re-escaneo para renovar los punteros y permitir
-        # ejecuciones consecutivas del flujo.
-        self._repo.force_rescan(plc_name)
+        # NOTA: el refresco del cache (force_rescan) NO se hace aqui
+        # porque el escaner sufre excepciones COM menores que silencia
+        # y que TIA Portal detecta, corrompiendo la transaccion. El
+        # escaneo se hace FUERA del `with transaccion(...)` en ejecutar().

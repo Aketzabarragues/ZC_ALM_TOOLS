@@ -14,7 +14,10 @@ from core.models.hardware import (
     DimensionesDispositivos,
     DispEA,
     DispED,
+    DispM,
+    DispM_VF,
     DispSA,
+    DispV,
     DispositivoHardware,
 )
 from core.models.software import Alarma, PInt, PReal, Proceso
@@ -28,6 +31,9 @@ __all__ = [
     "DispED",
     "DispEA",
     "DispSA",
+    "DispV",
+    "DispM",
+    "DispM_VF",
     "DimensionesDispositivos",
     "DispositivoHardware",
 ]

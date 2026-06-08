@@ -128,14 +128,34 @@ class TIAImporter:
         xml_file_path: str,
         target_relative_path: str = ""
     ) -> bool:
-        """Importa un único bloque XML usando carpeta staging efímera."""
+        """
+        Importa un único bloque XML usando carpeta staging efímera.
+
+        IMPORTANTE: NO se capturan excepciones. Cualquier fallo (incluidas
+        las excepciones COM de `plc_object.import_blocks(...)`) se propaga
+        al caller. Esto es CRITICO para que el `with self._repo.transaccion(...)`
+        del SoftwareRepository detecte el fallo, aborte la transacción y
+        haga ROLLBACK ANTES de que el Gateway intente el COMMIT.
+
+        Antes este método tenia un `try/except Exception as e: return False`
+        que silenciaba las COM exceptions. Eso envenenaba la transacción:
+        el `with` pensaba que todo OK, hacia COMMIT, y TIA Portal rechazaba
+        el commit con `OpennessAccessException: Commit of a Transaction is
+        not allowed after an exception is thrown due to potential project
+        data corruption`.
+
+        Solo se valida la existencia del archivo XML localmente con un
+        TIAImporterError (no es una excepción COM, es una precondición de
+        programación).
+        """
         staging_dir = (Path(config_manager.get_build_root()) / "import_stage").absolute()
 
         try:
             xml_file = Path(xml_file_path)
             if not xml_file.exists():
-                self._logger.error(f"Archivo XML no encontrado: {xml_file_path}")
-                return False
+                raise TIAImporterError(
+                    f"Archivo XML no encontrado: {xml_file_path}"
+                )
 
             if staging_dir.exists():
                 shutil.rmtree(staging_dir, ignore_errors=True)
@@ -154,16 +174,12 @@ class TIAImporter:
                 kwargs["target_folder_path"] = target_relative_path
 
             self._logger.debug(f"Llamando import_blocks con kwargs: {kwargs}")
-            plc_object.import_blocks(**kwargs)
+            plc_object.import_blocks(**kwargs)  # <-- Excepciones COM se propagan
 
             self._logger.info(
                 f"Bloque importado: {xml_file.name} -> {target_relative_path or 'raiz'}"
             )
             return True
-
-        except Exception as e:
-            self._logger.error(f"Error importando bloque: {e}", exc_info=True)
-            return False
 
         finally:
             if staging_dir.exists():
@@ -176,7 +192,14 @@ class TIAImporter:
         ruta_build_str: str,
         proceso_nombre: str = "desconocido"
     ) -> bool:
-        """Orquesta la importación completa usando las funciones de directorio nativas."""
+        """
+        Orquesta la importación completa usando las funciones de directorio nativas.
+
+        IMPORTANTE: NO se capturan excepciones. Las COM exceptions de
+        `plc_object.import_plc_tags(...)` y `plc_object.import_blocks(...)`
+        se propagan al caller para que el `with self._repo.transaccion(...)`
+        detecte el fallo y haga ROLLBACK antes del COMMIT.
+        """
         ruta_build = Path(ruta_build_str)
         self._logger.info("Iniciando secuencia de importación nativa...")
 
@@ -184,24 +207,17 @@ class TIAImporter:
         # es responsabilidad EXCLUSIVA del TIAPortalGateway (gestor
         # reentrante). El caller (SoftwareRepository.importar_bloques_generados)
         # ya envuelve esta llamada con self.transaccion(...).
-        try:
-            for ruta_tabla in ruta_build.iterdir():
-                if ruta_tabla.is_dir() and ("TABLA" in ruta_tabla.name.upper() or "TAG" in ruta_tabla.name.upper()):
-                    plc_object.import_plc_tags(import_root_directory=str(ruta_tabla.absolute()))
 
-            for ruta_bloque in ruta_build.iterdir():
-                if ruta_bloque.is_dir() and "BLOQUE" in ruta_bloque.name.upper():
-                    plc_object.import_blocks(import_root_directory=str(ruta_bloque.absolute()))
+        for ruta_tabla in ruta_build.iterdir():
+            if ruta_tabla.is_dir() and ("TABLA" in ruta_tabla.name.upper() or "TAG" in ruta_tabla.name.upper()):
+                plc_object.import_plc_tags(import_root_directory=str(ruta_tabla.absolute()))
 
-            self._logger.info("✅ Importación completada.")
-            return True
+        for ruta_bloque in ruta_build.iterdir():
+            if ruta_bloque.is_dir() and "BLOQUE" in ruta_bloque.name.upper():
+                plc_object.import_blocks(import_root_directory=str(ruta_bloque.absolute()))
 
-        except Exception as e:
-            self._logger.error(
-                f"❌ FALLO CRÍTICO en importación masiva: {e}",
-                exc_info=True,
-            )
-            return False
+        self._logger.info("✅ Importación completada.")
+        return True
 
     def exportar_bloque(self, plc_object: Any, block_name: str, target_dir: str) -> bool:
         """Exporta un bloque PLC a un directorio de forma plana (con compilación defensiva)."""

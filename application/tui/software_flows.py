@@ -326,62 +326,71 @@ def _flujo_sincronizar_textos(
     #  en el historial de TIA Portal. Si algo falla a mitad, ROLLBACK
     #  completo (N_MAX + DBs + cache).
     # ------------------------------------------------------------------ #
-    with session.software_repo.transaccion(
-        f"Sinc. Textos: {proceso.nombre} (UID {proceso.uid})"
-    ):
-        # --- Paso 1/4 ---
-        console.print(f"\n[cyan]⏳ 1/4 Actualizando constantes de dimensionamiento en vivo (COM)...[/cyan]")
-        nombre_tabla = f"{proceso.uid}_{proceso.codigo}"
-
-        constantes_dict = {
-            f"{proceso.uid}_N_MAX_PREAL": proceso.preal,
-            f"{proceso.uid}_N_MAX_PINT": proceso.pint,
-            f"{proceso.uid}_N_MAX_ALARMAS": proceso.alarmas,
-            f"{proceso.uid}_N_MAX_ALARMAS_HMI": proceso.alm_hmi,
-        }
-
-        with session.gateway.silenciar_ruido():
-            cambios_constantes = session.software_repo.actualizar_constantes_proceso(
-                session.plc_seleccionado, nombre_tabla, constantes_dict
+    # Spinner GLOBAL: envuelve TODAS las 4 fases (incluida la Fase 1)
+    # para evitar el "⏳ 1/4" estático que parecia colgado. Cada fase
+    # usa status.update() para refrescar el texto del spinner.
+    resultados: dict[str, bool] = {}
+    cambios_constantes = False
+    with console.status(
+        "[cyan]⏳ Iniciando sincronización de Parámetros y Alarmas...[/cyan]",
+        spinner="dots",
+    ) as status_spinner:
+        with session.software_repo.transaccion(
+            f"Sinc. Textos: {proceso.nombre} (UID {proceso.uid})"
+        ):
+            # --- Paso 1/4 ---
+            status_spinner.update(
+                "[cyan]⏳ 1/4 Actualizando constantes de dimensionamiento en vivo (COM)...[/cyan]"
             )
-        if cambios_constantes:
-            console.print("[green]✅ 1/4 Constantes N_MAX actualizadas con éxito.[/green]")
-        else:
-            console.print("[dim]  ↳ Sin cambios en constantes N_MAX.[/dim]")
+            nombre_tabla = f"{proceso.uid}_{proceso.codigo}"
 
-        # --- Paso 2/4 ---
-        if cambios_constantes:
-            with console.status(
-                "[cyan]⏳ 2/4 Compilando PLC para redimensionar DataBlocks...[/cyan]",
-                spinner="dots",
-            ):
+            constantes_dict = {
+                f"{proceso.uid}_N_MAX_PREAL": proceso.preal,
+                f"{proceso.uid}_N_MAX_PINT": proceso.pint,
+                f"{proceso.uid}_N_MAX_ALARMAS": proceso.alarmas,
+                f"{proceso.uid}_N_MAX_ALARMAS_HMI": proceso.alm_hmi,
+            }
+
+            with session.gateway.silenciar_ruido():
+                cambios_constantes = session.software_repo.actualizar_constantes_proceso(
+                    session.plc_seleccionado, nombre_tabla, constantes_dict
+                )
+            console.print(
+                "[green]✅ 1/4 Constantes N_MAX actualizadas con éxito.[/green]"
+                if cambios_constantes
+                else "[dim]  ↳ 1/4 Sin cambios en constantes N_MAX.[/dim]"
+            )
+
+            # --- Paso 2/4 ---
+            if cambios_constantes:
+                status_spinner.update(
+                    "[cyan]⏳ 2/4 Compilando PLC para redimensionar DataBlocks...[/cyan]"
+                )
                 with session.gateway.silenciar_ruido():
                     session.software_repo.compilar_software(session.plc_seleccionado)
                     session.software_repo.clear_cache()
                     session.software_repo.build_cache(session.plc_seleccionado)
-            console.print("[green]✅ 2/4 Compilación y redimensionamiento finalizados.[/green]")
+                console.print("[green]✅ 2/4 Compilación y redimensionamiento finalizados.[/green]")
 
-        # --- Paso 3/4 ---
-        with console.status(
-            "[cyan]⏳ 3/4 Iniciando transacción masiva de textos...[/cyan]",
-            spinner="dots",
-        ):
+            # --- Paso 3/4 ---
+            status_spinner.update(
+                "[cyan]⏳ 3/4 Iniciando transacción masiva de textos...[/cyan]"
+            )
             with session.gateway.silenciar_ruido():
                 resultados = uc.sincronizar_multiple_db(
                     plc_name=session.plc_seleccionado, tareas=tareas
                 )
-        console.print("[green]✅ 3/4 Textos inyectados en DataBlocks.[/green]")
+            console.print("[green]✅ 3/4 Textos inyectados en DataBlocks.[/green]")
 
-        # --- Paso 4/4 ---
-        with console.status(
-            "[cyan]⏳ 4/4 Actualizando mapa de memoria del PLC...[/cyan]",
-            spinner="dots",
-        ):
+            # --- Paso 4/4 ---
+            status_spinner.update(
+                "[cyan]⏳ 4/4 Actualizando mapa de memoria del PLC...[/cyan]"
+            )
             with session.gateway.silenciar_ruido():
                 session.software_repo.build_cache(
                     session.plc_seleccionado, force=True
                 )
-        console.print("[green]✅ 4/4 Mapa de memoria reconstruido.[/green]")
+            console.print("[green]✅ 4/4 Mapa de memoria reconstruido.[/green]")
 
     _clear_screen()
     console.rule("[bold blue]RESULTADO DE LA SINCRONIZACIÓN[/bold blue]")

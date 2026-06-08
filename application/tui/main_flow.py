@@ -19,7 +19,10 @@ from application.session import AppSession
 from application.tui.hardware_flows import (
     _flujo_sincronizar_dispositivos,
     _flujo_sincronizar_dispositivos_ea,
+    _flujo_sincronizar_dispositivos_m,
+    _flujo_sincronizar_dispositivos_m_vf,
     _flujo_sincronizar_dispositivos_sa,
+    _flujo_sincronizar_dispositivos_v,
 )
 from application.tui.software_flows import (
     _flujo_generar_procesos,
@@ -31,7 +34,10 @@ from core.models import (
     DimensionesDispositivos,
     DispEA,
     DispED,
+    DispM,
+    DispM_VF,
     DispSA,
+    DispV,
     PInt,
     PReal,
     Proceso,
@@ -153,21 +159,34 @@ def _flujo_principal_con_tia(
             break
 
         if opcion_principal == "change_plc":
-            _seleccionar_plc(session)
+            # Spinner animado: evita el texto estático "⏳ Escaneando..."
+            # que parecia colgado.
+            with console.status(
+                "[cyan]⏳ Cambiando de PLC y reconstruyendo caché...[/cyan]",
+                spinner="dots",
+            ):
+                _seleccionar_plc(session)
             input("\nPulsa Enter para continuar...")
 
         elif opcion_principal == "rescan":
             if session.plc_seleccionado:
-                console.print(
-                    f"\n[cyan]⏳ Forzando re-escaneo completo de '{session.plc_seleccionado}'...[/cyan]"
-                )
-                try:
-                    with session.gateway.silenciar_ruido():
-                        session.software_repo.force_rescan(session.plc_seleccionado)
-                        bloques = session.software_repo.get_existing_blocks(session.plc_seleccionado)
-                    console.print(f"[bold green]✅ Caché reconstruido: {len(bloques)} bloques.[/bold green]")
-                except Exception as e:
-                    console.print(f"[bold red]❌ Error en re-escaneo: {e}[/bold red]")
+                # Spinner animado: envuelve SOLO la operacion larga.
+                # El `console.print` de exito/error va FUERA del `with`
+                # para que no se renderice dentro del area del spinner.
+                with console.status(
+                    f"[cyan]⏳ Forzando re-escaneo completo de '{session.plc_seleccionado}'...[/cyan]",
+                    spinner="dots",
+                ):
+                    try:
+                        with session.gateway.silenciar_ruido():
+                            session.software_repo.force_rescan(session.plc_seleccionado)
+                            bloques = session.software_repo.get_existing_blocks(session.plc_seleccionado)
+                    except Exception as e:
+                        console.print(f"[bold red]❌ Error en re-escaneo: {e}[/bold red]")
+                    else:
+                        console.print(
+                            f"[bold green]✅ Caché reconstruido: {len(bloques)} bloques.[/bold green]"
+                        )
             else:
                 console.print("[bold red]❌ No hay PLC seleccionado.[/bold red]")
             input("\nPulsa Enter para continuar...")
@@ -192,7 +211,10 @@ def _flujo_principal_con_tia(
                     Choice(" Entradas Digitales (ED)", value="ED"),
                     Choice(" Entradas Analógicas (EA)", value="EA"),
                     Choice(" Salidas Analógicas (SA)", value="SA"),
-                    # Aqui se anadiran SD, M, MVF, etc. en el futuro
+                    Choice(" Válvulas (V)", value="V"),
+                    Choice(" Motores (M)", value="M"),
+                    Choice(" Motor variador (VF)", value="M_VF"),
+                    # Aqui se anadiran SD, etc. en el futuro
                 ]
             ).ask()
 
@@ -208,6 +230,12 @@ def _flujo_principal_con_tia(
                 _flujo_sincronizar_dispositivos_ea(session)
             elif tipo_seleccionado == "SA":
                 _flujo_sincronizar_dispositivos_sa(session)
+            elif tipo_seleccionado == "V":
+                _flujo_sincronizar_dispositivos_v(session)
+            elif tipo_seleccionado == "M":
+                _flujo_sincronizar_dispositivos_m(session)
+            elif tipo_seleccionado == "M_VF":
+                _flujo_sincronizar_dispositivos_m_vf(session)
 
             # Cuando haya mas tipos, iran aqui debajo como elif "SD" == tipo_seleccionado: ...
             # Nota: el _flujo_sincronizar_dispositivos_generico ya incluye su propio _clear_screen
@@ -215,59 +243,83 @@ def _flujo_principal_con_tia(
 
         elif opcion_principal == "reload_excel":
             logger.info("Opción seleccionada: Recargar Excel")
-            
-            console.print(f"\n[cyan]⏳ Recargando datos desde: {ruta_excel}[/cyan]")
-            try:
-                # Software
-                procesos.clear()
-                procesos.extend(parser.extraer_procesos(ruta_excel))
-                preal_list.clear()
-                preal_list.extend(parser.extraer_preal(ruta_excel))
-                pint_list.clear()
-                pint_list.extend(parser.extraer_pint(ruta_excel))
-                alarmas_list.clear()
-                alarmas_list.extend(parser.extraer_alarmas(ruta_excel))
-                # Hardware
-                try:
-                    nuevas_dimensiones = parser.extraer_dimensiones(ruta_excel)
-                except Exception as e_dim:
-                    logger.warning(
-                        f"No se pudieron extraer dimensiones: {e_dim}. "
-                        "Fallback a 0."
-                    )
-                    nuevas_dimensiones = DimensionesDispositivos()
-                nuevos_disp_ed = parser.extraer_disp_ed(ruta_excel)
-                nuevos_disp_ea = parser.extraer_disp_ea(ruta_excel)
-                nuevos_disp_sa = parser.extraer_disp_sa(ruta_excel)
-                # Actualizar la sesion
-                session.dimensiones = nuevas_dimensiones
-                session.disp_ed_list = nuevos_disp_ed
-                session.disp_ea_list = nuevos_disp_ea
-                session.disp_sa_list = nuevos_disp_sa
 
-                console.print(
-                    f"[bold green]✅ Datos recargados correctamente "
-                    f"(software + hardware).[/bold green]"
-                )
-                console.print(f"[dim]  • Procesos: {len(procesos)}[/dim]")
-                console.print(f"[dim]  • PReal: {len(preal_list)}[/dim]")
-                console.print(f"[dim]  • PInt: {len(pint_list)}[/dim]")
-                console.print(f"[dim]  • Alarmas: {len(alarmas_list)}[/dim]")
-                console.print(
-                    f"[dim]  • DispED: {len(nuevos_disp_ed)} "
-                    f"(N_MAX={nuevas_dimensiones.num_disp_ed})[/dim]"
-                )
-                console.print(
-                    f"[dim]  • DispEA: {len(nuevos_disp_ea)} "
-                    f"(N_MAX={nuevas_dimensiones.num_disp_ea})[/dim]"
-                )
-                console.print(
-                    f"[dim]  • DispSA: {len(nuevos_disp_sa)} "
-                    f"(N_MAX={nuevas_dimensiones.num_disp_sa})[/dim]"
-                )
-            except Exception as e:
-                logger.error(f"Error recargando Excel: {e}")
-                console.print(f"\n[bold red]❌ Error al recargar el Excel: {e}[/bold red]")
+            # Spinner animado: envuelve toda la recarga (software + hardware).
+            # Texto descriptivo (no copy-paste de rescan).
+            with console.status(
+                    "[cyan]⏳ Recargando datos del Excel Maestro...[/cyan]",
+                    spinner="dots",
+                ):
+                try:
+                    # Software
+                    procesos.clear()
+                    procesos.extend(parser.extraer_procesos(ruta_excel))
+                    preal_list.clear()
+                    preal_list.extend(parser.extraer_preal(ruta_excel))
+                    pint_list.clear()
+                    pint_list.extend(parser.extraer_pint(ruta_excel))
+                    alarmas_list.clear()
+                    alarmas_list.extend(parser.extraer_alarmas(ruta_excel))
+                    # Hardware
+                    try:
+                        nuevas_dimensiones = parser.extraer_dimensiones(ruta_excel)
+                    except Exception as e_dim:
+                        logger.warning(
+                            f"No se pudieron extraer dimensiones: {e_dim}. "
+                            "Fallback a 0."
+                        )
+                        nuevas_dimensiones = DimensionesDispositivos()
+                    nuevos_disp_ed = parser.extraer_disp_ed(ruta_excel)
+                    nuevos_disp_ea = parser.extraer_disp_ea(ruta_excel)
+                    nuevos_disp_sa = parser.extraer_disp_sa(ruta_excel)
+                    nuevos_disp_v = parser.extraer_disp_v(ruta_excel)
+                    nuevos_disp_m = parser.extraer_disp_m(ruta_excel)
+                    nuevos_disp_m_vf = parser.extraer_disp_m_vf(ruta_excel)
+                    # Actualizar la sesion
+                    session.dimensiones = nuevas_dimensiones
+                    session.disp_ed_list = nuevos_disp_ed
+                    session.disp_ea_list = nuevos_disp_ea
+                    session.disp_sa_list = nuevos_disp_sa
+                    session.disp_v_list = nuevos_disp_v
+                    session.disp_m_list = nuevos_disp_m
+                    session.disp_m_vf_list = nuevos_disp_m_vf
+                    session.disp_m_list = nuevos_disp_m
+
+                    console.print(
+                        f"[bold green]✅ Datos recargados correctamente "
+                        f"(software + hardware).[/bold green]"
+                    )
+                    console.print(f"[dim]  • Procesos: {len(procesos)}[/dim]")
+                    console.print(f"[dim]  • PReal: {len(preal_list)}[/dim]")
+                    console.print(f"[dim]  • PInt: {len(pint_list)}[/dim]")
+                    console.print(f"[dim]  • Alarmas: {len(alarmas_list)}[/dim]")
+                    console.print(
+                        f"[dim]  • DispED: {len(nuevos_disp_ed)} "
+                        f"(N_MAX={nuevas_dimensiones.num_disp_ed})[/dim]"
+                    )
+                    console.print(
+                        f"[dim]  • DispEA: {len(nuevos_disp_ea)} "
+                        f"(N_MAX={nuevas_dimensiones.num_disp_ea})[/dim]"
+                    )
+                    console.print(
+                        f"[dim]  • DispSA: {len(nuevos_disp_sa)} "
+                        f"(N_MAX={nuevas_dimensiones.num_disp_sa})[/dim]"
+                    )
+                    console.print(
+                        f"[dim]  • DispV: {len(nuevos_disp_v)} "
+                        f"(N_MAX={nuevas_dimensiones.num_disp_v})[/dim]"
+                    )
+                    console.print(
+                        f"[dim]  • DispM: {len(nuevos_disp_m)} "
+                        f"(N_MAX={nuevas_dimensiones.num_disp_m})[/dim]"
+                    )
+                    console.print(
+                        f"[dim]  • DispM_VF: {len(nuevos_disp_m_vf)} "
+                        f"(N_MAX={nuevas_dimensiones.num_disp_m_vf})[/dim]"
+                    )
+                except Exception as e:
+                    logger.error(f"Error recargando Excel: {e}")
+                    console.print(f"\n[bold red]❌ Error al recargar el Excel: {e}[/bold red]")
             input("\nPulsa Enter para volver al Menú Principal...")
 
         elif opcion_principal == "config_templates":
@@ -313,6 +365,10 @@ def run(version: str | None = None) -> None:
     logger: logging.Logger = logging.getLogger(f"{__name__}.run")
     logger.info("Iniciando flujo de automatización...")
 
+    # Spinner animado: el "⏳ Esperando selección del archivo" antes era
+    # un console.print estático (no era spinner). Lo dejo en console.print
+    # porque el diálogo tkinter de selección de archivo es modal: el
+    # spinner SOLO se activa al cargar el Excel.
     console.print("\n[bold cyan]⏳ Esperando selección del archivo Excel Maestro...[/bold cyan]")
     ruta_excel = seleccionar_excel()
 
@@ -349,14 +405,20 @@ def run(version: str | None = None) -> None:
         disp_ed_list: list[DispED] = parser.extraer_disp_ed(ruta_excel)
         disp_ea_list: list[DispEA] = parser.extraer_disp_ea(ruta_excel)
         disp_sa_list: list[DispSA] = parser.extraer_disp_sa(ruta_excel)
+        disp_v_list: list[DispV] = parser.extraer_disp_v(ruta_excel)
+        disp_m_list: list[DispM] = parser.extraer_disp_m(ruta_excel)
+        disp_m_vf_list: list[DispM_VF] = parser.extraer_disp_m_vf(ruta_excel)
 
     console.print(
         f"\n[bold green]✅ ¡Carga Maestra completada![/bold green] "
         f"({len(procesos)} procesos, {len(preal_list)} PReal, {len(pint_list)} PInt, "
         f"{len(alarmas_list)} alarmas, {len(disp_ed_list)} DispED, "
         f"{len(disp_ea_list)} DispEA, {len(disp_sa_list)} DispSA, "
+        f"{len(disp_v_list)} DispV, {len(disp_m_list)} DispM, "
+        f"{len(disp_m_vf_list)} DispM_VF, "
         f"N_MAX ED={dimensiones.num_disp_ed} / EA={dimensiones.num_disp_ea} / "
-        f"SA={dimensiones.num_disp_sa})"
+        f"SA={dimensiones.num_disp_sa} / V={dimensiones.num_disp_v} / "
+        f"M={dimensiones.num_disp_m} / M_VF={dimensiones.num_disp_m_vf})"
     )
 
     _clear_screen()
@@ -402,6 +464,9 @@ def run(version: str | None = None) -> None:
         disp_ed_list=disp_ed_list,
         disp_ea_list=disp_ea_list,
         disp_sa_list=disp_sa_list,
+        disp_v_list=disp_v_list,
+        disp_m_list=disp_m_list,
+        disp_m_vf_list=disp_m_vf_list,
         dimensiones=dimensiones,
     )
 

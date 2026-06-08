@@ -70,10 +70,23 @@ class TagTableModifier:
                         )
         return max_id
 
+    def _get_next_id_int(self) -> int:
+        """
+        Avanza el contador y devuelve el siguiente ID como entero.
+
+        Usado por la estructura canonica de Siemens para PlcUserConstant
+        + MultilingualText + MultilingualTextItem, cada uno con su
+        propio ID unico en formato hexadecimal.
+
+        Returns:
+            Siguiente entero del contador (ya incrementado).
+        """
+        self._max_id += 1
+        return self._max_id
+
     def _next_id(self) -> str:
         """Genera un nuevo ID en formato Siemens (hex mayuscula PURO)."""
-        self._max_id += 1
-        return f"{self._max_id:X}"
+        return f"{self._get_next_id_int():X}"
 
     def _find_object_list(self) -> ET.Element | None:
         """
@@ -149,52 +162,130 @@ class TagTableModifier:
         """
         # Garantizar que existe <ObjectList>. Si la tabla exportada desde
         # TIA Portal estaba vacia, el nodo no existe y hay que crearlo
-        # bajo el contenedor principal. El cache se actualiza para no
-        # recrear el nodo en llamadas posteriores.
+        # bajo el contenedor principal.
+        #
+        # CRITICO: TIA Portal es ESTRICTO con el orden de los nodos XML.
+        # El orden canonico dentro de PlcTagTable / PlcUserConstantTable
+        # es: <AttributeList> ... <ObjectList> ... <LinkList> ...
+        # Si anadimos ObjectList con `append` (al final) rompemos la
+        # validacion COM y TIA rechaza la importacion con error críptico.
+        # Por eso, cuando creamos ObjectList dinamicamente, lo insertamos
+        # en la posicion 1 (justo despues de AttributeList).
         if self._object_list is None:
-            object_list = self.root.find(".//ObjectList")
+            # 1. Buscar un ObjectList existente (agnostico a namespaces).
+            object_list: ET.Element | None = None
+            for node in self.root.iter():
+                if node.tag.endswith("ObjectList"):
+                    object_list = node
+                    break
+
             if object_list is None:
-                container = self.root.find(".//SW.Tags.PlcUserConstantTable")
-                if container is None:
-                    container = self.root.find(".//SW.Tags.PlcTagTable")
+                # 2. No existe. Buscar el contenedor principal
+                # (PlcUserConstantTable o PlcTagTable) tambien agnóstico.
+                container: ET.Element | None = None
+                for node in self.root.iter():
+                    if (
+                        node.tag.endswith("PlcUserConstantTable")
+                        or node.tag.endswith("PlcTagTable")
+                    ):
+                        container = node
+                        break
+
                 if container is not None:
-                    object_list = ET.SubElement(container, "ObjectList")
-                    self._logger.debug(
-                        "Nodo <ObjectList> creado dinamicamente para tabla vacia."
-                    )
+                    # 3. Crear el ObjectList y posicionarlo correctamente:
+                    #    - Si el container tiene un hijo AttributeList,
+                    #      insertar DESPUES (posición 1) para mantener
+                    #      el orden canónico.
+                    #    - Si no, append al final.
+                    object_list = ET.Element("ObjectList")
+                    attribute_list_idx = None
+                    for idx, child in enumerate(list(container)):
+                        if child.tag.endswith("AttributeList"):
+                            attribute_list_idx = idx
+                            break
+                    if attribute_list_idx is not None:
+                        container.insert(attribute_list_idx + 1, object_list)
+                        self._logger.debug(
+                            "Nodo <ObjectList> creado e insertado "
+                            "despues de <AttributeList> (orden canonico TIA)."
+                        )
+                    else:
+                        container.append(object_list)
+                        self._logger.debug(
+                            "Nodo <ObjectList> creado e insertado al final "
+                            "(container sin AttributeList hijo)."
+                        )
                 else:
                     self._logger.error(
-                        "No se encontro el contenedor principal de la tabla de tags."
+                        f"No se encontro el contenedor principal "
+                        f"(PlcUserConstantTable / PlcTagTable) en {self.xml_path}. "
+                        "Xml no es una PlcTagTable valida."
                     )
                     return
             self._object_list = object_list
         assert self._object_list is not None
 
-        # ID nuevo (hex mayuscula PURO) para la constante
-        const_id = self._next_id()
+        # 1. Obtener ID para la constante
+        const_id_int = self._get_next_id_int()
+        const_id_hex = f"{const_id_int:X}"
 
-        # ---------- Bloque principal ----------
-        uc_elem = ET.SubElement(
-            self._object_list,
+        # Construimos el nodo raiz como Element (no SubElement) para tener
+        # control explicito del orden de los hijos. Luego lo añadimos al
+        # final con append() (que respeta la posicion canonica de ObjectList).
+        constant_node = ET.Element(
             "SW.Tags.PlcUserConstant",
+            {"ID": const_id_hex, "CompositionName": "UserConstants"},
         )
-        uc_elem.set("ID", const_id)
-        uc_elem.set("CompositionName", "UserConstants")
+        attr_list = ET.SubElement(constant_node, "AttributeList")
 
-        attr_list = ET.SubElement(uc_elem, "AttributeList")
+        # Atributos basicos
         ET.SubElement(attr_list, "Name").text = name
         ET.SubElement(attr_list, "DataTypeName").text = "Int"
         ET.SubElement(attr_list, "Value").text = str(value)
 
-        # Comment / MultiLanguageText (solo si hay comentario)
+        # 2. Inyectar el comentario con la estructura canonica de
+        # MultilingualText + MultilingualTextItem, cada uno con su propio
+        # ID unico en formato hexadecimal mayuscula.
+        # Esta estructura anidada (no un <Comment> simple dentro de
+        # AttributeList) es la que TIA Portal Openness EXIGE. Si no
+        # se respeta, la importacion del XML falla con error silencioso
+        # y la transaccion COM queda corrupta (rollback forzado).
+        # Inicializamos los IDs fuera del `if` para que el log final
+        # siempre pueda referenciarlos (evita UnboundLocalError en Pylance).
+        mlt_id_hex: str = "N/A"
+        mlti_id_hex: str = "N/A"
         if comment:
-            comment_elem = ET.SubElement(attr_list, "Comment")
-            mlt = ET.SubElement(comment_elem, "MultiLanguageText")
-            mlt.set("Lang", "es-ES")
-            mlt.text = comment
+            mlt_id_int = self._get_next_id_int()
+            mlti_id_int = self._get_next_id_int()
+            mlt_id_hex = f"{mlt_id_int:X}"
+            mlti_id_hex = f"{mlti_id_int:X}"
 
-        self._logger.info(
-            f"Constante '{name}' (value={value}) preparada para insercion con ID={const_id}."
+            obj_list = ET.SubElement(constant_node, "ObjectList")
+
+            mlt = ET.SubElement(
+                obj_list,
+                "MultilingualText",
+                {"ID": mlt_id_hex, "CompositionName": "Comment"},
+            )
+            mlt_obj_list = ET.SubElement(mlt, "ObjectList")
+
+            mlti = ET.SubElement(
+                mlt_obj_list,
+                "MultilingualTextItem",
+                {"ID": mlti_id_hex, "CompositionName": "Items"},
+            )
+            mlti_attr_list = ET.SubElement(mlti, "AttributeList")
+
+            ET.SubElement(mlti_attr_list, "Culture").text = "es-ES"
+            ET.SubElement(mlti_attr_list, "Text").text = comment
+
+        self._object_list.append(constant_node)
+        # DEBUG (no info) para evitar ruido: si hay 300 variables, este log
+        # se imprimiría 300 veces en el log file. Solo nos interesa para
+        # diagnosticar problemas de IDs duplicados o canonicos.
+        self._logger.debug(
+            f"Constante '{name}' (value={value}) con estructura canonica. "
+            f"IDs: const={const_id_hex}, mlt={mlt_id_hex}, mlti={mlti_id_hex}."
         )
 
     def save(self) -> None:

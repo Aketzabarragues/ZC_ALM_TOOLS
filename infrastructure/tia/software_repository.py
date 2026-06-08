@@ -231,31 +231,44 @@ class SoftwareRepository:
 
     def importar_bloque(
         self, plc_name: str, xml_path: str, folder_path: str
-    ) -> None:
+    ) -> bool:
         """
         Importa un bloque desde un XML. Equivalente a importar_bloque_single
         pero con la firma del port (sin retorno, folder_path obligatorio).
 
         folder_path="" significa root.
+
+        Returns:
+            True si la importación fue exitosa, False en caso contrario.
+            Toda excepción COM es capturada y convertida en False
+            para que el Caso de Uso pueda detectarla y propagarla
+            como RuntimeError (que disparará el ROLLBACK).
         """
         project = self._gateway.resolve_project()
         if project is None:
             self._logger.error("No hay proyecto abierto para importar bloque.")
-            return
+            return False
         plc = self._gateway.resolve_plc(plc_name)
         if plc is None:
             self._logger.error(f"PLC '{plc_name}' no encontrado.")
-            return
+            return False
         if not Path(xml_path).exists():
             self._logger.error(f"Archivo XML no encontrado: {xml_path}")
-            return
+            return False
         # Gestion de transaccion centralizada en el Gateway.
-        with self.transaccion(
-            f"Importando bloque '{Path(xml_path).name}' en PLC '{plc_name}'"
-        ):
-            self._importer.import_single_block(
-                project, plc, xml_path, folder_path or ""
+        try:
+            with self.transaccion(
+                f"Importando bloque '{Path(xml_path).name}' en PLC '{plc_name}'"
+            ):
+                self._importer.import_single_block(
+                    project, plc, xml_path, folder_path or ""
+                )
+            return True
+        except Exception as e:
+            self._logger.critical(
+                f"Excepción COM al importar bloque '{xml_path}' en PLC '{plc_name}': {e}"
             )
+            return False
 
     def sanitize_import_path(self, full_path: str) -> str:
         return self._importer.sanitize_import_path(full_path)
@@ -600,7 +613,7 @@ class SoftwareRepository:
 
     def importar_tabla_variables(
         self, plc_name: str, xml_path: str, folder_path: str
-    ) -> None:
+    ) -> bool:
         """
         Importa una tabla de variables PLC desde XML.
 
@@ -610,20 +623,26 @@ class SoftwareRepository:
                 target_folder_path=None
             )
         Si folder_path esta vacio, el wrapper importa en el root.
+
+        Returns:
+            True si la importación fue exitosa, False en caso contrario.
+            Toda excepción COM es capturada y convertida en False
+            para que el Caso de Uso pueda detectarla y propagarla
+            como RuntimeError (que disparará el ROLLBACK).
         """
         plc = self._gateway.resolve_plc(plc_name)
         if plc is None:
             self._logger.warning(
                 f"PLC '{plc_name}' no encontrado para importar tabla."
             )
-            return
+            return False
 
         xml_file_path = Path(xml_path)
         if not xml_file_path.exists():
             self._logger.error(
                 f"Archivo XML no encontrado: {xml_path}"
             )
-            return
+            return False
 
         # El wrapper CreateTagGroupAndImportFiles espera recibir el
         # DIRECTORIO PADRE que contiene el XML (no el XML en sí).
@@ -641,8 +660,10 @@ class SoftwareRepository:
                 f"Tabla importada desde directorio {directory_path} "
                 f"(folder_path='{folder_path or '<root>'}')."
             )
+            return True
         except Exception as e:
-            self._logger.error(
-                f"Fallo importando tabla desde {directory_path} en "
-                f"'{folder_path}': {e}"
+            self._logger.critical(
+                f"Excepción COM al importar tabla de variables '{xml_path}' "
+                f"en '{folder_path}': {e}"
             )
+            return False
