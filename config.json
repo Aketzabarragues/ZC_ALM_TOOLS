@@ -18,6 +18,13 @@
             "tag_table": "2000_Disp_ED",
             "config_table": "000_Config_Dispositivos",
             "config_constant": "N_MAX_DISP_ED"
+        },
+        "ea": {
+            "db_name": "DB2001_EA",
+            "db_array_name": "EA",
+            "tag_table": "2000_Disp_EA",
+            "config_table": "000_Config_Dispositivos",
+            "config_constant": "N_MAX_DISP_EA"
         }
     }
 }

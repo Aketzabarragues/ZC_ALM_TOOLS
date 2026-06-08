@@ -16,7 +16,10 @@ from questionary import Choice, Separator
 from rich.console import Console
 
 from application.session import AppSession
-from application.tui.hardware_flows import _flujo_sincronizar_dispositivos
+from application.tui.hardware_flows import (
+    _flujo_sincronizar_dispositivos,
+    _flujo_sincronizar_dispositivos_ea,
+)
 from application.tui.software_flows import (
     _flujo_generar_procesos,
     _flujo_sincronizar_textos,
@@ -25,6 +28,7 @@ from application.tui.utils import _clear_screen, _pertenece_al_proceso
 from core.models import (
     Alarma,
     DimensionesDispositivos,
+    DispEA,
     DispED,
     PInt,
     PReal,
@@ -180,27 +184,29 @@ def _flujo_principal_con_tia(
                 f"SINCRONIZAR DISPOSITIVOS | PLC: [bold orange1]{session.plc_seleccionado}[/bold orange1]"
             )
 
-            tipos_seleccionados = questionary.checkbox(
-                "Selecciona los tipos de dispositivos a sincronizar "
-                "(Espacio para marcar, Enter para confirmar):",
+            tipo_seleccionado = questionary.select(
+                "Selecciona el tipo de dispositivo a sincronizar:",
                 choices=[
                     Choice(" Entradas Digitales (ED)", value="ED"),
-                    # Aquí se añadirán SD, ANA, etc. en el futuro
+                    Choice(" Entradas Analógicas (EA)", value="EA"),
+                    # Aqui se anadiran SD, M, MVF, etc. en el futuro
                 ]
             ).ask()
 
-            if not tipos_seleccionados:
+            if not tipo_seleccionado:
                 console.print("[dim]No se seleccionó ningún dispositivo. Cancelando...[/dim]")
                 input("\nPulsa Enter para volver al Menú Principal...")
                 continue
 
             # Por cada tipo seleccionado, ejecutamos su flujo correspondiente
-            if "ED" in tipos_seleccionados:
+            if tipo_seleccionado == "ED":
                 _flujo_sincronizar_dispositivos(session)
+            elif tipo_seleccionado == "EA":
+                _flujo_sincronizar_dispositivos_ea(session)
 
-            # Cuando haya más flujos, irán aquí debajo como if "SD" in tipos_seleccionados: ...
-            # Nota: El _flujo_sincronizar_dispositivos actual ya incluye su propio _clear_screen
-            # y su propia pausa al final, por lo que no hace falta añadir un input() extra aquí.
+            # Cuando haya mas tipos, iran aqui debajo como elif "SD" == tipo_seleccionado: ...
+            # Nota: el _flujo_sincronizar_dispositivos_generico ya incluye su propio _clear_screen
+            # y su propia pausa al final, por lo que no hace falta anadir un input() extra aqui.
 
         elif opcion_principal == "reload_excel":
             logger.info("Opción seleccionada: Recargar Excel")
@@ -226,9 +232,11 @@ def _flujo_principal_con_tia(
                     )
                     nuevas_dimensiones = DimensionesDispositivos()
                 nuevos_disp_ed = parser.extraer_disp_ed(ruta_excel)
+                nuevos_disp_ea = parser.extraer_disp_ea(ruta_excel)
                 # Actualizar la sesion
                 session.dimensiones = nuevas_dimensiones
                 session.disp_ed_list = nuevos_disp_ed
+                session.disp_ea_list = nuevos_disp_ea
 
                 console.print(
                     f"[bold green]✅ Datos recargados correctamente "
@@ -241,6 +249,10 @@ def _flujo_principal_con_tia(
                 console.print(
                     f"[dim]  • DispED: {len(nuevos_disp_ed)} "
                     f"(N_MAX={nuevas_dimensiones.num_disp_ed})[/dim]"
+                )
+                console.print(
+                    f"[dim]  • DispEA: {len(nuevos_disp_ea)} "
+                    f"(N_MAX={nuevas_dimensiones.num_disp_ea})[/dim]"
                 )
             except Exception as e:
                 logger.error(f"Error recargando Excel: {e}")
@@ -324,12 +336,14 @@ def run(version: str | None = None) -> None:
             )
             dimensiones = DimensionesDispositivos()
         disp_ed_list: list[DispED] = parser.extraer_disp_ed(ruta_excel)
+        disp_ea_list: list[DispEA] = parser.extraer_disp_ea(ruta_excel)
 
     console.print(
         f"\n[bold green]✅ ¡Carga Maestra completada![/bold green] "
         f"({len(procesos)} procesos, {len(preal_list)} PReal, {len(pint_list)} PInt, "
         f"{len(alarmas_list)} alarmas, {len(disp_ed_list)} DispED, "
-        f"N_MAX={dimensiones.num_disp_ed})"
+        f"{len(disp_ea_list)} DispEA, "
+        f"N_MAX ED={dimensiones.num_disp_ed} / EA={dimensiones.num_disp_ea})"
     )
 
     _clear_screen()
@@ -364,17 +378,18 @@ def run(version: str | None = None) -> None:
     importer = TIAImporter(export_with_defaults_enum=ts.Enums.ExportOptions.WithDefaults)
     software_repo = SoftwareRepository(gateway=gateway, scanner=scanner, importer=importer)
     session = AppSession(
-        gateway=gateway,
-        software_repo=software_repo,
-        scanner=scanner,
-        ruta_excel=ruta_excel,  # Inyectamos al AppSession para evitar re-prompt.
-        procesos=procesos,
-        preal_list=preal_list,
-        pint_list=pint_list,
-        alarmas_list=alarmas_list,
-        disp_ed_list=disp_ed_list,
-        dimensiones=dimensiones,
-    )
+            gateway=gateway,
+            software_repo=software_repo,
+            scanner=scanner,
+            ruta_excel=ruta_excel,  # Inyectamos al AppSession para evitar re-prompt.
+            procesos=procesos,
+            preal_list=preal_list,
+            pint_list=pint_list,
+            alarmas_list=alarmas_list,
+            disp_ed_list=disp_ed_list,
+            disp_ea_list=disp_ea_list,
+            dimensiones=dimensiones,
+        )
 
     try:
         if connection_mode == "open_new":

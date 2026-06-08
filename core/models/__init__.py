@@ -12,6 +12,7 @@ como antes del refactor.
 from core.models.blocks import BloquePLC
 from core.models.hardware import (
     DimensionesDispositivos,
+    DispEA,
     DispED,
     DispositivoHardware,
 )
@@ -24,6 +25,7 @@ __all__ = [
     "Alarma",
     "BloquePLC",
     "DispED",
+    "DispEA",
     "DimensionesDispositivos",
     "DispositivoHardware",
 ]

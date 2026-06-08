@@ -12,12 +12,13 @@ import openpyxl
 from core.models import (
     Alarma,
     DimensionesDispositivos,
+    DispEA,
     DispED,
     PInt,
     PReal,
     Proceso,
 )
-from infrastructure.parsers.hardware import DispEDParser
+from infrastructure.parsers.hardware import DispEAParser, DispEDParser
 from infrastructure.parsers.software import (
     AlarmasParser,
     PIntParser,
@@ -41,6 +42,7 @@ class ExcelParser:
 
     # Constantes para defined names de openpyxl
     _DN_NUM_DISP_ED: str = "Num_Disp_ED"
+    _DN_NUM_DISP_EA: str = "Num_Disp_EA"
 
     def __init__(self) -> None:
         self._logger: logging.Logger = logging.getLogger(
@@ -53,6 +55,7 @@ class ExcelParser:
         self._alarmas: AlarmasParser = AlarmasParser()
         # Parsers de HARDWARE (Fase 1)
         self._disp_ed: DispEDParser = DispEDParser()
+        self._disp_ea: DispEAParser = DispEAParser()
 
     # ------------------------------------------------------------------ #
     #  Software
@@ -93,6 +96,13 @@ class ExcelParser:
         self._logger.debug(f"DUMP DispED: {datos}")
         return datos
 
+    def extraer_disp_ea(self, ruta_excel: str) -> list[DispEA]:
+        """Extrae la lista de dispositivos de Entradas Analogicas."""
+        self._logger.info(f"Extrayendo DispEA de: {ruta_excel}")
+        datos: list[DispEA] = self._disp_ea.extraer(ruta_excel)
+        self._logger.debug(f"DUMP DispEA: {datos}")
+        return datos
+
     def extraer_dimensiones(self, ruta_excel: str) -> DimensionesDispositivos:
         """
         Lee las celdas nombradas (Defined Names) del Excel Maestro
@@ -113,36 +123,11 @@ class ExcelParser:
             wb = openpyxl.load_workbook(ruta_excel, data_only=True)
             try:
                 # API moderna: defined_names es dict-like.
-                dn = wb.defined_names.get(self._DN_NUM_DISP_ED)
-                if dn is None:
-                    self._logger.warning(
-                        f"Defined name '{self._DN_NUM_DISP_ED}' no encontrado en el Excel."
-                    )
-                    return dims
-
-                destinations = list(dn.destinations)
-                if not destinations:
-                    self._logger.warning(
-                        f"Defined name '{self._DN_NUM_DISP_ED}' sin destinos resolubles."
-                    )
-                    return dims
-
-                sheet_title, coord = destinations[0]
-                cell_obj = wb[sheet_title][coord]
-                if isinstance(cell_obj, tuple):
-                    # Si es un rango, tomamos la primera celda superior izquierda
-                    valor = (
-                        cell_obj[0][0].value
-                        if isinstance(cell_obj[0], tuple)
-                        else cell_obj[0].value
-                    )
-                else:
-                    valor = cell_obj.value
-
-                dims.num_disp_ed = _safe_int(valor)
-                self._logger.info(
-                    f"Num_Disp_ED resuelto: {dims.num_disp_ed} "
-                    f"(hoja='{sheet_title}', celda='{coord}')"
+                dims.num_disp_ed = self._leer_defined_name(
+                    wb, self._DN_NUM_DISP_ED, "Num_Disp_ED"
+                )
+                dims.num_disp_ea = self._leer_defined_name(
+                    wb, self._DN_NUM_DISP_EA, "Num_Disp_EA"
                 )
             finally:
                 wb.close()
@@ -152,3 +137,46 @@ class ExcelParser:
             self._logger.warning(f"Error extrayendo dimensiones: {e}")
 
         return dims
+
+    def _leer_defined_name(
+        self,
+        wb: openpyxl.Workbook,
+        dn_name: str,
+        log_name: str,
+    ) -> int:
+        """
+        Helper: lee un defined name y devuelve su valor como int.
+        Retorna 0 si no existe o si la celda no se puede resolver.
+        """
+        dn = wb.defined_names.get(dn_name)
+        if dn is None:
+            self._logger.warning(
+                f"Defined name '{dn_name}' no encontrado en el Excel."
+            )
+            return 0
+
+        destinations = list(dn.destinations)
+        if not destinations:
+            self._logger.warning(
+                f"Defined name '{dn_name}' sin destinos resolubles."
+            )
+            return 0
+
+        sheet_title, coord = destinations[0]
+        cell_obj = wb[sheet_title][coord]
+        if isinstance(cell_obj, tuple):
+            # Si es un rango, tomamos la primera celda superior izquierda
+            valor = (
+                cell_obj[0][0].value
+                if isinstance(cell_obj[0], tuple)
+                else cell_obj[0].value
+            )
+        else:
+            valor = cell_obj.value
+
+        valor_int = _safe_int(valor)
+        self._logger.info(
+            f"{log_name} resuelto: {valor_int} "
+            f"(hoja='{sheet_title}', celda='{coord}')"
+        )
+        return valor_int

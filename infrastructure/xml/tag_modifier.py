@@ -89,6 +89,34 @@ class TagTableModifier:
                 return elem
         return None
 
+    def _ensure_object_list(self) -> ET.Element | None:
+        """
+        Busca un <ObjectList> en el XML o lo crea bajo el contenedor
+        principal (PlcUserConstantTable / PlcTagTable) si la tabla
+        exportada de TIA Portal está vacía y carece de él.
+
+        Returns:
+            El ObjectList encontrado/creado, o None si no hay contenedor
+            válido (xml no es una PlcTagTable).
+        """
+        object_list = self.root.find(".//ObjectList")
+        if object_list is not None:
+            return object_list
+        container = self.root.find(".//SW.Tags.PlcUserConstantTable")
+        if container is None:
+            container = self.root.find(".//SW.Tags.PlcTagTable")
+        if container is not None:
+            object_list = ET.SubElement(container, "ObjectList")
+            self._logger.debug(
+                "Nodo <ObjectList> creado dinamicamente para tabla vacia."
+            )
+            return object_list
+        self._logger.error(
+            f"No se encontro el contenedor principal en {self.xml_path}. "
+            "Xml no es una PlcTagTable valida."
+        )
+        return None
+
     # ------------------------------------------------------------------ #
     #  API publica
     # ------------------------------------------------------------------ #
@@ -119,12 +147,28 @@ class TagTableModifier:
               </SW.Tags.PlcUserConstant>
             </ObjectList>
         """
+        # Garantizar que existe <ObjectList>. Si la tabla exportada desde
+        # TIA Portal estaba vacia, el nodo no existe y hay que crearlo
+        # bajo el contenedor principal. El cache se actualiza para no
+        # recrear el nodo en llamadas posteriores.
         if self._object_list is None:
-            self._logger.error(
-                f"No se encontro <ObjectList> en {self.xml_path}. "
-                "Xml no es una PlcTagTable valida."
-            )
-            return
+            object_list = self.root.find(".//ObjectList")
+            if object_list is None:
+                container = self.root.find(".//SW.Tags.PlcUserConstantTable")
+                if container is None:
+                    container = self.root.find(".//SW.Tags.PlcTagTable")
+                if container is not None:
+                    object_list = ET.SubElement(container, "ObjectList")
+                    self._logger.debug(
+                        "Nodo <ObjectList> creado dinamicamente para tabla vacia."
+                    )
+                else:
+                    self._logger.error(
+                        "No se encontro el contenedor principal de la tabla de tags."
+                    )
+                    return
+            self._object_list = object_list
+        assert self._object_list is not None
 
         # ID nuevo (hex mayuscula PURO) para la constante
         const_id = self._next_id()

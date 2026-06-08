@@ -317,27 +317,40 @@ class TIAPortalGateway:
         # mensaje en el dialogo de confirmacion de TIA.
         project.start_transaction(undo_text=undo_text, dialog_text=undo_text)
         self._transaction_active = True
+        # Flag de éxito: si yield levanta una excepción, exito queda False
+        # y el finally NO ejecutará el COMMIT (solo el ROLLBACK ya hecho
+        # en el except). Asi evitamos el bug clásico de hacer CommitOnDispose
+        # o end_transaction(rollback=False) despues de un error, lo que
+        # puede dejar TIA Portal en estado inconsistente o bloquearlo.
+        exito: bool = False
         try:
             yield
+            exito = True
         except Exception as e:
-            self._logger.error(
-                f"Error durante la transacción. Ejecutando ROLLBACK: {e}"
-            )
+            self._logger.error(f"Transacción abortada por excepción: {e}")
             try:
                 project.end_transaction(rollback=True)
+                self._logger.info("ROLLBACK ejecutado correctamente.")
             except Exception as rollback_err:
                 self._logger.critical(
                     f"Fallo crítico durante el rollback: {rollback_err}. "
                     "TIA Portal podría estar bloqueado."
                 )
-            self._transaction_active = False
             raise
-        else:
-            self._logger.info("Transacción exitosa. Ejecutando COMMIT.")
-            try:
-                project.end_transaction(rollback=False)
-            finally:
-                self._transaction_active = False
+        finally:
+            if exito:
+                self._logger.info("Transacción exitosa. Ejecutando COMMIT.")
+                try:
+                    project.end_transaction(rollback=False)
+                except Exception as commit_err:
+                    self._logger.critical(
+                        f"Fallo crítico durante el commit: {commit_err}. "
+                        "TIA Portal podría estar bloqueado."
+                    )
+            # El flag se libera SIEMPRE, haya habido exito, excepcion
+            # o incluso un fallo en el commit/rollback. Asi la proxima
+            # transaccion no queda atrapada como no-op.
+            self._transaction_active = False
 
     def resolve_project(self) -> Any:
         """Resuelve y devuelve el objeto COM Project activo."""

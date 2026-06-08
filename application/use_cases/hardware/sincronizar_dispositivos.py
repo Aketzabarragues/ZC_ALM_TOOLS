@@ -19,6 +19,7 @@ varias llamadas en una transaccion si fuera necesario.
 import logging
 from collections.abc import Sequence
 from pathlib import Path
+from typing import Any, Callable
 
 from core.models import DimensionesDispositivos, DispositivoHardware
 from core.ports import ISoftwareRepository
@@ -45,6 +46,124 @@ class SincronizarDispositivosUseCase:
             f"{__name__}.{self.__class__.__name__}"
         )
 
+    def generar_prevision(
+        self,
+        plc_name: str,
+        hw_type: str,
+        dispositivos: Sequence[DispositivoHardware],
+        export_dir: str,
+    ) -> list[dict[str, Any]]:
+        """
+        DRY-RUN: exporta la tabla actual y genera un diff comparando
+        los tags existentes en el PLC con los del Excel.
+
+        Pensado para que la TUI muestre una tabla Rich antes de que
+        el usuario confirme la sincronización. NO modifica el PLC.
+
+        Args:
+            plc_name: nombre del PLC objetivo.
+            hw_type: tipo de hardware ("ed", "ea", ...).
+            dispositivos: lista del Excel (cualquier tipo que cumpla el
+                Protocol DispositivoHardware).
+            export_dir: directorio temporal donde exportar el XML de
+                la tabla actual del PLC.
+
+        Returns:
+            Lista de dicts con keys:
+                - "index": int (1-based, posicion en la lista original)
+                - "tag_excel": str (el plc_tag del dispositivo)
+                - "estado": str ("Nueva variable" | "Sin cambios")
+        """
+        # Import local para evitar posibles ciclos de imports si
+        # tag_modifier creciera en el futuro.
+        from infrastructure.xml.tag_modifier import (  # noqa: PLC0415
+            TagTableModifier,
+        )
+
+        hw_config = config_manager.get_hardware_tia_config(hw_type)
+
+        # 1. Exportar tabla actual (silenciosamente)
+        xml_path = self._repo.exportar_tabla_variables(
+            plc_name=plc_name,
+            table_name=hw_config.tag_table,
+            export_dir=export_dir,
+        )
+        if not xml_path or not Path(xml_path).exists():
+            self._logger.warning(
+                f"No se pudo exportar la tabla '{hw_config.tag_table}' "
+                "para la prevision. Devolviendo lista vacia."
+            )
+            return []
+
+        # 2. Parsear el XML para extraer mapeo {Index: TagName}
+        tags_actuales: dict[int, str] = {}
+        try:
+            self._logger.info(f"Analizando XML de previsión: {Path(xml_path).name}")
+            modifier = TagTableModifier(xml_path)
+
+            nodos_a_buscar = [".//SW.Tags.PlcTag", ".//SW.Tags.PlcUserConstant"]
+            for node_type in nodos_a_buscar:
+                for elem in modifier.root.findall(node_type):
+                    name_str, val_int = None, None
+                    for child in elem.iter():
+                        local_child = child.tag.split("}")[-1] if "}" in child.tag else child.tag
+                        if local_child == "Name" and child.text:
+                            name_str = child.text.strip()
+                        elif local_child == "Value" and child.text:
+                            try:
+                                val_int = int(child.text.strip())
+                            except ValueError:
+                                pass
+
+                    if name_str and val_int is not None:
+                        tags_actuales[val_int] = name_str
+
+            self._logger.info(f"Previsión: {len(tags_actuales)} variables encontradas en el PLC.")
+        except Exception as e:
+            self._logger.warning(f"No se pudo parsear el XML de previsión (asumiendo tabla vacía): {e}")
+
+        # 3. Generar el Diff
+        diff: list[dict[str, Any]] = []
+        for disp in dispositivos:
+            if not disp.plc_tag:
+                continue
+
+            name_excel = disp.plc_tag.strip()
+            idx = disp.numero
+
+            name_plc = tags_actuales.get(idx, "[No existe]")
+
+            if name_plc == "[No existe]":
+                estado = "➕ Nueva variable"
+            elif name_plc == name_excel:
+                estado = "➖ Sin cambios"
+            else:
+                estado = "🔄 Renombrar"
+
+            diff.append({
+                "index": idx,
+                "tag_plc": name_plc,
+                "tag_excel": name_excel,
+                "estado": estado,
+            })
+
+            # Quitar de tags_actuales para detectar los que sobran (Eliminar)
+            if idx in tags_actuales:
+                del tags_actuales[idx]
+
+        # Los que queden en tags_actuales son variables que están en el PLC pero no en el Excel (o están fuera de rango)
+        for idx, name_plc in sorted(tags_actuales.items()):
+            diff.append({
+                "index": idx,
+                "tag_plc": name_plc,
+                "tag_excel": "[No en Excel / Sobrante]",
+                "estado": "🗑️ Eliminar",
+            })
+
+        # Ordenar por índice para que la tabla quede limpia
+        diff.sort(key=lambda x: x["index"])
+        return diff
+
     def ejecutar(
         self,
         plc_name: str,
@@ -52,6 +171,7 @@ class SincronizarDispositivosUseCase:
         dispositivos: Sequence[DispositivoHardware],
         dimensiones: DimensionesDispositivos,
         export_dir: str,
+        progress_callback: Callable[[str], None] | None = None,
     ) -> None:
         """
         Sincroniza las UserConstants del PLC con el Excel Maestro.
@@ -65,6 +185,9 @@ class SincronizarDispositivosUseCase:
             dimensiones: contadores N_MAX leidos de las celdas nombradas.
             export_dir: directorio temporal donde exportar el XML de la
                 tabla para anadir las nuevas constantes.
+            progress_callback: callable opcional que recibe un str con el
+                texto de la fase actual. La TUI lo usa para actualizar un
+                spinner de Rich dinamicamente.
         """
         # ------------------------------------------------------------------ #
         #  TRANSACCION GLOBAL: si la Fase 4 falla, la Fase 1 (cambio de
@@ -76,7 +199,7 @@ class SincronizarDispositivosUseCase:
             f"Sincronizar {len(dispositivos)} disp. {hw_type.upper()} en PLC '{plc_name}'"
         ):
             self._ejecutar_fases(
-                plc_name, hw_type, dispositivos, dimensiones, export_dir
+                plc_name, hw_type, dispositivos, dimensiones, export_dir, progress_callback
             )
 
     def _ejecutar_fases(
@@ -86,6 +209,7 @@ class SincronizarDispositivosUseCase:
         dispositivos: Sequence[DispositivoHardware],
         dimensiones: DimensionesDispositivos,
         export_dir: str,
+        progress_callback: Callable[[str], None] | None = None,
     ) -> None:
         """
         Cuerpo de las 4 fases, envuelto en transaccion global por ejecutar().
@@ -98,21 +222,30 @@ class SincronizarDispositivosUseCase:
 
         # ------------------------------------------------------------------ #
         #  1. UPDATE del N_MAX en la tabla de configuracion
+        #  El N_MAX es DINAMICO: depende del hw_type ("ed" -> num_disp_ed,
+        #  "ea" -> num_disp_ea, etc.). Si la celda del Excel no existe
+        #  o el hw_type es nuevo, n_max_val = 0 (no rompe, pero las
+        #  posteriores fases daran errores por array de tamano 0).
         # ------------------------------------------------------------------ #
+        if progress_callback:
+            progress_callback("1/4 Actualizando constantes de dimensionamiento (COM)...")
+        n_max_val: int = getattr(dimensiones, f"num_disp_{hw_type}", 0)
         self._logger.info(
             f"Actualizando N_MAX ({hw_config.config_constant}) = "
-            f"{dimensiones.num_disp_ed} en tabla {hw_config.config_table}."
+            f"{n_max_val} en tabla {hw_config.config_table}."
         )
         self._repo.update_user_constant_value(
             plc_name=plc_name,
             table_name=hw_config.config_table,
             constant_name=hw_config.config_constant,
-            new_value=dimensiones.num_disp_ed,
+            new_value=n_max_val,
         )
 
         # ------------------------------------------------------------------ #
         #  2. COM SYNC: leer PLC y comparar con Excel (delete/rename)
         # ------------------------------------------------------------------ #
+        if progress_callback:
+            progress_callback("2/4 Sincronizando variables existentes (COM)...")
         plc_consts: dict[int, str] = self._repo.get_user_constants(
             plc_name=plc_name,
             table_name=hw_config.tag_table,
@@ -156,6 +289,8 @@ class SincronizarDispositivosUseCase:
         # ------------------------------------------------------------------ #
         #  3. XML SYNC: anadir los nuevos via export/modify/import
         # ------------------------------------------------------------------ #
+        if progress_callback:
+            progress_callback("3/4 Inyectando nuevas variables (XML)...")
         nuevos = [d for d in dispositivos if d.numero not in plc_consts]
         if nuevos:
             self._logger.info(
@@ -169,10 +304,15 @@ class SincronizarDispositivosUseCase:
                 export_dir=export_dir,
             )
             if not xml_path or not Path(xml_path).exists():
-                self._logger.error(
-                    "Fallo la exportacion de la tabla; abortando fase XML."
+                # RAISE explicito: el caller (transaccion) vera la excepcion
+                # y disparara el ROLLBACK. Antes hacia return silencioso,
+                # lo que engañaba al context manager y dejaba la transaccion
+                # COM en estado corrupto.
+                raise RuntimeError(
+                    f"Fallo critico: la exportacion de la tabla '{hw_config.tag_table}' "
+                    f"no genero un XML valido (xml_path={xml_path!r}). "
+                    "Abortando transaccion."
                 )
-                return
 
             modifier = TagTableModifier(xml_path)
             for d in nuevos:
@@ -188,6 +328,17 @@ class SincronizarDispositivosUseCase:
             modifier.save()
 
             # Folder para ED: externalizable en config.json.
+            # El repo no retorna bool aqui (firma void), pero defensivamente
+            # comprobamos que el XML modificado aun existe. Un fallo real
+            # de importacion en TIA seria capturado por el subproceso COM
+            # y se manifestaria en la siguiente operacion. Para tener una
+            # excepcion explicita, podriamos pedirle al repo que retorne bool;
+            # por ahora, validamos el estado del archivo.
+            if not Path(xml_path).exists():
+                raise RuntimeError(
+                    f"Fallo critico: el XML modificado '{xml_path}' "
+                    "desaparecio antes de la importacion. Abortando transaccion."
+                )
             self._repo.importar_tabla_variables(
                 plc_name=plc_name,
                 xml_path=xml_path,
@@ -205,6 +356,8 @@ class SincronizarDispositivosUseCase:
         #  Compilar -> Exportar -> Editar XML -> Importar -> Compilar.
         #  Replica la secuencia del motor C# original.
         # ------------------------------------------------------------------ #
+        if progress_callback:
+            progress_callback("4/4 Actualizando comentarios del DB (XML)...")
         self._logger.info(
             "[DB] Actualizando comentarios del DataBlock (Redimensionando)..."
         )
@@ -214,11 +367,11 @@ class SincronizarDispositivosUseCase:
         # TIA Portal ANTES de exportarlo. Si no, el XML retiene elementos
         # fuera de rango que hacen crashear la importación posterior.
         if not self._repo.compilar_software(plc_name):
-            self._logger.error(
-                "La compilacion global fallo; abortando Fase 4 "
-                "para evitar inconsistencias."
+            raise RuntimeError(
+                "La compilacion global fallo tras el cambio de N_MAX. "
+                "Abortando transaccion para evitar inconsistencias "
+                "(el DB no se redimensionaria)."
             )
-            return
 
         # Refrescar caché tras la compilación para renovar punteros COM.
         self._repo.force_rescan(plc_name)
@@ -233,11 +386,11 @@ class SincronizarDispositivosUseCase:
         db_xml_path = str(Path(export_dir) / f"{hw_config.db_name}.xml")
 
         if not export_ok or not Path(db_xml_path).exists():
-            self._logger.error(
+            raise RuntimeError(
                 f"Fallo exportando DB '{hw_config.db_name}' "
-                "o el archivo no existe; abortando Fase 4."
+                f"(export_ok={export_ok}, db_xml_path={db_xml_path!r}). "
+                "Abortando transaccion."
             )
-            return
 
         # Mapear: el Excel es base-1, TIA espera Path base-0.
         # Restamos 1 al numero del Excel al construir el indice del Subelement.
@@ -250,12 +403,32 @@ class SincronizarDispositivosUseCase:
             )
         modifier.save()
 
+        # Validar existencia del XML antes de importar (defensa por si
+        # XMLModifier fallara silenciosamente al guardar).
+        if not Path(db_xml_path).exists():
+            raise RuntimeError(
+                f"Fallo critico: el XML modificado del DB '{db_xml_path}' "
+                "desaparecio antes de la importacion. Abortando transaccion."
+            )
+
+        # importar_bloque (firma void en el port) — si TIA Portal falla
+        # la importacion, el siguiente compilar_bloque lo detectaria. Pero
+        # para que el context manager vea el fallo INMEDIATAMENTE y haga
+        # ROLLBACK (en vez de continuar con transaccion corrupta),
+        # hacemos una validacion de consistencia post-importacion.
         self._repo.importar_bloque(
             plc_name=plc_name,
             xml_path=db_xml_path,
             folder_path=tia_folder_dispositivos,
         )
-        self._repo.compilar_bloque(plc_name, hw_config.db_name)
+
+        if not self._repo.compilar_bloque(plc_name, hw_config.db_name):
+            raise RuntimeError(
+                f"La compilacion del bloque '{hw_config.db_name}' fallo tras "
+                "la importacion del XML. Es probable que la importacion haya "
+                "sido rechazada por TIA Portal. Abortando transaccion para "
+                "forzar ROLLBACK completo (N_MAX + DB)."
+            )
         self._logger.info(
             "Sincronizacion de dispositivos finalizada. "
             "Refrescando caché COM..."

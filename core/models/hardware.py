@@ -88,6 +88,57 @@ class DispED:
 
 
 @dataclass
+class DispEA:
+    """
+    Modelo de dominio para un dispositivo de Entrada Analogica (EA).
+
+    Representa una senal analogica (4-20mA, 0-10V, RTD, etc.) que
+    llega al PLC desde el campo (sensores de temperatura, presion,
+    caudal, etc.).
+
+    Attributes:
+        uid, numero, tag, descripcion, fat, e_byte, unidades, rii, rsi,
+        gr_alarma, cuadro, observaciones, plc_tag, plc_tipo, plc_index,
+        plc_comentario, hmi_index, hmi_texto, cfg_habilitar, cfg_byte_entrada,
+        cfg_escaladomin, cfg_escaladomax, cfg_grupo_alarma.
+    """
+
+    # --- Atributos mínimos del Protocol DispositivoHardware ---
+    numero: int = 0
+    plc_tag: str = ""
+    plc_comentario: str = ""
+    descripcion: str = ""
+
+    # --- Atributos extendidos del Excel ---
+    uid: str = ""
+    tag: str = ""
+    fat: str = ""
+    e_byte: int = 0
+    unidades: str = ""
+    rii: float = 0.0   # Rango Inferior Ingenieria
+    rsi: float = 0.0   # Rango Superior Ingenieria
+    gr_alarma: int = 0
+    cuadro: str = ""
+    observaciones: str = ""
+
+    # --- Datos PLC adicionales ---
+    plc_tipo: str = ""
+    plc_index: int = 0
+
+    # --- Datos HMI ---
+    hmi_index: int = 0
+    hmi_texto: str = ""
+
+    # --- Datos de Configuración (Cfg) ---
+    # Lineas SCL crudas, igual que en DispED.
+    cfg_habilitar: str = ""
+    cfg_byte_entrada: str = ""
+    cfg_escaladomin: str = ""
+    cfg_escaladomax: str = ""
+    cfg_grupo_alarma: str = ""
+
+
+@dataclass
 class DimensionesDispositivos:
     """
     Dimensiones maximas (N_MAX) de los arrays de dispositivos hardware.
@@ -97,3 +148,4 @@ class DimensionesDispositivos:
     celdas nombradas (Defined Names) del Excel Maestro.
     """
     num_disp_ed: int = 0
+    num_disp_ea: int = 0
