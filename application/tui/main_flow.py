@@ -19,6 +19,7 @@ from application.session import AppSession
 from application.tui.hardware_flows import (
     _flujo_sincronizar_dispositivos,
     _flujo_sincronizar_dispositivos_ea,
+    _flujo_sincronizar_dispositivos_sa,
 )
 from application.tui.software_flows import (
     _flujo_generar_procesos,
@@ -30,6 +31,7 @@ from core.models import (
     DimensionesDispositivos,
     DispEA,
     DispED,
+    DispSA,
     PInt,
     PReal,
     Proceso,
@@ -189,6 +191,7 @@ def _flujo_principal_con_tia(
                 choices=[
                     Choice(" Entradas Digitales (ED)", value="ED"),
                     Choice(" Entradas Analógicas (EA)", value="EA"),
+                    Choice(" Salidas Analógicas (SA)", value="SA"),
                     # Aqui se anadiran SD, M, MVF, etc. en el futuro
                 ]
             ).ask()
@@ -203,6 +206,8 @@ def _flujo_principal_con_tia(
                 _flujo_sincronizar_dispositivos(session)
             elif tipo_seleccionado == "EA":
                 _flujo_sincronizar_dispositivos_ea(session)
+            elif tipo_seleccionado == "SA":
+                _flujo_sincronizar_dispositivos_sa(session)
 
             # Cuando haya mas tipos, iran aqui debajo como elif "SD" == tipo_seleccionado: ...
             # Nota: el _flujo_sincronizar_dispositivos_generico ya incluye su propio _clear_screen
@@ -233,10 +238,12 @@ def _flujo_principal_con_tia(
                     nuevas_dimensiones = DimensionesDispositivos()
                 nuevos_disp_ed = parser.extraer_disp_ed(ruta_excel)
                 nuevos_disp_ea = parser.extraer_disp_ea(ruta_excel)
+                nuevos_disp_sa = parser.extraer_disp_sa(ruta_excel)
                 # Actualizar la sesion
                 session.dimensiones = nuevas_dimensiones
                 session.disp_ed_list = nuevos_disp_ed
                 session.disp_ea_list = nuevos_disp_ea
+                session.disp_sa_list = nuevos_disp_sa
 
                 console.print(
                     f"[bold green]✅ Datos recargados correctamente "
@@ -253,6 +260,10 @@ def _flujo_principal_con_tia(
                 console.print(
                     f"[dim]  • DispEA: {len(nuevos_disp_ea)} "
                     f"(N_MAX={nuevas_dimensiones.num_disp_ea})[/dim]"
+                )
+                console.print(
+                    f"[dim]  • DispSA: {len(nuevos_disp_sa)} "
+                    f"(N_MAX={nuevas_dimensiones.num_disp_sa})[/dim]"
                 )
             except Exception as e:
                 logger.error(f"Error recargando Excel: {e}")
@@ -337,13 +348,15 @@ def run(version: str | None = None) -> None:
             dimensiones = DimensionesDispositivos()
         disp_ed_list: list[DispED] = parser.extraer_disp_ed(ruta_excel)
         disp_ea_list: list[DispEA] = parser.extraer_disp_ea(ruta_excel)
+        disp_sa_list: list[DispSA] = parser.extraer_disp_sa(ruta_excel)
 
     console.print(
         f"\n[bold green]✅ ¡Carga Maestra completada![/bold green] "
         f"({len(procesos)} procesos, {len(preal_list)} PReal, {len(pint_list)} PInt, "
         f"{len(alarmas_list)} alarmas, {len(disp_ed_list)} DispED, "
-        f"{len(disp_ea_list)} DispEA, "
-        f"N_MAX ED={dimensiones.num_disp_ed} / EA={dimensiones.num_disp_ea})"
+        f"{len(disp_ea_list)} DispEA, {len(disp_sa_list)} DispSA, "
+        f"N_MAX ED={dimensiones.num_disp_ed} / EA={dimensiones.num_disp_ea} / "
+        f"SA={dimensiones.num_disp_sa})"
     )
 
     _clear_screen()
@@ -386,10 +399,11 @@ def run(version: str | None = None) -> None:
             preal_list=preal_list,
             pint_list=pint_list,
             alarmas_list=alarmas_list,
-            disp_ed_list=disp_ed_list,
-            disp_ea_list=disp_ea_list,
-            dimensiones=dimensiones,
-        )
+        disp_ed_list=disp_ed_list,
+        disp_ea_list=disp_ea_list,
+        disp_sa_list=disp_sa_list,
+        dimensiones=dimensiones,
+    )
 
     try:
         if connection_mode == "open_new":

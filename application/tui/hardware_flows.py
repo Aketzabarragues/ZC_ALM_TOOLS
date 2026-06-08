@@ -40,6 +40,7 @@ from infrastructure import config_manager
 __all__ = [
     "_flujo_sincronizar_dispositivos",
     "_flujo_sincronizar_dispositivos_ea",
+    "_flujo_sincronizar_dispositivos_sa",
 ]
 
 console = Console()
@@ -271,4 +272,15 @@ def _flujo_sincronizar_dispositivos_ea(session: AppSession) -> None:
         nombre_humano="EA",
         dispositivos=session.disp_ea_list,
         subdir="ea",
+    )
+
+
+def _flujo_sincronizar_dispositivos_sa(session: AppSession) -> None:
+    """Wrapper para Salidas Analogicas (SA)."""
+    _flujo_sincronizar_dispositivos_generico(
+        session=session,
+        hw_type="sa",
+        nombre_humano="SA",
+        dispositivos=session.disp_sa_list,
+        subdir="sa",
     )

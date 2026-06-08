@@ -14,6 +14,7 @@ from core.models.hardware import (
     DimensionesDispositivos,
     DispEA,
     DispED,
+    DispSA,
     DispositivoHardware,
 )
 from core.models.software import Alarma, PInt, PReal, Proceso
@@ -26,6 +27,7 @@ __all__ = [
     "BloquePLC",
     "DispED",
     "DispEA",
+    "DispSA",
     "DimensionesDispositivos",
     "DispositivoHardware",
 ]

@@ -13,7 +13,7 @@ librerias externas.
 from dataclasses import dataclass
 from typing import Protocol
 
-__all__ = ["DispositivoHardware", "DispED", "DimensionesDispositivos"]
+__all__ = ["DispositivoHardware", "DispED", "DispEA", "DispSA", "DimensionesDispositivos"]
 
 
 class DispositivoHardware(Protocol):
@@ -139,6 +139,54 @@ class DispEA:
 
 
 @dataclass
+class DispSA:
+    """
+    Modelo de dominio para un dispositivo de Salida Analogica (SA).
+
+    Representa una senal analogica de salida (4-20mA, 0-10V) que
+    el PLC envia al campo para actuadores (valvulas proporcionales,
+    variadores de frecuencia, reguladores, etc.).
+
+    Misma estructura que DispEA (entrada analogica) pero como SALIDA.
+    Hereda los 4 atributos del Protocol DispositivoHardware.
+    """
+
+    # --- Atributos mínimos del Protocol DispositivoHardware ---
+    numero: int = 0
+    plc_tag: str = ""
+    plc_comentario: str = ""
+    descripcion: str = ""
+
+    # --- Atributos extendidos del Excel ---
+    uid: str = ""
+    tag: str = ""
+    fat: str = ""
+    e_byte: int = 0
+    unidades: str = ""
+    rii: float = 0.0   # Rango Inferior Ingenieria
+    rsi: float = 0.0   # Rango Superior Ingenieria
+    gr_alarma: int = 0
+    cuadro: str = ""
+    observaciones: str = ""
+
+    # --- Datos PLC adicionales ---
+    plc_tipo: str = ""
+    plc_index: int = 0
+
+    # --- Datos HMI ---
+    hmi_index: int = 0
+    hmi_texto: str = ""
+
+    # --- Datos de Configuración (Cfg) ---
+    # Lineas SCL crudas, igual que en DispED/DispEA.
+    cfg_habilitar: str = ""
+    cfg_byte_entrada: str = ""
+    cfg_escaladomin: str = ""
+    cfg_escaladomax: str = ""
+    cfg_grupo_alarma: str = ""
+
+
+@dataclass
 class DimensionesDispositivos:
     """
     Dimensiones maximas (N_MAX) de los arrays de dispositivos hardware.
@@ -149,3 +197,4 @@ class DimensionesDispositivos:
     """
     num_disp_ed: int = 0
     num_disp_ea: int = 0
+    num_disp_sa: int = 0

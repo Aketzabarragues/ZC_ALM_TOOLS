@@ -14,11 +14,12 @@ from core.models import (
     DimensionesDispositivos,
     DispEA,
     DispED,
+    DispSA,
     PInt,
     PReal,
     Proceso,
 )
-from infrastructure.parsers.hardware import DispEAParser, DispEDParser
+from infrastructure.parsers.hardware import DispEAParser, DispEDParser, DispSAParser
 from infrastructure.parsers.software import (
     AlarmasParser,
     PIntParser,
@@ -43,6 +44,7 @@ class ExcelParser:
     # Constantes para defined names de openpyxl
     _DN_NUM_DISP_ED: str = "Num_Disp_ED"
     _DN_NUM_DISP_EA: str = "Num_Disp_EA"
+    _DN_NUM_DISP_SA: str = "Num_Disp_SA"
 
     def __init__(self) -> None:
         self._logger: logging.Logger = logging.getLogger(
@@ -56,6 +58,7 @@ class ExcelParser:
         # Parsers de HARDWARE (Fase 1)
         self._disp_ed: DispEDParser = DispEDParser()
         self._disp_ea: DispEAParser = DispEAParser()
+        self._disp_sa: DispSAParser = DispSAParser()
 
     # ------------------------------------------------------------------ #
     #  Software
@@ -103,6 +106,13 @@ class ExcelParser:
         self._logger.debug(f"DUMP DispEA: {datos}")
         return datos
 
+    def extraer_disp_sa(self, ruta_excel: str) -> list[DispSA]:
+        """Extrae la lista de dispositivos de Salidas Analogicas."""
+        self._logger.info(f"Extrayendo DispSA de: {ruta_excel}")
+        datos: list[DispSA] = self._disp_sa.extraer(ruta_excel)
+        self._logger.debug(f"DUMP DispSA: {datos}")
+        return datos
+
     def extraer_dimensiones(self, ruta_excel: str) -> DimensionesDispositivos:
         """
         Lee las celdas nombradas (Defined Names) del Excel Maestro
@@ -128,6 +138,9 @@ class ExcelParser:
                 )
                 dims.num_disp_ea = self._leer_defined_name(
                     wb, self._DN_NUM_DISP_EA, "Num_Disp_EA"
+                )
+                dims.num_disp_sa = self._leer_defined_name(
+                    wb, self._DN_NUM_DISP_SA, "Num_Disp_SA"
                 )
             finally:
                 wb.close()
