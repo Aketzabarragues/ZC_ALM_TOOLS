@@ -68,6 +68,7 @@ class DispEAParser(BaseParser):
                     cfg_escaladomin=str(row.get("Cfg.EscaladoMin", "")),
                     cfg_escaladomax=str(row.get("Cfg.EscaladoMax", "")),
                     cfg_grupo_alarma=str(row.get("Cfg.GrupoAlarma", "")),
+                    comentario_db=str(row.get("ComentarioDB", "")).strip(),
                 )
             )
         return dispositivos

@@ -220,7 +220,18 @@ class TIAImporter:
         return True
 
     def exportar_bloque(self, plc_object: Any, block_name: str, target_dir: str) -> bool:
-        """Exporta un bloque PLC a un directorio de forma plana (con compilación defensiva)."""
+        """Exporta un bloque PLC a un directorio de forma plana.
+
+        IMPORTANTE: Tras el resize de N_MAX en Fase 1, los DataBlocks quedan
+        temporalmente en estado "inconsistente" (tienen un tamano distinto al
+        que esperan las referencias cruzadas de otros bloques). Esto NO
+        impide la exportacion via Openness: el XML se exporta con el nuevo
+        tamano, y los comentarios se inyectan. El problema solo se resuelve
+        con la POST-compilacion global (que si hacemos en la Fase 4 final).
+
+        Por tanto, si asegurar_consistencia() retorna False, NO abortamos:
+        advertimos (warning) y continuamos con la exportacion.
+        """
         try:
             program_blocks = plc_object.get_program_blocks()
             bloque = self.find_block_in_group(program_blocks, block_name)
@@ -229,11 +240,17 @@ class TIAImporter:
                 self._logger.error(f"Bloque '{block_name}' no encontrado.")
                 return False
 
+            # Advertimos pero CONTINUAMOS con la exportacion aunque la
+            # consistencia falle. Los DBs redimensionados estaran temporalmente
+            # en error hasta que la post-compilacion global los arregle.
             if not self.asegurar_consistencia(bloque):
-                self._logger.error(
-                    f"Saltando exportacion de '{block_name}': no se logro compilar."
+                self._logger.warning(
+                    f"El bloque '{block_name}' reporta errores de compilacion "
+                    f"(probablemente por redimensionado de N_MAX en Fase 1). "
+                    f"Se forzara la exportacion del XML de todos modos; la "
+                    f"post-compilacion global al final de la Fase 4 lo arreglara."
                 )
-                return False
+                # NO return False: continuamos.
 
             destino = Path(target_dir).absolute()
             destino.mkdir(parents=True, exist_ok=True)

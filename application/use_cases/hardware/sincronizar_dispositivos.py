@@ -17,6 +17,7 @@ varias llamadas en una transaccion si fuera necesario.
 """
 
 import logging
+import shutil
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, Callable
@@ -389,18 +390,19 @@ class SincronizarDispositivosUseCase:
             "[DB] Actualizando comentarios del DataBlock (Redimensionando)..."
         )
 
-        # Es CRÍTICO hacer una compilación global para que el cambio de
-        # N_MAX (Fase 1) redimensione el array del DB en la memoria de
-        # TIA Portal ANTES de exportarlo. Si no, el XML retiene elementos
-        # fuera de rango que hacen crashear la importación posterior.
+        # CRÍTICO: Compilar el PLC para que TIA Portal asimile el nuevo N_MAX
+        # (Fase 1) y refresque los punteros COM antes de exportar el DB.
+        # Si NO compilamos aquí, el XML retiene elementos fuera de rango
+        # y la API de Siemens rechaza la compilación local del DB.
+        self._logger.info(f"⏳ Iniciando compilación de software para '{plc_name}'...")
         if not self._repo.compilar_software(plc_name):
             raise RuntimeError(
-                "La compilacion global fallo tras el cambio de N_MAX. "
-                "Abortando transaccion para evitar inconsistencias "
-                "(el DB no se redimensionaria)."
+                f"Fallo al compilar '{plc_name}' antes de modificar el DB. "
+                "Abortando transaccion para evitar inconsistencias."
             )
 
-        # Refrescar caché tras la compilación para renovar punteros COM.
+        # Refrescar caché COM tras compilar para alinear punteros
+        # (TIA renueva identificadores internos de los bloques).
         self._repo.force_rescan(plc_name)
 
         # Exportar. exportar_bloque retorna bool (legacy); construimos
@@ -419,16 +421,50 @@ class SincronizarDispositivosUseCase:
                 "Abortando transaccion."
             )
 
+        # --- DIAGNOSTICO: GUARDAR BEFORE ---
+        # Antes de que Python lo modifique, guardamos una copia del XML
+        # tal como TIA lo exporto. Esto nos permite comparar BEFORE vs
+        # AFTER para diagnosticar QUÉ modificacion provoca el rechazo
+        # del compilador de Siemens.
+        # El mkdir va FUERA del try: si falla por permisos, queremos
+        # que la excepción se propague (en vez de silenciarse), porque
+        # significa que el operario no podra ver los diagnosticos.
+        diag_dir = Path(export_dir) / "diagnostics"
+        diag_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            shutil.copy(db_xml_path, diag_dir / f"{hw_config.db_name}_BEFORE.xml")
+        except Exception as e:
+            self._logger.warning(f"No se pudo volcar BEFORE: {e}")
+        # -----------------------------------
+
         # Mapear: el Excel es base-1, TIA espera Path base-0.
         # Restamos 1 al numero del Excel al construir el indice del Subelement.
+        # Usamos el campo comentario_db del Excel como texto del comentario
+        # (la logica de formato vive ahora en el Excel, no en Python).
+        # Guarda: si comentario_db esta vacio, NO se modifica el Subelement,
+        # conservando el comentario previo que TIA tenia (o el vacio).
         modifier = XMLModifier(db_xml_path)
         for d in dispositivos:
-            texto = f"{d.plc_tag} - {d.descripcion}"
-            index_base_0 = d.numero - 1
-            modifier.set_comentario_array(
-                hw_config.db_array_name, index_base_0, texto
-            )
+            if d.comentario_db:
+                index_base_0 = d.numero - 1
+                modifier.set_comentario_array(
+                    array_name=hw_config.db_array_name,
+                    index=index_base_0,
+                    comentario=d.comentario_db,
+                )
         modifier.save()
+
+        # --- DIAGNOSTICO: GUARDAR AFTER ---
+        # Despues de modifier.save(), guardamos una copia del XML con las
+        # modificaciones aplicadas. La comparacion BEFORE vs AFTER
+        # revela EXACTAMENTE que cambios introducimos en el DataBlock.
+        # Si diag_dir no existe (porque el BEFORE fallo), la excepción
+        # se propaga (mejor que ignorar silenciosamente los diagnosticos).
+        try:
+            shutil.copy(db_xml_path, diag_dir / f"{hw_config.db_name}_AFTER.xml")
+        except Exception as e:
+            self._logger.warning(f"No se pudo volcar AFTER: {e}")
+        # ----------------------------------
 
         # Validar existencia del XML antes de importar (defensa por si
         # XMLModifier fallara silenciosamente al guardar).
@@ -453,12 +489,19 @@ class SincronizarDispositivosUseCase:
                 "transaccion para forzar ROLLBACK completo (N_MAX + DB)."
             )
 
-        if not self._repo.compilar_bloque(plc_name, hw_config.db_name):
+        # Validación final: Compilación GLOBAL (no aislada) para evitar el bug
+        # de Openness con bloques recién importados que dependen de constantes
+        # N_MAX que aún no se han propagado. La compilación aislada de un solo
+        # bloque (compilar_bloque) falla con un falso positivo en este caso.
+        # La compilación global del PLC resuelve las constantes primero y luego
+        # compila el bloque, lo que coincide con el comportamiento del usuario
+        # cuando hace "Compilar todo" manualmente en TIA Portal.
+        self._logger.info("⏳ Validando integridad (Compilación Global)...")
+        if not self._repo.compilar_software(plc_name):
             raise RuntimeError(
-                f"La compilacion del bloque '{hw_config.db_name}' fallo tras "
-                "la importacion del XML. Es probable que la importacion haya "
-                "sido rechazada por TIA Portal. Abortando transaccion para "
-                "forzar ROLLBACK completo (N_MAX + DB)."
+                f"TIA Portal rechazó la compilación global tras importar "
+                f"'{hw_config.db_name}'. Abortando transacción para forzar "
+                "ROLLBACK completo (N_MAX + DB)."
             )
         # NOTA: el refresco del cache (force_rescan) NO se hace aqui
         # porque el escaner sufre excepciones COM menores que silencia

@@ -74,6 +74,7 @@ class DispVParser(BaseParser):
                     cfg_habitreposo=str(row.get("Cfg.HabRetReposo", "")),
                     cfg_habitrtrabajo=str(row.get("Cfg.HabRetTrabajo", "")),
                     cfg_grupoalarma=str(row.get("Cfg.GrupoAlarma", "")),
+                    comentario_db=str(row.get("ComentarioDB", "")).strip(),
                 )
             )
         return dispositivos

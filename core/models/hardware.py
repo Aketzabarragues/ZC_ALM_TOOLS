@@ -34,6 +34,7 @@ class DispositivoHardware(Protocol):
     plc_tag: str
     plc_comentario: str
     descripcion: str
+    comentario_db: str
 
 
 @dataclass
@@ -85,6 +86,7 @@ class DispED:
     cfg_byte_entrada: str = ""
     cfg_bit_entrada: str = ""
     cfg_grupo_alarma: str = ""
+    comentario_db: str = ""
 
 
 @dataclass
@@ -136,6 +138,7 @@ class DispEA:
     cfg_escaladomin: str = ""
     cfg_escaladomax: str = ""
     cfg_grupo_alarma: str = ""
+    comentario_db: str = ""
 
 
 @dataclass
@@ -184,6 +187,7 @@ class DispSA:
     cfg_escaladomin: str = ""
     cfg_escaladomax: str = ""
     cfg_grupo_alarma: str = ""
+    comentario_db: str = ""
 
 
 @dataclass
@@ -247,6 +251,7 @@ class DispV:
     cfg_habitreposo: str = ""
     cfg_habitrtrabajo: str = ""
     cfg_grupoalarma: str = ""
+    comentario_db: str = ""
 
 
 @dataclass
@@ -310,6 +315,7 @@ class DispM:
     cfg_habrettermico: str = ""
     cfg_habretconfmarcha: str = ""
     cfg_grupoalarma: str = ""
+    comentario_db: str = ""
 
 
 @dataclass
@@ -377,6 +383,7 @@ class DispM_VF:
     cfg_habrettermico: str = ""
     cfg_habretconfmarcha: str = ""
     cfg_grupoalarma: str = ""
+    comentario_db: str = ""
 
 
 @dataclass

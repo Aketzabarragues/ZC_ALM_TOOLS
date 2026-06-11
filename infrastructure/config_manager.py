@@ -15,11 +15,62 @@ CONFIG_FILE = Path("config.json")
 # Asi podemos tener DEBUG en el archivo (para diagnostico) y WARNING en consola
 # (para no contaminar la TUI de Rich).
 DEFAULT_CONFIG: dict[str, object] = {
-    "template_path": None,
+    "template_path": "C:\\Plantilla",
     "log": {
         "file_level": "DEBUG",
-        "console_level": "WARNING",
+        "console_level": "WARNING"
     },
+    "tia_folders": {
+        "proceso": "003_Proceso",
+        "dispositivos_ed": "2000_Dispositivos"
+    },
+    "build_folders": {
+        "root": ".build"
+    },
+    "hardware": {
+        "ed": {
+            "db_name": "DB2000_ED",
+            "db_array_name": "ED",
+            "tag_table": "2000_Disp_ED",
+            "config_table": "000_Config_Dispositivos",
+            "config_constant": "N_MAX_DISP_ED"
+        },
+        "ea": {
+            "db_name": "DB2001_EA",
+            "db_array_name": "EA",
+            "tag_table": "2000_Disp_EA",
+            "config_table": "000_Config_Dispositivos",
+            "config_constant": "N_MAX_DISP_EA"
+        },
+        "sa": {
+            "db_name": "DB2006_SA",
+            "db_array_name": "SA",
+            "tag_table": "2000_Disp_SA",
+            "config_table": "000_Config_Dispositivos",
+            "config_constant": "N_MAX_DISP_SA"
+        },
+        "v": {
+            "db_name": "DB2010_V",
+            "db_array_name": "V",
+            "tag_table": "2000_Disp_V",
+            "config_table": "000_Config_Dispositivos",
+            "config_constant": "N_MAX_DISP_V"
+        },
+        "m": {
+            "db_name": "DB2015_M",
+            "db_array_name": "M",
+            "tag_table": "2000_Disp_M",
+            "config_table": "000_Config_Dispositivos",
+            "config_constant": "N_MAX_DISP_M"
+        },
+        "m_vf": {
+            "db_name": "DB2016_M_VF",
+            "db_array_name": "M_VF",
+            "tag_table": "2000_Disp_M_VF",
+            "config_table": "000_Config_Dispositivos",
+            "config_constant": "N_MAX_DISP_M_VF"
+        }
+    }
 }
 
 

@@ -57,11 +57,38 @@ class GenerarProcesoUseCase:
         self._generador = XMLGenerator()
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
-    def deducir_proceso_origen(
-        self,
-        ruta_plantilla: str,
-        procesos: list[Proceso]
-    ) -> Proceso:
+    def deducir_proceso_origen(self, ruta_plantilla: str) -> Proceso:
+        """
+        Deducc el Proceso origen PURAMENTE a partir del nombre del archivo
+        de la plantilla. NO consulta el Excel del usuario.
+
+        Por que NO se consulta el Excel:
+          - La plantilla es un archivo fisico del usuario (un proyecto TIA
+            Portal exportado a XML) que no debe contaminar la base de datos
+            de produccion del Excel Maestro.
+          - El Excel solo aporta el proceso destino (el NUEVO proceso a
+            generar). El origen se infiere 100% del filesystem.
+
+        Estrategia:
+          1. Listar todos los XML de la plantilla.
+          2. Aplicar la regex sobre el primer archivo encontrado.
+          3. Si matchea: extraer uid_origen (group 2) y codigo_inferido
+             (group 3) y construir el Proceso en memoria.
+          4. Si NO matchea: lanzar ProcesoOrigenNoEncontradoError.
+
+        Args:
+            ruta_plantilla: ruta a la carpeta que contiene los XML de la
+                plantilla del proceso origen.
+
+        Returns:
+            Proceso(uid=uid_origen, nombre=codigo_inferido, codigo=codigo_inferido)
+            creado en memoria sin tocar la base de datos de produccion.
+
+        Raises:
+            PlantillaVaciaError: si la carpeta no tiene archivos XML.
+            ProcesoOrigenNoEncontradoError: si el archivo no contiene el
+                patron esperado (5\\d{4}_xxx).
+        """
         archivos_xml = list(Path(ruta_plantilla).rglob("*.xml"))
         if not archivos_xml:
             raise PlantillaVaciaError(
@@ -70,26 +97,46 @@ class GenerarProcesoUseCase:
 
         primer_archivo = archivos_xml[0].stem
 
-        # Intento 1: Extraer UID por patrón numérico
-        match_num = re.search(r'(?:FC|FB|DB|OB)?5\d(\d{3})', primer_archivo, re.IGNORECASE)
-        if match_num:
-            uid_origen = int(match_num.group(1))
-            proceso = next((p for p in procesos if p.uid == uid_origen), None)
-            if proceso:
-                return proceso
-
-        # Intento 2: Buscar coincidencia por nombre o código
-        for p in procesos:
-            nombre_upper = p.nombre.upper()
-            codigo_upper = p.codigo.upper()
-            archivo_upper = primer_archivo.upper()
-            if (f"_{nombre_upper}_" in f"_{archivo_upper}_" or
-                    f"_{codigo_upper}_" in f"_{archivo_upper}_"):
-                return p
-
-        raise ProcesoOrigenNoEncontradoError(
-            f"No se pudo deducir el proceso origen desde: '{primer_archivo}'"
+        # CRITICO: usamos re.search (NO re.match) porque 'primer_archivo'
+        # es una RUTA COMPLETA de sistema (ej. C:\...\DB50100_Algo.xml) y
+        # re.match con anclas ^...$ fallaria al no encontrar el patron al
+        # inicio. re.search busca el patron en cualquier posicion del
+        # string, asi que funciona con rutas absolutas.
+        # El grupo 3 usa [^.]+ para capturar el nombre del bloque hasta
+        # el primer punto de la extension .xml (evita capturar el ".xml").
+        # IMPORTANTE: la regex captura el numero COMPLETO del bloque (5XXXX)
+        # en el grupo 2. Antes era `(DB|FC|FB|OB)5(\d{4})` lo que daba
+        # uid=100 en lugar de 50100 (bug historico compensado en
+        # `calcular_diccionario_reemplazos` con `base_plantilla = 50000 +
+        # origen.uid`). Como ahora el origen se deduce directamente, el
+        # uid_origen DEBE ser el numero completo del bloque.
+        match_num = re.search(
+            r'(DB|FC|FB|OB)5(\d{4})_([^.]+)',
+            str(primer_archivo),
+            re.IGNORECASE
         )
+        if not match_num:
+            raise ProcesoOrigenNoEncontradoError(
+                f"No se pudo deducir el proceso origen desde: '{primer_archivo}'. "
+                f"Esperado patron: (DB|FC|FB|OB)5XXXX_xxx (ej. DB50100_CPR_PRINCIPAL)."
+            )
+
+        uid_origen = int(match_num.group(2))
+        codigo_inferido = match_num.group(3).upper()
+
+        # Construir el Proceso en memoria directamente. NO se consulta
+        # ningun repositorio ni base de datos de produccion.
+        proceso_origen = Proceso(
+            uid=uid_origen,
+            nombre=codigo_inferido,
+            codigo=codigo_inferido,
+        )
+
+        self._logger.info(
+            f"Proceso origen deducido desde archivo (sin consultar Excel): "
+            f"uid={uid_origen}, codigo='{codigo_inferido}'."
+        )
+        return proceso_origen
 
     def ejecutar_preflight(
         self,
@@ -158,11 +205,21 @@ class GenerarProcesoUseCase:
         self._logger.info("Inyectando XMLs en TIA Portal...")
         exito = self._tia.importar_bloques_generados(plc_nombre, ruta_build, proceso_nombre)
 
-        # 3. POST-CHECK: Compilación de validación
+        # 3. POST-CHECK: Compilación de validación GLOBAL (no aislada).
+        # La compilación global resuelve primero las constantes N_MAX y
+        # luego compila todos los bloques. Esto evita el bug de Openness
+        # con bloques recién importados que dependen de constantes.
+        # Si la post-compilacion falla, retornamos False (no True) para
+        # que el caller (orquestador superior) detecte el fallo y haga
+        # ROLLBACK. El bug original era retornar exito=True aunque la
+        # compilacion fallara (falso positivo).
         if exito:
             self._logger.info("Iniciando Post-Check de compilación...")
             if not self._tia.compilar_software(plc_nombre):
-                self._logger.error("❌ ¡ALERTA! La inyección fue exitosa pero la compilación posterior falló. Revisa TIA Portal.")
-                # Retornamos True porque la inyección física sí ocurrió, pero el log dejará constancia del error.
-        
+                self._logger.error(
+                    "❌ ¡ALERTA! La inyección fue exitosa pero la "
+                    "compilación global posterior falló. "
+                    "Retornando False para forzar ROLLBACK."
+                )
+                return False  # ← FIX: era "return exito" (que era True)
         return exito

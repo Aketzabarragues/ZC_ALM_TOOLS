@@ -79,6 +79,7 @@ class DispMVFarser(BaseParser):
                     cfg_habrettermico=str(row.get("Cfg.HabRetTermico", "")),
                     cfg_habretconfmarcha=str(row.get("Cfg.HabRetConfMarcha", "")),
                     cfg_grupoalarma=str(row.get("Cfg.GrupoAlarma", "")),
+                    comentario_db=str(row.get("ComentarioDB", "")).strip(),
                 )
             )
         return dispositivos

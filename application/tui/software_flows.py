@@ -120,7 +120,9 @@ def _flujo_generar_procesos(
 
     uc = GenerarProcesoUseCase(session.software_repo)
     try:
-        proceso_origen = uc.deducir_proceso_origen(ruta_plantilla, procesos)
+        # El proceso origen se deduce PURAMENTE del nombre del archivo
+        # de la plantilla. NO se consulta el Excel del usuario.
+        proceso_origen = uc.deducir_proceso_origen(ruta_plantilla)
         console.print(f"[green]✅ Plantilla:[/green] {proceso_origen.nombre} (UID: {proceso_origen.uid})")
     except PlantillaVaciaError as e:
         console.print(f"[bold red]❌ {e}[/bold red]")

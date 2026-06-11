@@ -54,6 +54,7 @@ class DispEDParser(BaseParser):
                     cfg_byte_entrada=str(row.get("Cfg.ByteEntrada", "")),
                     cfg_bit_entrada=str(row.get("Cfg.BitEntrada", "")),
                     cfg_grupo_alarma=str(row.get("Cfg.GrupoAlarma", "")),
+                    comentario_db=str(row.get("ComentarioDB", "")).strip(),
                 )
             )
         return dispositivos
