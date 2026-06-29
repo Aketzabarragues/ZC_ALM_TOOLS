@@ -154,6 +154,29 @@ def _flujo_generar_procesos(
         return
     console.print(f"[bold green]✅ {resultado_gen.archivos_generados} archivos generados.[/bold green]")
 
+    # ------------------------------------------------------------------ #
+    #  PRE-INYECCIÓN DE N_MAX EN LA TABLA DE VARIABLES (anti-histeresis)
+    #  Antes de importar a TIA Portal, sobreescribimos los <StartValue>
+    #  de las constantes N_MAX en el XML de la tabla con los valores
+    #  del Excel. Si no lo hacemos, TIA compila con los valores
+    #  originales de la plantilla (cero o heredados) y no recalcula las
+    #  dimensiones de los DBs.
+    # ------------------------------------------------------------------ #
+    with console.status(
+        "[cyan]⏳ Pre-inyectando N_MAX en tabla XML (anti-histéresis)...[/cyan]",
+        spinner="dots",
+    ):
+        inyeccion_ok = uc.inyectar_constantes_en_tabla_xml(
+            resultado_gen.ruta_build, proceso_destino
+        )
+    if inyeccion_ok:
+        console.print("[bold green]✅ N_MAX pre-inyectados en la tabla XML.[/bold green]")
+    else:
+        console.print(
+            "[bold yellow]⚠️ No se modificaron constantes N_MAX en la tabla "
+            "(continuando con valores originales).[/bold yellow]"
+        )
+
     console.print("[bold yellow]⚠️ El siguiente paso modifica TIA Portal.[/bold yellow]")
     if not questionary.confirm("¿Inyectar en el PLC ahora?").ask():
         console.print("[dim]Puedes importar .build/ manualmente.[/dim]")

@@ -11,6 +11,7 @@ import re
 from core.models import BloquePLC, Proceso
 from core.ports import ISoftwareRepository
 from infrastructure.xml.generator import XMLGenerator
+from infrastructure.xml.tabla_injector import TablaVariablesInjector
 
 
 @dataclass
@@ -192,6 +193,41 @@ class GenerarProcesoUseCase:
         except Exception as e:
             self._logger.error(f"Error durante la generación: {e}", exc_info=True)
             return ResultadoGeneracion(exito=False, ruta_build="", archivos_generados=0, error=str(e))
+
+    def inyectar_constantes_en_tabla_xml(
+        self,
+        ruta_build: str,
+        proceso_destino: Proceso,
+    ) -> bool:
+        """
+        Sobreescribe en disco los <StartValue> de las constantes N_MAX
+        en la Tabla de Variables XML generada, ANTES de importarla a
+        TIA Portal.
+
+        Esto es esencial para evitar la "Histéresis de Compilación" de
+        Openness: si las constantes N_MAX se cambian despues de importar,
+        la compilación no recalcula las dimensiones de los DBs. Al
+        inyectarlas en disco, TIA importa el archivo con los valores
+        correctos y la compilación los respeta desde el primer momento.
+
+        Args:
+            ruta_build: ruta al directorio .build/ con los XML generados.
+            proceso_destino: el proceso NUEVO que se va a importar.
+
+        Returns:
+            True si al menos una constante fue modificada.
+        """
+        constantes = {
+            f"{proceso_destino.uid}_N_MAX_PREAL": proceso_destino.preal,
+            f"{proceso_destino.uid}_N_MAX_PINT": proceso_destino.pint,
+            f"{proceso_destino.uid}_N_MAX_ALARMAS": proceso_destino.alarmas,
+            f"{proceso_destino.uid}_N_MAX_ALARMAS_HMI": proceso_destino.alm_hmi,
+        }
+        self._logger.info(
+            f"Inyectando N_MAX pre-importación para proceso "
+            f"uid={proceso_destino.uid}: {constantes}"
+        )
+        return TablaVariablesInjector.inyectar_en_build(ruta_build, constantes)
 
     def inyectar_en_tia(self, plc_nombre: str, ruta_build: str, proceso_nombre: str = "desconocido") -> bool:
         self._logger.info("Iniciando Pre-Check de compilación...")
