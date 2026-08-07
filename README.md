@@ -1,6 +1,6 @@
 # 🚀 ZC\_ALM\_TOOLS
 
-> **ZEUS CONTROL Application Lifecycle Management Tools** — La navaja suiza de la automatización de TIA Portal.
+> **ZEUS CONTROL Tools** — La navaja suiza de la automatización de TIA Portal.
 
 ## 🚀 ¿Qué es ZC\_ALM\_TOOLS?
 
